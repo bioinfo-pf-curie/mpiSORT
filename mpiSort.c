@@ -1,0 +1,536 @@
+/*
+   mpiSORT
+   Copyright (C) 2016 Institut Curie, 26 rue d'Ulm, Paris, France
+
+   mpiSORT is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   mpiSORT is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser Public License
+   along with mpiSORT.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+   Module:
+     sort_main.c
+
+   Authors:
+    Frederic Jarlier from Institut Curie
+	Nicolas Fedy from Institut Curie
+	Leonor Sirotti from Institut Curie
+	Thomas Magalhaes from Institut Curie
+	Paul Paganiban from Institut Curie
+*/
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <mpi.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <libgen.h>
+#include <unistd.h>
+
+#include "mpi_globals.h"
+#include "merge.h"
+#include "diffuse.h"
+#include "preWrite.h"
+#include "write2.h"
+#include "mergeSort.h"
+#include "parser.h"
+#include "merge_utils.h"
+#include "bufferized_read.h"
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#define	PRIoff PRId64
+
+#define	MPI_OFF_T MPI_LONG_LONG_INT
+
+#define DEFAULT_MAX_SIZE 6000000000 //Default capacity for one process: 6G
+#define DEFAULT_INBUF_SIZE  (1024*1024*1024)
+
+int main (int argc, char *argv[]){
+
+	DIR *dir = NULL;
+	MPI_File mpi_filed;
+
+	MPI_Offset unmapped_start;
+	int num_proc, rank;
+	int nbchr, i;
+	int ierr, errorcode = MPI_ERR_OTHER;
+	char *file_name, *output_dir, *sam_dir;
+
+	char *header;
+	char **chrNames;
+	struct stat fileSize;
+	unsigned int headerSize;
+	unsigned char threshold = 0;
+	char sender;
+
+	size_t unmappedSize = 0;
+	size_t array_max_size = DEFAULT_MAX_SIZE; //maximum amount of data sent to the father
+	size_t *readNumberByChr = NULL, *localReadNumberByChr = NULL;
+	Read **reads;
+	size_t *count_diffuse = NULL;
+	size_t **send_diffuse;
+	size_t *dsend[3];
+	clock_t tic, toc;
+	int compression_level = 3; //by default compression is 3
+
+	char *rbuf;
+	size_t fsiz, lsiz, loff, *goff;
+
+	MPI_Info finfo;
+	MPI_Init(&argc,&argv);
+
+	if (argc < 4){
+		fprintf(stderr, "Invalid arguments.\nShutting down.\n");
+		MPI_Finalize();
+		return 0;
+	}
+
+    //finds out process rank
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	//finds out number of processes
+	MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
+	if(!rank)fprintf(stderr,"Number of processes : %d\n",num_proc);
+
+	file_name = argv[1];
+	output_dir = argv[2];
+
+	if(rank == 0)fprintf(stderr, "file to read : %s\n", file_name);
+	if(rank == 0)fprintf(stderr, "output : %s\n", output_dir);
+
+	//looking for optionsinfo
+	for(i = 0; i < argc; i++){
+		if(argv[i][0] == '-'){
+			if(argv[i][1] == 'q'){
+				threshold = atoi(argv[i+1]);
+				if(!rank)fprintf(stderr, "Reads' quality threshold : %d\n", threshold);
+			}
+			if(argv[i][1] == 'c'){
+				compression_level = atoi(argv[i+1]);
+				if(!rank)fprintf(stderr, "Compression Level is : %d\n", compression_level);
+			}
+
+		}
+	}
+
+	//checking if everything's fine with the output directory, shutting down otherwise
+	sam_dir = (char*)malloc(strlen(output_dir)+11);
+	sprintf(sam_dir, "%s", output_dir);
+	if(!rank){
+		dir = opendir(sam_dir);
+		if(!dir){
+			perror("Failed to open directory");
+			if(errno == ENOENT){
+				fprintf(stderr, "rank %d Making directory...\n", rank);
+				ierr = mkdir(sam_dir, S_IRWXU);
+				if(ierr){
+					perror("Failed to make directory");
+					fprintf(stderr, "Shutting down...\n");
+					MPI_Abort(MPI_COMM_WORLD, errorcode);
+					exit(2);
+				}
+			}
+			else{
+				fprintf(stderr, "Shutting down...\n");
+				MPI_Abort(MPI_COMM_WORLD, errorcode);
+				exit(2);
+			}
+		}
+		else{
+			closedir(dir);
+		}
+	}
+
+
+	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
+
+	/*
+	 * In this part you shall adjust the striping factor and unit according
+	 * to the underlying filesystem
+	 */
+	MPI_Info_create(&finfo);
+	MPI_Info_set(finfo,"striping_factor","128");
+	MPI_Info_set(finfo,"striping_unit","2684354560"); //2G striping
+	MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); //2gb buffer
+	MPI_Info_set(finfo,"romio_ds_read","enable");
+		
+	/*
+	 * for collective reading and writing
+	 * should be adapted too and tested according to the file system
+	 */
+	MPI_Info_set(finfo,"nb_proc","128");
+	MPI_Info_set(finfo,"cb_nodes","128");
+	MPI_Info_set(finfo,"cb_block_size","2147483648"); /* 4194304 MBytes - should match FS block size */
+	MPI_Info_set(finfo,"cb_buffer_size","2147483648"); /* 128 MBytes (Optional) */
+	
+
+	//we open the input file
+	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
+	//assert(in != -1);
+	if (ierr){
+		if (rank == 0) DEBUG("%s: Failed to open file in process 0 %s\n", argv[0], argv[1]);
+		MPI_Abort(MPI_COMM_WORLD, errorcode);
+		exit(2);
+	}
+
+	//then we get the file size
+	size_t input_file_size = stat(file_name, &fileSize);
+
+	if (input_file_size == -1){
+		fprintf(stderr,"Failed to find file size\n");
+		MPI_Abort(MPI_COMM_WORLD, errorcode);
+		exit(0);
+	}
+
+	input_file_size = (long long)fileSize.st_size;
+	if(!rank)fprintf(stderr, "The size of the file is %zu\n", fileSize.st_size);
+
+	/* Get chunk offset and size */
+	fsiz = fileSize.st_size;
+	lsiz = fsiz / num_proc;
+	loff = rank * lsiz;
+	size_t lsiz2 = 150*sizeof(char)*1000; // load only the begining of file to check the read name and header
+	if(lsiz2>lsiz){
+		lsiz2 = lsiz;
+	}
+
+	rbuf = (char*)malloc((lsiz2 + 1)*sizeof(char));
+	tic = MPI_Wtime();
+	MPI_File_read_at(mpi_filed, loff, rbuf, lsiz2, MPI_CHAR, MPI_STATUS_IGNORE);
+	fprintf(stderr, "%d (%.2lf)::::: ***GET OFFSET BLOCKS TO READ ***\n", rank,(double)(MPI_Wtime()-tic));
+
+
+	//FIND HEADERSIZE AND CHRNAMES AND NBCHR
+	tic = MPI_Wtime();
+	headerSize=find_header(rbuf,rank,&unmappedSize,&nbchr,&header,&chrNames);
+	fprintf(stderr, "%d (%.2lf)::::: ***HEADER PART%d***\n", rank,(double)(MPI_Wtime()-tic),headerSize);
+	free(rbuf);
+
+	//We place file offset of each process to the begining of one read's line
+	goff=init_goff(mpi_filed,headerSize,fileSize.st_size,num_proc,rank);
+
+	//We calculate the size to read for each process
+	lsiz = goff[rank+1]-goff[rank];
+	//NOW WE WILL PARSE
+	int j=0;
+	size_t poffset = goff[rank]; //Current offset in file sam
+	reads = (Read**)malloc(nbchr*sizeof(Read));//We allocate a linked list of struct for each Chromosome (last chr = unmapped reads)
+	readNumberByChr = (size_t*)malloc(nbchr*sizeof(size_t));//Array with the number of reads found in each chromosome
+	localReadNumberByChr = (size_t*)malloc(nbchr*sizeof(size_t));//Array with the number of reads found in each chromosome
+	Read ** anchor = (Read**)malloc(nbchr*sizeof(Read));//Pointer on the first read of each chromosome
+
+	//Init first read
+	for(i = 0; i < nbchr; i++){
+		reads[i] = malloc(sizeof(Read));
+		reads[i]->coord = 0;
+		anchor[i] = reads[i];
+		readNumberByChr[i]=0;
+	}
+
+	toc = MPI_Wtime();
+	char *local_data = NULL; //Where we load file sam
+
+	//We read the file sam and parse
+	while(poffset < goff[rank+1]){
+
+		size_t size_to_read = 0;
+
+		//Reading in multiple times because of MPI_File_read limits
+		if( (goff[rank+1]-poffset) < DEFAULT_INBUF_SIZE ){
+			size_to_read = goff[rank+1]-poffset;
+		}
+		else{
+			size_to_read = DEFAULT_INBUF_SIZE;
+		}
+
+		// we load the buffer
+		local_data=(char*)calloc(size_to_read+1,sizeof(char));
+
+		// Original reading part is before 18/09/2015
+		// MPI_File_read_at_all(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, &status);
+
+		// modification 18/09/2015
+		// we create a Datatype for the block
+		// creation of datatype
+		// Variable for datatype struct almost classic
+		// The idea is to decompose the block to read
+		// in small chunks (of integer size)
+		// for 1gb there's 1.5 millions read
+
+		//creation of datatype
+		MPI_Datatype dt_view;
+		MPI_Datatype dt_data;
+		size_t local_offset=0;
+
+		size_t num_data_type_block =150;
+	 	int k=0;
+	 	int blocklens[num_data_type_block];
+	 	MPI_Aint indices[num_data_type_block];
+	 	MPI_Datatype oldtypes[num_data_type_block];
+
+	 	size_t *vector_offset = (size_t*)malloc(num_data_type_block*sizeof(size_t));
+
+	 	//We divide the size_to_read in readNum small size
+	 	int chunck_size = size_to_read/num_data_type_block;
+	 	int rest = size_to_read - (num_data_type_block* chunck_size);
+
+	 	//Allocate data
+	 	for(k = 0; k < size_to_read; k++){
+	 		local_data[k] = 0;
+	 	}
+	 	char *u = local_data;
+	 	for ( k = 0; k < num_data_type_block; k++){
+	 		blocklens[k] = chunck_size;
+	 		indices[k] = (MPI_Aint)(u + k*chunck_size);
+	 		vector_offset[k] = poffset + k*chunck_size;
+	 		oldtypes[k] = MPI_CHAR;
+	 	}
+	 	blocklens[num_data_type_block -1]+=rest;
+
+	 	size_t res=0;
+	 	for ( k = 0; k < num_data_type_block; k++){
+	 		res+=blocklens[k];
+	 	}
+	 	assert(res==size_to_read);
+
+	 	MPI_Type_create_struct(num_data_type_block, blocklens, indices, oldtypes, &dt_data);
+	 	MPI_Type_commit(&dt_data);
+
+		MPI_Type_create_hindexed(1, blocklens, (MPI_Aint *)vector_offset, MPI_CHAR, &dt_view);
+		MPI_Type_commit(&dt_view);
+		//TODO: see if initialization is needed
+		MPI_File_set_view(mpi_filed, 0, MPI_CHAR, dt_view, "native", finfo);
+		//MPI_File_read(mpi_filed, local_data, 1, MPI_CHAR, MPI_STATUS_IGNORE);
+		MPI_File_read(mpi_filed, MPI_BOTTOM, 1, dt_data, MPI_STATUS_IGNORE);
+
+		MPI_Type_free(&dt_data);
+		MPI_Type_free(&dt_view);
+
+		////////////////////////////////////
+		///// fin modification 18/09/2015
+		////////////////////////////////////
+
+
+		//we look where is the last line read for updating next poffset
+		size_t offset_last_line = size_to_read-1;
+		while(local_data[offset_last_line] != '\n'){
+			offset_last_line -- ;
+		}
+		//If it s the last line of file, we place a last '\n' for the function tokenizer
+		if(rank == num_proc-1 && ((poffset+size_to_read) == goff[num_proc])){
+			local_data[offset_last_line]='\n';
+		}
+
+		//Now we parse Read in local_data
+		parser_single(local_data, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+
+		//we go to the next line
+		poffset+=(offset_last_line+1);
+		local_offset+=(offset_last_line+1);
+		free(local_data);
+	}
+
+	//MPI_File_seek(mpi_filed, goff[rank], MPI_SEEK_SET);
+
+	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank,(double)(MPI_Wtime()-toc));
+
+	free(goff);
+	//MPI_File_close(&mpi_filed);
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	//We set attribute next of the last read and go back to first read of each chromosome
+	for(i = 0; i < nbchr; i++){
+		reads[i]->next = NULL;
+		reads[i] = anchor[i];
+	}
+	free(anchor);
+
+	//We count how many reads we found
+	size_t nb_reads_total =0,nb_reads_global =0;
+	for(j=0;j<nbchr;j++){
+		nb_reads_total+=readNumberByChr[j];
+	}
+
+	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+	fprintf(stderr, "Number of reads on rank %d = %zu/%zu \n", rank, nb_reads_total, nb_reads_global);
+
+	for(i = 0; i < (nbchr-1); i++){
+
+		localReadNumberByChr[i] = readNumberByChr[i];
+
+		if(reads[i] && reads[i]->next && reads[i]->next->next){
+			mergeSort(reads[i], readNumberByChr[i]);
+		}
+
+		reads[i] = reads[i]->next;
+		indexing(rank, readNumberByChr[i], reads[i], dsend);
+		count_diffuse = NULL; //used for the formatting
+		sender = merge(rank, num_proc, headerSize, readNumberByChr[i], array_max_size, &count_diffuse, &send_diffuse, dsend);
+		size_t *offsets = (size_t*)malloc(localReadNumberByChr[i]*sizeof(size_t));
+		diffuse(offsets, rank, num_proc, sender, localReadNumberByChr[i], count_diffuse, send_diffuse);
+
+		writeSam(rank, output_dir, header, localReadNumberByChr[i], chrNames[i],
+				reads[i], offsets, num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
+
+		//if (reads[i])
+		//	free(reads[i]);
+
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
+
+	// we close mpi_filed in writeSAM_unmapped
+	//MPI_File_close(&mpi_filed);
+
+	reads[nbchr-1] = reads[nbchr-1]->next;
+	localReadNumberByChr[nbchr-1] = readNumberByChr[nbchr-1];
+	unmapped_start = unmappedOffset(rank, num_proc, unmappedSize, headerSize, nbchr, localReadNumberByChr[nbchr-1]);
+
+	if(!unmapped_start){
+		fprintf(stderr, "No header was defined.\nShutting down.\n");
+		MPI_Finalize();
+		return 0;
+	}
+
+	else{
+
+		writeSam_unmapped(rank, output_dir, header, localReadNumberByChr[nbchr-1], chrNames[nbchr-1],
+			reads[nbchr-1], num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
+
+		while( reads[nbchr-1]->next != NULL){
+			Read *tmp_chr = reads[nbchr-1];
+			reads[nbchr-1] = reads[nbchr-1]->next;
+			free(tmp_chr->next);
+		}
+		//free(reads[i]);
+		if(!rank){
+			free(header);
+		}
+		fprintf(stderr,"Rank %d finished.\n", rank);
+		printf("rank %d \n", rank);
+		MPI_Finalize();
+
+	}
+
+	free(localReadNumberByChr);
+
+	for(i = 0; i < nbchr; i++)
+		free(chrNames[i]);
+	free(chrNames);
+	// task: FREE READS
+	//free(reads);
+	free(readNumberByChr);
+	return 0;
+}
+
+
+void create_read_dt_for_parser(int rank, int num_proc, int *ranks, int* buffs, char** data, MPI_Datatype* dt, size_t readNum)
+ {
+
+
+	/*
+	 * task: Create data structure for reading part
+	 */
+
+	assert(data != 0);
+
+	//buffs is the table with the read size
+
+ 	//Count variable
+ 	int i;
+
+ 	//Variable for datatype struct almost classic
+ 	MPI_Aint indices[readNum];
+ 	int blocklens[readNum];
+ 	MPI_Datatype oldtypes[readNum];
+
+ 	/* Adress originally referencing on data
+ 	 * data : char** buff in which the read data must be organized by destination rank
+ 	 */
+ 	MPI_Aint adress_to_write_in_data_by_element[num_proc];
+
+ 	//init adress_to_write_in_data_by_element
+ 	for(i = 0; i < num_proc; i++){
+ 		adress_to_write_in_data_by_element[(rank+i)%num_proc] = (MPI_Aint)data[(rank-i+num_proc)%num_proc];
+ 	}
+
+ 	//double time_count = MPI_Wtime();
+ 	//Set all classic datatype values
+ 	for(i = 0; i < readNum; i++){
+ 		/*  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TRICKY PART !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 		 * Basically what we say here is that the i(th) item that we are going to read goes to the data row corresponding to it's destination rank
+ 		 *
+ 		 * indices[i] : The adress for the datatype to which the i(th) item should be written.
+ 		 * 			Generally this is a relative adress. Like 0, 8, 16.
+ 		 * 			Here, we use the adress in memory in order to be able to use an array of array without any problem.
+ 		 * 				Else, the first index could be good
+ 		 * 				but (data + 8) wouldn't designate &(data[0][8]) if we need to write multiple times in the same row
+ 		 *
+ 		 *  adress_to_write_in_data_by_element[i] : This is almost the same as data.
+ 		 *  		The only difference is that it could be incremented if there are multiple data to write in the same row
+ 		 *
+ 		 *  ranks[i] : This designates to what rank the i(th) item should be sent.
+ 		 *  		Or at least, to what index in data it has to go
+ 		 *
+ 		 *  buffs[i] : This is the size of the i(th) item
+ 		 *
+ 		 *  blocklens[i] : Nothing special here.
+ 		 *  		This is the typical blocklens used in MPI struct creation
+ 		 *
+ 		 * oldtypes[i] : Nothing special here.
+ 		 * 			This is the typical oldtypes used in MPI struct creation
+ 		 */
+ 		//Set indices
+ 		//ranks[i] tell the position in adresse to write by elements
+ 		indices[i] = adress_to_write_in_data_by_element[ranks[i]];
+
+ 		//printf("num_proc %d - %d/%d     /    indices: %p   /   buffs: %d    /    ranks: %d\n", size, i, readNum, indices[i], buffs[i], ranks[i]);
+ 		//Increment position to write for ranks[i]
+ 		adress_to_write_in_data_by_element[ranks[i]] += buffs[i];
+
+ 		/*
+ 		if (rank == 1 ){
+ 			fprintf(stderr, "rank %d :::: num_proc %d - %d/%d     /    indices: %p   /   buffs: %d    /    ranks: %d\n",
+ 							 rank, num_proc, i, readNum, indices[i], buffs[i], ranks[i]);
+ 		}
+ 		*/
+ 		//Set blocklens
+ 		blocklens[i] = buffs[i];
+
+ 		//Set oldtype
+ 		oldtypes[i] = MPI_CHAR;
+ 	}
+
+
+ 	for(i = 0; i < readNum; i++){
+ 		assert (indices[i] != (MPI_Aint)NULL);
+ 	}
+
+
+ 	//Create struct
+ 	//time_count = MPI_Wtime();
+ 	MPI_Type_create_struct(readNum, blocklens, indices, oldtypes, dt);
+ 	//fprintf(stderr, "Rank %d :::::[create_read_dt] Time for creating struct %f seconds\n", rank, MPI_Wtime()-time_count);
+ }
+
+
