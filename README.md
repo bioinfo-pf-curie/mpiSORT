@@ -120,3 +120,14 @@ Options
 -------
 
 the -q option is for quality filtering.
+
+
+Future developments
+-------------------
+
+1) Develop the parser for paired reads
+2) Mark and remove duplicates
+3) Make a pile up of the reads 
+
+
+

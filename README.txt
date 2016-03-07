@@ -17,7 +17,7 @@ Contact us if you need information.
 Input Data:
 ----------
 
-a SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.  
+a SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. Reads are paired or not.   
 
 MPI version:
 ------------
@@ -120,3 +120,12 @@ Options
 -------
 
 the -q option is for quality filtering.
+
+
+Future developments
+-------------------
+
+1) Develop the parser for paired reads
+2) Mark and remove duplicates
+3) Make a pile up of the reads 
+
