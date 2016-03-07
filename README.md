@@ -4,10 +4,13 @@ Requirements:
 This programm is intended to run on supercomputer architectures equiped with Infiniband network and parallel 
 filesystem such as Lustre, GPFS,...
 
-This program has been tested on TGCC (Très Grand Centre de Calcul) of CEA and Intel Swindon Cluster. 
+The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
 !!!!! DON'T RUN THIS PROGRAM ON NETWORK FILESYSTEM AKA NFS IT DOESN'T WORK!!!!
+
 !!!!! DON'T RUN THIS PROGRAM IF YOU DON'T HAVE INFINIBAND OR LOW LATENCY NETWORK !!!!
+
+You need to have a good understanding of your infrastructure before running and tuning this code.
 
 Contact us if you need information.
 
@@ -39,7 +42,7 @@ The reading and writing are done in different ways so the configuration varies b
 
 The parallel writing and reading are done via the MPI finfo structure. 
 
-We recommand to test different parameters before setting them once for all. Those parameter are independant of the file size you want to sort.    
+!!!We recommand to test different parameters before setting them once for all. Those parameter are independant of the file size you want to sort.    
 
 1) for reading and set the Lustre buffer size.
 
@@ -47,21 +50,24 @@ To do that edit the code of parallelMergeSort.c and chage the parameter from the
 Here are the parameters for the reading and Lustre buffering part.
  
 2) for the writing part
+
 Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
-Writing are don with collective operation so you have to tell how many buffer nodes you have.
-After writing tell the programm to come back to parameter reading in the write2.c file from the line 2367 to 2373.
+Writing are done with collective operation so you have to tell how many buffer nodes you have.
+After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 
 In write2.c: line 2362 and 629.
-
+ 
 
 Cache size:
 -----------
 
-The cache size is critical for the reading. The cache depends on the number of OSTs and the memory available.
+The cache size is critical for the reading. The cache keep the data of individual jobs in RAM. 
+The cache depends on the number of OSTs and the memory available.
 Form our experiments on Lustre with 64 to 128 OSTs the cache is 2GB with 16 OSTs the cache is 1GB.
-The cache can be set with Lustre command ask your IT how to do this... or test by yourself. 
+The cache can be set with Lustre command ask your IT how to do this... or test by yourself.
+ 
 
 Job rank:
 ---------
