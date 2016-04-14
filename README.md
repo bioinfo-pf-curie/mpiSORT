@@ -6,12 +6,10 @@ filesystem such as Lustre, GPFS,...
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
-!!!!! DON'T RUN THIS PROGRAM ON NETWORK FILESYSTEM AKA NFS IT DOESN'T WORK!!!!
+!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK!!!!
+!!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
-!!!!! DON'T RUN THIS PROGRAM IF YOU DON'T HAVE INFINIBAND OR LOW LATENCY NETWORK !!!!
-
-
-You need to have a good understanding of your infrastructure before running and tuning this code.
+Indeed optimizations are everywhere :)
 
 Contact us if you need information.
 
@@ -138,7 +136,7 @@ the -q option is for quality filtering.
 Future developments
 -------------------
 
-1) Add options to manage cache from command lines
+1) Add options to manage cache optimizations from command lines
 2) Mark and remove duplicates
 3) Make a pile up of the reads 
 
