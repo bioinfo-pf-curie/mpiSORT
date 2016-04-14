@@ -10,6 +10,7 @@ The presented version of the program has been tested on France Genomic cluster o
 
 !!!!! DON'T RUN THIS PROGRAM IF YOU DON'T HAVE INFINIBAND OR LOW LATENCY NETWORK !!!!
 
+
 You need to have a good understanding of your infrastructure before running and tuning this code.
 
 Contact us if you need information.
@@ -35,19 +36,20 @@ Configuration:
 
 The programm make an intensive use of reading buffer at the parallel filesystem level. 
 According to the size of the Lustre or GPFS system the buffer size could vary. 
-At TGCC the striping factor is 128 (number of OSTs servers) and the striping size is 2.5Gb. 
+At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is 2.5Gb. 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 
 The reading and writing are done in different ways so the configuration varies between the two.
 
 The parallel writing and reading are done via the MPI finfo structure. 
 
-!!!We recommand to test different parameters before setting them once for all. Those parameter are independant of the file size you want to sort.    
+!!!We recommand to test different parameters before setting them once for all. 
+Those parameter are independant of the file size you want to sort.    
 
 1) for reading and set the Lustre buffer size.
 
-To do that edit the code of parallelMergeSort.c and chage the parameter from the line 169 to 182. 
-Here are the parameters for the reading and Lustre buffering part.
+To do that edit the code of parallelMergeSort.c and change the parameters from the line 169 to 182. 
+
  
 2) for the writing part
 
