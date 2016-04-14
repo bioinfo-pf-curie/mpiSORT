@@ -60,19 +60,25 @@ After writing tell the programm to come back to parameters reading in the write2
 In write2.c: line 2362 and 629.
  
 
-Cache size:
------------
+Cache tricks and sizes:
+----------------------
 
-The cache size is critical for the reading. The cache keep the data of individual jobs in RAM. 
-The cache depends on the number of OSTs and the memory available.
-Form our experiments on Lustre with 64 to 128 OSTs the cache is 2GB with 16 OSTs the cache is 1GB.
-The cache can be set with Lustre command ask your IT how to do this... or test by yourself.
- 
+The cache optimization is critical for IO operations. 
+The sorting algorithme does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
+
+The cache keep the data of individual jobs in RAM and drastically improve IO performance.
+
+Setting the cache at servers level is explained chapter 31.4.3.1.   
+Otherwise one can use tuning client cache via RPC as explain in chapter 31.4.1.
+
+Form our experiments on Lustre with 64 to 128 OSSs the cache is 2GB with 16 OSSs the cache is 1GB.
+Some parameters need root access ask your IT how to do this.
+
 
 Job rank:
 ---------
 
-The number of job or job rank rely on the size of input data and the cache buffer size.
+The number of jobs or jobs rank rely on the size of input data and the cache buffer size.
 For our development on TGCC the cache size is 2GB per job. 
 If you divide the size input by the buffer cache you got the number of jobs you need. 
 Of course the more cache you have the less jobs you need.
@@ -125,7 +131,7 @@ the -q option is for quality filtering.
 Future developments
 -------------------
 
-1) Develop the parser for paired reads
+1) Add options to manage cache from command lines
 2) Mark and remove duplicates
 3) Make a pile up of the reads 
 
