@@ -170,9 +170,9 @@ the -q option is for quality filtering.
 Future developments
 -------------------
 
-1) Add options to manage cache optimizations from command lines
-2) Mark and remove duplicates
-3) Make a pile up of the reads 
+1) Add options to manage cache optimizations from command lines <br />
+2) Mark and remove duplicates <br />
+3) Make a pile up of the reads <br /> 
 
 
 
