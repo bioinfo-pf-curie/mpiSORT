@@ -72,10 +72,12 @@ Setting client cache is done via RPC as explain in chapter 31.4.1.
 
 Here are parameters we set for our experiments for client cache
 
-max_cached_mb: 48301
-max_read_ahead_mb=40
-max_pages_per_rpc=256
-max_rpcs_in_flight=32
+Client side
+ 
+max_cached_mb: 48301/
+max_read_ahead_mb=40/
+max_pages_per_rpc=256/
+max_rpcs_in_flight=32/
 
 Form our experiments on Lustre with 64 to 128 OSSs the cache is 2GB with 16 OSSs the cache is 1GB.
 Some parameters need root access ask your IT how to do this.
