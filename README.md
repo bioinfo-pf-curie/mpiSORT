@@ -6,10 +6,10 @@ filesystem such as Lustre, GPFS,...
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
-!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! /
+!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
-Indeed optimizations are everywhere :)
+Optimizations are everywhere :)
 
 Contact us if you need information.
 
@@ -49,17 +49,17 @@ Those parameter are independant of the file size you want to sort.
 To do that edit the code of parallelMergeSort.c and change the parameters from the line 169 to 182. 
 
 
-MPI_Info_create(&finfo);
-MPI_Info_set(finfo,"striping_factor","128"); OSS number/
-MPI_Info_set(finfo,"striping_unit","2684354560"); 2G striping/
-MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); 2gb buffer/
-MPI_Info_set(finfo,"romio_ds_read","enable"); for data sieving reading/
+MPI_Info_create(&finfo);<br />
+MPI_Info_set(finfo,"striping_factor","128"); OSS number <br />
+MPI_Info_set(finfo,"striping_unit","2684354560"); 2G striping <br />
+MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); 2gb buffer <br />
+MPI_Info_set(finfo,"romio_ds_read","enable"); for data sieving reading <br />
 		
 
-MPI_Info_set(finfo,"nb_proc","128"); for collective buffering write/
-MPI_Info_set(finfo,"cb_nodes","128"); /
-MPI_Info_set(finfo,"cb_block_size","2147483648"); / 
-MPI_Info_set(finfo,"cb_buffer_size","2147483648"); /
+MPI_Info_set(finfo,"nb_proc","128"); for collective buffering write <br />
+MPI_Info_set(finfo,"cb_nodes","128"); <br />
+MPI_Info_set(finfo,"cb_block_size","2147483648"); <br /> 
+MPI_Info_set(finfo,"cb_buffer_size","2147483648"); <br />
 
 After tuning parameters recompile the application.
  
@@ -67,24 +67,24 @@ After tuning parameters recompile the application.
 
 Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
 
-MPI_Info_set(finfo,"striping_factor","128");/
-MPI_Info_set(finfo,"striping_unit","1610612736");/ 
+MPI_Info_set(finfo,"striping_factor","128"); <br />
+MPI_Info_set(finfo,"striping_unit","1610612736"); <br />
 
-MPI_Info_set(finfo,"nb_proc","128");/
-MPI_Info_set(finfo,"cb_nodes","128");/
-MPI_Info_set(finfo,"cb_block_size","1610612736");/ 
-MPI_Info_set(finfo,"cb_buffer_size","1610612736");/ 
+MPI_Info_set(finfo,"nb_proc","128"); <br />
+MPI_Info_set(finfo,"cb_nodes","128"); <br />
+MPI_Info_set(finfo,"cb_block_size","1610612736"); <br /> 
+MPI_Info_set(finfo,"cb_buffer_size","1610612736"); <br />
 
 Writing are done with collective operation so you have to tell how many buffer nodes you have.
 After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
 
-MPI_Info_set(finfo,"striping_factor","128");/
-MPI_Info_set(finfo,"striping_unit","2684354560");/ 
+MPI_Info_set(finfo,"striping_factor","128"); <br />
+MPI_Info_set(finfo,"striping_unit","2684354560"); <br />
 
-MPI_Info_set(finfo,"nb_proc","128");/
-MPI_Info_set(finfo,"cb_nodes","128");/
-MPI_Info_set(finfo,"cb_block_size","2684354560");/ 
-MPI_Info_set(finfo,"cb_buffer_size","2684354560");/ 
+MPI_Info_set(finfo,"nb_proc","128"); <br />
+MPI_Info_set(finfo,"cb_nodes","128"); <br />
+MPI_Info_set(finfo,"cb_block_size","2684354560"); <br /> 
+MPI_Info_set(finfo,"cb_buffer_size","2684354560"); <br />
 
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
@@ -106,10 +106,10 @@ Here are parameters we set for our experiments for client cache
 
 Client side
  
-max_cached_mb: 48301/
-max_read_ahead_mb=40/
-max_pages_per_rpc=256/
-max_rpcs_in_flight=32/
+max_cached_mb: 48301 <br />
+max_read_ahead_mb=40 <br />
+max_pages_per_rpc=256 <br />
+max_rpcs_in_flight=32 <br />
 
 Form our experiments on Lustre with 64 to 128 OSSs the cache is 2GB with 16 OSSs the cache is 1GB.
 Some parameters need root access ask your IT how to do this.
@@ -154,12 +154,12 @@ MSUB -w
 set -x
 cd ${BRIDGE_MSUB_PWD}
 
-mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT
-BIN_NAME=psort
-FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam
-OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/
-FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt
-ccc_mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0
+mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT <br />
+BIN_NAME=psort <br />
+FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam <br />
+OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
+FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
+ccc_mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 
 Options 
 -------
