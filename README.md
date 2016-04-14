@@ -6,7 +6,7 @@ filesystem such as Lustre, GPFS,...
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
-!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!!
+!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! /
 !!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
 Indeed optimizations are everywhere :)
@@ -48,24 +48,18 @@ Those parameter are independant of the file size you want to sort.
 
 To do that edit the code of parallelMergeSort.c and change the parameters from the line 169 to 182. 
 
-/*
- * In this part you shall adjust the striping factor and unit according
- * to the underlying filesystem
- */
+
 MPI_Info_create(&finfo);
-MPI_Info_set(finfo,"striping_factor","128"); //OSS number 
-MPI_Info_set(finfo,"striping_unit","2684354560"); //2G striping
-MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); //2gb buffer
-MPI_Info_set(finfo,"romio_ds_read","enable"); //data sieving reading
+MPI_Info_set(finfo,"striping_factor","128"); OSS number/
+MPI_Info_set(finfo,"striping_unit","2684354560"); 2G striping/
+MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); 2gb buffer/
+MPI_Info_set(finfo,"romio_ds_read","enable"); for data sieving reading/
 		
-/*
- * for collective reading and writing
- * should be adapted too and tested according to the file system
- */
-MPI_Info_set(finfo,"nb_proc","128");
-MPI_Info_set(finfo,"cb_nodes","128");
-MPI_Info_set(finfo,"cb_block_size","2147483648"); 
-MPI_Info_set(finfo,"cb_buffer_size","2147483648"); 
+
+MPI_Info_set(finfo,"nb_proc","128"); for collective buffering write/
+MPI_Info_set(finfo,"cb_nodes","128"); /
+MPI_Info_set(finfo,"cb_block_size","2147483648"); / 
+MPI_Info_set(finfo,"cb_buffer_size","2147483648"); /
 
 After tuning parameters recompile the application.
  
@@ -73,26 +67,24 @@ After tuning parameters recompile the application.
 
 Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
 
-//task FINE TUNING FINFO FOR WRITING OPERATIONS
-MPI_Info_set(finfo,"striping_factor","128");
-MPI_Info_set(finfo,"striping_unit","1610612736"); //1G striping
+MPI_Info_set(finfo,"striping_factor","128");/
+MPI_Info_set(finfo,"striping_unit","1610612736");/ 
 
-MPI_Info_set(finfo,"nb_proc","128");
-MPI_Info_set(finfo,"cb_nodes","128");
-MPI_Info_set(finfo,"cb_block_size","1610612736"); 
-MPI_Info_set(finfo,"cb_buffer_size","1610612736"); 
+MPI_Info_set(finfo,"nb_proc","128");/
+MPI_Info_set(finfo,"cb_nodes","128");/
+MPI_Info_set(finfo,"cb_block_size","1610612736");/ 
+MPI_Info_set(finfo,"cb_buffer_size","1610612736");/ 
 
 Writing are done with collective operation so you have to tell how many buffer nodes you have.
 After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
 
-//task FINE TUNING FINFO BACK TO READING OPERATIONS
-MPI_Info_set(finfo,"striping_factor","128");
-MPI_Info_set(finfo,"striping_unit","2684354560"); 
+MPI_Info_set(finfo,"striping_factor","128");/
+MPI_Info_set(finfo,"striping_unit","2684354560");/ 
 
-MPI_Info_set(finfo,"nb_proc","128");
-MPI_Info_set(finfo,"cb_nodes","128");
-MPI_Info_set(finfo,"cb_block_size","2684354560"); 
-MPI_Info_set(finfo,"cb_buffer_size","2684354560"); 
+MPI_Info_set(finfo,"nb_proc","128");/
+MPI_Info_set(finfo,"cb_nodes","128");/
+MPI_Info_set(finfo,"cb_block_size","2684354560");/ 
+MPI_Info_set(finfo,"cb_buffer_size","2684354560");/ 
 
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
