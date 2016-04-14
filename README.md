@@ -67,15 +67,20 @@ Cache tricks and sizes:
 
 The cache optimization is critical for IO operations. 
 The sorting algorithme does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
-
 The cache keep the data of individual jobs in RAM and drastically improve IO performance.
 
-Setting the cache at servers level is explained chapter 31.4.3.1.   
-Otherwise one can use tuning client cache via RPC as explain in chapter 31.4.1.
+You have the choice to use OSS cache or client cache. Setting the cache at servers level is explained chapter 31.4.3.1.   
+Setting client cache is done via RPC as explain in chapter 31.4.1.
+
+Here are parameters we set for our experiments for client cache
+
+max_cached_mb: 48301
+max_read_ahead_mb=40
+max_pages_per_rpc=256
+max_rpcs_in_flight=32
 
 Form our experiments on Lustre with 64 to 128 OSSs the cache is 2GB with 16 OSSs the cache is 1GB.
 Some parameters need root access ask your IT how to do this.
-
 
 Job rank:
 ---------
@@ -88,10 +93,10 @@ Of course the more cache you have the less jobs you need.
 Default parameters:
 -------------------
 
-The default parameters are for 128 OST servers, with 2GB striping unit (maximum).
-We a data sieving reading and a colective write is done with 128 servers.
+The default parameters are for 128 OSS servers, with 2GB striping unit (maximum).
+We do data sieving reading and a colective write is done with 128 servers.
 
-Tune this parameters according to your configuration
+Tune this parameters according to your configuration.
 
 
 Compilation:
