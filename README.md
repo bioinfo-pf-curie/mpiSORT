@@ -66,7 +66,7 @@ After tuning parameters recompile the application.
 Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
 
 MPI_Info_set(finfo,"striping_factor","128"); // 128 OSS Lustre <br />
-MPI_Info_set(finfo,"striping_unit","268435456"); //2gb striping <br />
+MPI_Info_set(finfo,"striping_unit","268435456"); //256 MBytes striping <br />
 
 MPI_Info_set(finfo,"nb_proc","64"); //for MPI_write <br />
 MPI_Info_set(finfo,"cb_nodes","64"); //for MPI_write <br />
@@ -74,7 +74,9 @@ MPI_Info_set(finfo,"cb_block_size","268435456"); /* 256 MBytes - should match FS
 MPI_Info_set(finfo,"cb_buffer_size","536870912"); /* 512 MBytes or multiple of cb_block_size(Optional) */ <br />
 
 Writing are done with collective operation so you have to tell how many buffer nodes you have.
-After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
+
+
+Then after writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
 
 MPI_Info_set(finfo,"striping_factor","128"); <br />
 MPI_Info_set(finfo,"striping_unit","2684354560"); <br />
@@ -84,6 +86,8 @@ MPI_Info_set(finfo,"cb_nodes","128"); <br />
 MPI_Info_set(finfo,"cb_block_size","2684354560"); <br /> 
 MPI_Info_set(finfo,"cb_buffer_size","2684354560"); <br />
 
+
+Rmq: In future release those options will pe passed in argument. 
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 
