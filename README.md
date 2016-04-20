@@ -48,14 +48,12 @@ Those parameter are independant of the file size you want to sort.
 
 To do that edit the code of parallelMergeSort.c and change the parameters from the line 169 to 182. 
 
-
 MPI_Info_create(&finfo);<br />
 MPI_Info_set(finfo,"striping_factor","128"); OSS number <br />
 MPI_Info_set(finfo,"striping_unit","2684354560"); 2G striping <br />
 MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); 2gb buffer <br />
 MPI_Info_set(finfo,"romio_ds_read","enable"); for data sieving reading <br />
 		
-
 MPI_Info_set(finfo,"nb_proc","128"); for collective buffering write <br />
 MPI_Info_set(finfo,"cb_nodes","128"); <br />
 MPI_Info_set(finfo,"cb_block_size","2147483648"); <br /> 
@@ -111,14 +109,18 @@ max_read_ahead_mb=40 <br />
 max_pages_per_rpc=256 <br />
 max_rpcs_in_flight=32 <br />
 
-Form our experiments on Lustre with 64 to 128 OSSs the cache is 2GB with 16 OSSs the cache is 1GB.
-Some parameters need root access ask your IT how to do this.
+The max_cached_mb tells how much cache can use the client. 
+
+From our experiment on computing nodes with 16 cpu and 128 GB of RAM, a cache of 48 GB is enough <br />
+This cache is 1/3 of the total memory on server and approximately 2.5 Gb per cpu. <br />
+ 
 
 Job rank:
 ---------
 
 The number of jobs or jobs rank rely on the size of input data and the cache buffer size.
-For our development on TGCC the cache size is 2GB per job. 
+For our development on TGCC the cache size is 2.5GB per job.
+ 
 If you divide the size input by the buffer cache you got the number of jobs you need. 
 Of course the more cache you have the less jobs you need.
 
