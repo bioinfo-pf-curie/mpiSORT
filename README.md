@@ -65,13 +65,13 @@ After tuning parameters recompile the application.
 
 Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
 
-MPI_Info_set(finfo,"striping_factor","128"); <br />
-MPI_Info_set(finfo,"striping_unit","1610612736"); <br />
+MPI_Info_set(finfo,"striping_factor","128"); // 128 OSS Lustre <br />
+MPI_Info_set(finfo,"striping_unit","268435456"); //2gb striping <br />
 
-MPI_Info_set(finfo,"nb_proc","128"); <br />
-MPI_Info_set(finfo,"cb_nodes","128"); <br />
-MPI_Info_set(finfo,"cb_block_size","1610612736"); <br /> 
-MPI_Info_set(finfo,"cb_buffer_size","1610612736"); <br />
+MPI_Info_set(finfo,"nb_proc","64"); //for MPI_write <br />
+MPI_Info_set(finfo,"cb_nodes","64"); //for MPI_write <br />
+MPI_Info_set(finfo,"cb_block_size","268435456"); /* 256 MBytes - should match FS block size */ <br />
+MPI_Info_set(finfo,"cb_buffer_size","536870912"); /* 512 MBytes or multiple of cb_block_size(Optional) */ <br />
 
 Writing are done with collective operation so you have to tell how many buffer nodes you have.
 After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
@@ -97,8 +97,8 @@ The cache optimization is critical for IO operations.
 The sorting algorithme does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
 The cache keep the data of individual jobs in RAM and drastically improve IO performance.
 
-You have the choice to use OSS cache or client cache. Setting the cache at servers level is explained chapter 31.4.3.1.   
-Setting client cache is done via RPC as explain in chapter 31.4.1.
+You have the choice to use OSS cache or client (computer node) cache. Setting the cache at servers level is explained chapter 31.4.3.1.   
+Setting client cache is done via RPC as explain in chapter 31.4.1. Using the cache at client (computing node) side is recommended.
 
 Here are parameters we set for our experiments for client cache
 
