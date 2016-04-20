@@ -68,8 +68,8 @@ Parameter for the writing part are located in the write2.c file from the line 23
 MPI_Info_set(finfo,"striping_factor","128"); // 128 OSS Lustre <br />
 MPI_Info_set(finfo,"striping_unit","268435456"); //256 MBytes striping <br />
 
-MPI_Info_set(finfo,"nb_proc","64"); //for MPI_write <br />
-MPI_Info_set(finfo,"cb_nodes","64"); //for MPI_write <br />
+MPI_Info_set(finfo,"nb_proc","64"); // MPI_write <br />
+MPI_Info_set(finfo,"cb_nodes","64"); // MPI_write buffer nodes<br />
 MPI_Info_set(finfo,"cb_block_size","268435456"); /* 256 MBytes - should match FS block size */ <br />
 MPI_Info_set(finfo,"cb_buffer_size","536870912"); /* 512 MBytes or multiple of cb_block_size(Optional) */ <br />
 
