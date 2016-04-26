@@ -32,17 +32,27 @@ A C compiler must be present also. We have tested the programm with GCC and Inte
 Configuration:
 --------------
 
-The programm make an intensive use of reading buffer at the parallel filesystem level. 
-According to the size of the Lustre or GPFS system the buffer size could vary. 
-At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is 2.5Gb. 
+The programm make an intensive of cache buffer at the client level. The cache size depends of the variable you give to Lustre.
+In our experiement the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
+it makes 2.5 GB per jobs. 
+
+According to Lustre documentation you can reach 3/4 of the total node memory. 
+
+To see the amount you really cache use "top" on a node and look at the cached figures.
+
+If you exceed the max_cached_mb the swap will enter in game and decrease performances. 
+ 
+For the storage of the data we chose the largest striping of 2 GB.
+
+At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is 2 GB. 
+
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 
 The reading and writing are done in different ways so the configuration varies between the two.
 
 The parallel writing and reading are done via the MPI finfo structure. 
 
-!!!We recommand to test different parameters before setting them once for all. 
-Those parameter are independant of the file size you want to sort.    
+!!!We recommand to test different parameters before setting them once for all.    
 
 1) for reading and set the Lustre buffer size.
 
@@ -98,13 +108,13 @@ Cache tricks and sizes:
 ----------------------
 
 The cache optimization is critical for IO operations. 
-The sorting algorithme does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
+The sorting algorithm does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
 The cache keep the data of individual jobs in RAM and drastically improve IO performance.
 
 You have the choice to use OSS cache or client (computer node) cache. Setting the cache at servers level is explained chapter 31.4.3.1.   
 Setting client cache is done via RPC as explain in chapter 31.4.1. Using the cache at client (computing node) side is recommended.
 
-Here are parameters we set for our experiments for client cache
+Here are parameters we set at TGCC for our experiments for client cache
 
 Client side
  
