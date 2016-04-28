@@ -268,7 +268,18 @@ int main (int argc, char *argv[]){
 		local_data=(char*)calloc(size_to_read+1,sizeof(char));
 
 		// Original reading part is before 18/09/2015
-		// MPI_File_read_at_all(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, &status);
+		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
+
+		size_t local_offset=0;
+
+
+
+
+		/*
+		 * TODO: Issue with MPI_BOTTOM on certain infrastructure
+		 * 		 We comme back to the previous mpi_file_read_at
+		 *
+		 */
 
 		// modification 18/09/2015
 		// we create a Datatype for the block
@@ -277,11 +288,11 @@ int main (int argc, char *argv[]){
 		// The idea is to decompose the block to read
 		// in small chunks (of integer size)
 		// for 1gb there's 1.5 millions read
+		// creation of datatype
 
-		//creation of datatype
+		/*
 		MPI_Datatype dt_view;
 		MPI_Datatype dt_data;
-		size_t local_offset=0;
 
 		size_t num_data_type_block =150;
 	 	int k=0;
@@ -326,6 +337,7 @@ int main (int argc, char *argv[]){
 
 		MPI_Type_free(&dt_data);
 		MPI_Type_free(&dt_view);
+		*/
 
 		////////////////////////////////////
 		///// fin modification 18/09/2015
