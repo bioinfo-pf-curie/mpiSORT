@@ -13,6 +13,14 @@ Optimizations are everywhere :)
 
 Contact us if you need information.
 
+
+Known Issue:
+------------
+
+Due to compiler handling of the address space randomization. Sometimes we experienced some troubles with MPI_BOTTOM 
+for some compiler version. This problem in the first part of the parsing. To overcome this issue we come back to the "MPI_File_read_at" version.
+ 
+
 Input Data:
 ----------
 
