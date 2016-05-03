@@ -107,14 +107,19 @@ unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *p
 			next = tokenizer(NULL, '\n', currentLine);
 		}
 
-
-
 		//header[j++] = 0;
 
 		//we add UNMAPPED to chrNames
 		chrNames[i] = (char*)malloc((strlen(UNMAPPED)+1)*sizeof(char));
 		strcpy(chrNames[i], UNMAPPED);
 		nbchr++;
+		i++;
+
+		//we add DISCORDANT to chrNames
+		chrNames[i] = (char*)malloc((strlen(DISCORDANT)+1)*sizeof(char));
+		strcpy(chrNames[i], DISCORDANT);
+		nbchr++;
+
 	}
 
 	/*************************
@@ -229,13 +234,13 @@ size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int n
 	return goff;
 }
 
-void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,
+void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,
 		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
 
 		char *currentCarac;
 		char currentLine[MAX_LINE_SIZE];
 		unsigned char quality;
-		unsigned int i, chr, nbchr = 0;
+		unsigned int i, chr, nbchr = 0, mchr;
 		int lastChr = -1;
 		int next;
 		size_t lineSize, offset_read_in_source_file;
@@ -288,24 +293,73 @@ void parser_single(char *localData, int rank, size_t start_offset, unsigned char
 			//TAKE MAPQ AND GO TO CIGAR
 			quality = strtoull(currentCarac, &currentCarac, 10);
 
-			if (chr < nbchr-1){
-				if(quality > threshold){
-					reads[chr]->next = malloc(sizeof(Read));
-					reads[chr]->next->coord = coord;
-					reads[chr]->next->quality = quality;
-					reads[chr]->next->offset_source_file=offset_read_in_source_file;
-					reads[chr]->next->offset = lineSize;
-					reads[chr] = reads[chr]->next;
-					readNumberByChr[chr]++;
-				}
+
+			//GO TO RNEXT
+			currentCarac = strstr(currentCarac+1, "\t");
+			if(currentCarac[1] == '='){
+				mchr = chr;
+			}
+			else if(currentCarac[1] == '*'){
+				mchr = (nbchr-1);
 			}
 			else{
-				reads[nbchr-1]->next = malloc(sizeof(Read));
-				reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-				reads[nbchr-1]->next->offset = lineSize;
-				reads[nbchr-1] = reads[nbchr-1]->next;
-				readNumberByChr[nbchr-1]++;
+				mchr = getChr(currentCarac, chrNames, nbchr);
 			}
+
+			//first we check if reads mapped on the same chromosome
+
+			if ((chr < nbchr-2) && (chr == mchr)){
+					//then we found concordant reads
+					if(quality > threshold){
+
+						reads[chr]->next = malloc(sizeof(Read));
+						reads[chr]->next->coord = coord;
+						reads[chr]->next->quality = quality;
+						reads[chr]->next->offset_source_file=offset_read_in_source_file;
+						reads[chr]->next->offset = lineSize;
+						reads[chr] = reads[chr]->next;
+						readNumberByChr[chr]++;
+					}
+			}
+			else if ((chr < (nbchr-2)) && ( mchr < (nbchr -2))){
+
+					//we found discordant reads
+					reads[nbchr-1]->next = malloc(sizeof(Read));
+					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-1]->next->offset = lineSize;
+					reads[nbchr-1] = reads[nbchr-1]->next;
+					readNumberByChr[nbchr-1]++;
+
+			}
+			else if ((chr == '*') && ( mchr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-1]->next = malloc(sizeof(Read));
+					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-1]->next->offset = lineSize;
+					reads[nbchr-1] = reads[nbchr-1]->next;
+					readNumberByChr[nbchr-1]++;
+			}
+			else if ((mchr == '*') && ( chr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-1]->next = malloc(sizeof(Read));
+					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-1]->next->offset = lineSize;
+					reads[nbchr-1] = reads[nbchr-1]->next;
+					readNumberByChr[nbchr-1]++;
+			}
+
+			else{
+					//we found unmapped pairs reads
+					reads[nbchr-2]->next = malloc(sizeof(Read));
+					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-2]->next->offset = lineSize;
+					reads[nbchr-2] = reads[nbchr-2]->next;
+					readNumberByChr[nbchr-2]++;
+			}
+
+
 
 			//we update the offset_read_in_source_file
 			offset_read_in_source_file += lineSize;

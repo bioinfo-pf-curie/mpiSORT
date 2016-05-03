@@ -41,6 +41,8 @@ void diffuse(size_t *recv_diffuse, int rank, int num_proc, char sender, size_t l
 
 	size_t j, k;
 	MPI_Request *reqs[2];
+	reqs[0] = 0;
+	reqs[1] = 0;
 	size_t readNum, rcvd = 0;
 	MPI_Status stat;
 	//size_t* recv_diffuse;

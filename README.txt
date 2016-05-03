@@ -6,18 +6,23 @@ filesystem such as Lustre, GPFS,...
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
-!!!!! DON'T RUN THIS PROGRAM ON NETWORK FILESYSTEM AKA NFS IT DOESN'T WORK!!!!
-
-!!!!! DON'T RUN THIS PROGRAM IF YOU DON'T HAVE INFINIBAND OR LOW LATENCY NETWORK !!!!
-
-You need to have a good understanding of your infrastructure before running and tuning this code.
+!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
+!!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
 Contact us if you need information.
+
 
 Input Data:
 ----------
 
-a SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. Reads are paired or not.   
+A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.
+
+Output:  
+-------
+
+Output are bam files per chromosome.
+A bam files for discordant reads.
+A bam file for unmapped reads.
 
 MPI version:
 ------------
@@ -33,57 +38,78 @@ A C compiler must be present also. We have tested the programm with GCC and Inte
 Configuration:
 --------------
 
-The programm make an intensive use of reading buffer at the parallel filesystem level. 
-According to the size of the Lustre or GPFS system the buffer size could vary. 
-At TGCC the striping factor is 128 (number of OSTs servers) and the striping size is 2.5Gb. 
-Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
+The programm make an intensive of cache buffer at the client level. The cache size depends of the variable you give to the distributed file system.
+For Lustre and for our experiment the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
+it makes 2.5 GB per jobs. 
 
-The reading and writing are done in different ways so the configuration varies between the two.
+According to Lustre documentation you can reach 3/4 of the total node memory. 
+
+To see the amount you really cache use "top" on a node and look at the cached figures.
+
+If you exceed the max_cached_mb the swap will enter in game and decrease performances. 
+ 
+For the storage of the data we chose the largest striping of 2 GB.
+
+At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is 2 GB. 
+
+Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 
 The parallel writing and reading are done via the MPI finfo structure. 
 
-!!!We recommand to test different parameters before setting them once for all. Those parameter are independant of the file size you want to sort.    
+!!!We recommand to test different parameters before setting them once for all.    
 
 1) for reading and set the Lustre buffer size.
 
-To do that edit the code of parallelMergeSort.c and chage the parameter from the line 169 to 182. 
-Here are the parameters for the reading and Lustre buffering part.
- 
-2) for the writing part
+To do that edit the code of mpiSort.c and change the parameters in the header part. 
+After tuning parameters recompile the application.
 
-Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
-Writing are done with collective operation so you have to tell how many buffer nodes you have.
-After writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 
-In write2.c: line 2362 and 629.
+In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
+
+
+Cache tricks and sizes:
+----------------------
+
+The cache optimization is critical for IO operations. 
+The sorting algorithm does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
+The cache keep the data of individual jobs in RAM and drastically improve IO performance.
+
+You have the choice to use OSS cache or client (computer node) cache. Setting the cache at servers level is explained chapter 31.4.3.1.   
+Setting client cache is done via RPC as explain in chapter 31.4.1. Using the cache at client (computing node) side is recommended.
+
+Here are parameters we set at TGCC for our experiments for client cache
+
+Client side
  
+max_cached_mb: 48301 <br />
+max_read_ahead_mb=40 <br />
+max_pages_per_rpc=256 <br />
+max_rpcs_in_flight=32 <br />
 
-Cache size:
------------
+The max_cached_mb tells how much cache can use the client. 
 
-The cache size is critical for the reading. The cache keep the data of individual jobs in RAM. 
-The cache depends on the number of OSTs and the memory available.
-Form our experiments on Lustre with 64 to 128 OSTs the cache is 2GB with 16 OSTs the cache is 1GB.
-The cache can be set with Lustre command ask your IT how to do this... or test by yourself.
+From our experiment on computing nodes with 16 cpu and 128 GB of RAM, a cache of 48 GB is enough <br />
+This cache is 1/3 of the total memory on server and approximately 2.5 Gb per cpu. <br />
  
 
 Job rank:
 ---------
 
-The number of job or job rank rely on the size of input data and the cache buffer size.
-For our development on TGCC the cache size is 2GB per job. 
+The number of jobs or jobs rank rely on the size of input data and the cache buffer size.
+For our development on TGCC the cache size is 2.5GB per job.
+ 
 If you divide the size input by the buffer cache you got the number of jobs you need. 
 Of course the more cache you have the less jobs you need.
 
 Default parameters:
 -------------------
 
-The default parameters are for 128 OST servers, with 2GB striping unit (maximum).
-We a data sieving reading and a colective write is done with 128 servers.
+The default parameters are for 128 OSS servers, with 2GB striping unit (maximum).
+We do data sieving reading and a colective write is done with 128 servers.
 
-Tune this parameters according to your configuration
+Tune this parameters according to your configuration.
 
 
 Compilation:
@@ -109,12 +135,12 @@ MSUB -w
 set -x
 cd ${BRIDGE_MSUB_PWD}
 
-mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT
-BIN_NAME=psort
-FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam
-OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/
-FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt
-ccc_mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0
+mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT <br />
+BIN_NAME=psort <br />
+FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam <br />
+OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
+FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
+ccc_mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 
 Options 
 -------
@@ -125,7 +151,9 @@ the -q option is for quality filtering.
 Future developments
 -------------------
 
-1) Develop the parser for paired reads
-2) Mark and remove duplicates
-3) Make a pile up of the reads 
+1) Manage single reads <br />
+3) Mark and remove duplicates <br />
+4) Make a pile up of the reads <br /> 
+
+
 

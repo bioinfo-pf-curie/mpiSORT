@@ -63,15 +63,54 @@
 
 #define	MPI_OFF_T MPI_LONG_LONG_INT
 
+/*
+ * Constant for Lustre striping
+ * To adapt depending on the file server
+ * STRIPING FACTOR is the numer of servers
+ * where your files are striped
+ *
+ * STRIPING UNIT is the size of the stripes
+ *
+ * if you change those values
+ *
+ */
+#define STRIPING_FACTOR "4"
+
+//#define STRIPING_UNIT "268435456"   // 256 MB
+//#define STRIPING_UNIT "536870912"   // 500 MB
+//#define STRIPING_UNIT "1073741824"  // 1GB
+//#define STRIPING_UNIT "1610612736"  // 1.5GB
+#define STRIPING_UNIT "2147483648"    // 2GB
+//#define STRIPING_UNIT "2684354560"  // 2.5GB
+//#define STRIPING_UNIT "3221225472"  // 3GB
+//#define STRIPING_UNIT "3758096384"  // 3.5GB
+
+/*
+ * Constant for MPI IO
+ * For description of the constant see here
+ *
+ * https://fs.hlrs.de/projects/craydoc/docs/books/S-2490-40/html-S-2490-40/chapter-sc4rx058-brbethke-paralleliowithmpi.html
+ */
+
+#define NB_PROC  "2" //numer of threads for writing
+#define CB_NODES "4" //numer of server for writing
+#define CB_BLOCK_SIZE  "268435456" /* 256 MBytes - should match FS block size */
+#define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
+#define DATA_SIEVING_READ "enable"
+
+/*
+ * Capacity constant no need to change it
+ */
 #define DEFAULT_MAX_SIZE 6000000000 //Default capacity for one process: 6G
 #define DEFAULT_INBUF_SIZE  (1024*1024*1024)
+
 
 int main (int argc, char *argv[]){
 
 	DIR *dir = NULL;
 	MPI_File mpi_filed;
 
-	MPI_Offset unmapped_start;
+	MPI_Offset unmapped_start, discordant_start;
 	int num_proc, rank;
 	int nbchr, i;
 	int ierr, errorcode = MPI_ERR_OTHER;
@@ -99,13 +138,13 @@ int main (int argc, char *argv[]){
 
 	MPI_Info finfo;
 	MPI_Init(&argc,&argv);
-
+	/*
 	if (argc < 4){
 		fprintf(stderr, "Invalid arguments.\nShutting down.\n");
 		MPI_Finalize();
 		return 0;
 	}
-
+	*/
     //finds out process rank
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -119,6 +158,30 @@ int main (int argc, char *argv[]){
 	if(rank == 0)fprintf(stderr, "file to read : %s\n", file_name);
 	if(rank == 0)fprintf(stderr, "output : %s\n", output_dir);
 
+	if (argc < 2) {
+		fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
+				"Version: v1.0\n"
+				"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
+				"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
+				"output : a bam files per chromosome, a bam file of unmapped reads \n"
+				"		  a bam files of discordants reads. \n"
+
+				"Discordants reads are reads where one pairs align on a chromosome \n"
+				"and the other pair align on another chromosome \n"
+				"Unmapped reads are reads without coordinates on any genome \n"
+				"Requirements :  For perfomances matters the file you want to sort has to be \n"
+				"	stripped on parallel file system. \n"
+				"With Lustre you mention it with lfs setstripe command like this \n"
+				"lfs set stripe -c stripe_number -s stripe_size folder 		 \n"
+				"In mpiSort you mention the number of stripes with -c options \n"
+				"and mention the sripe size with with -s options. Example of command	 \n"
+				"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n"
+				 , basename(*argv));
+		MPI_Finalize();
+		return 1;
+
+	}
+
 	//looking for optionsinfo
 	for(i = 0; i < argc; i++){
 		if(argv[i][0] == '-'){
@@ -126,9 +189,33 @@ int main (int argc, char *argv[]){
 				threshold = atoi(argv[i+1]);
 				if(!rank)fprintf(stderr, "Reads' quality threshold : %d\n", threshold);
 			}
+
 			if(argv[i][1] == 'c'){
 				compression_level = atoi(argv[i+1]);
 				if(!rank)fprintf(stderr, "Compression Level is : %d\n", compression_level);
+			}
+
+			if(argv[i][1] == 'h'){
+				fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
+								"Version: v1.0\n"
+								"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
+								"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
+								"output : a bam files per chromosome, a bam file of unmapped reads \n"
+								"		  a bam files of discordants reads. \n"
+
+								"Discordants reads are reads where one pairs align on a chromosome \n"
+								"and the other pair align on another chromosome \n"
+								"Unmapped reads are reads without coordinates on any genome \n"
+								"Requirements :  For perfomances matters the file you want to sort has to be \n"
+								"	stripped on parallel file system. \n"
+								"With Lustre you mention it with lfs setstripe command like this \n"
+								"lfs set stripe -c stripe_number -s stripe_size folder 		 \n"
+								"In mpiSort you mention the number of stripes with -c options \n"
+								"and mention the sripe size with with -s options. Example of command	 \n"
+								"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n"
+								, basename(*argv));
+				MPI_Finalize();
+				return 0;
 			}
 
 		}
@@ -170,19 +257,20 @@ int main (int argc, char *argv[]){
 	 * to the underlying filesystem
 	 */
 	MPI_Info_create(&finfo);
-	MPI_Info_set(finfo,"striping_factor","128");
-	MPI_Info_set(finfo,"striping_unit","2684354560"); //2G striping
-	MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); //2gb buffer
-	MPI_Info_set(finfo,"romio_ds_read","enable");
+	MPI_Info_set(finfo,"striping_factor", STRIPING_FACTOR);
+	MPI_Info_set(finfo,"striping_unit", STRIPING_UNIT); //2G striping
+	MPI_Info_set(finfo,"ind_rd_buffer_size", STRIPING_UNIT); //2gb buffer
+
+	MPI_Info_set(finfo,"romio_ds_read",DATA_SIEVING_READ);
 		
 	/*
 	 * for collective reading and writing
 	 * should be adapted too and tested according to the file system
 	 */
-	MPI_Info_set(finfo,"nb_proc","128");
-	MPI_Info_set(finfo,"cb_nodes","128");
-	MPI_Info_set(finfo,"cb_block_size","2147483648"); /* 4194304 MBytes - should match FS block size */
-	MPI_Info_set(finfo,"cb_buffer_size","2147483648"); /* 128 MBytes (Optional) */
+	MPI_Info_set(finfo,"nb_proc", NB_PROC);
+	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
+	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
+	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
 	
 
 	//we open the input file
@@ -235,13 +323,15 @@ int main (int argc, char *argv[]){
 	//NOW WE WILL PARSE
 	int j=0;
 	size_t poffset = goff[rank]; //Current offset in file sam
-	reads = (Read**)malloc(nbchr*sizeof(Read));//We allocate a linked list of struct for each Chromosome (last chr = unmapped reads)
-	readNumberByChr = (size_t*)malloc(nbchr*sizeof(size_t));//Array with the number of reads found in each chromosome
-	localReadNumberByChr = (size_t*)malloc(nbchr*sizeof(size_t));//Array with the number of reads found in each chromosome
-	Read ** anchor = (Read**)malloc(nbchr*sizeof(Read));//Pointer on the first read of each chromosome
+
+	//nbchr because we add the discordant reads in the structure
+	reads = (Read**)malloc((nbchr)*sizeof(Read));//We allocate a linked list of struct for each Chromosome (last chr = unmapped reads)
+	readNumberByChr = (size_t*)malloc((nbchr)*sizeof(size_t));//Array with the number of reads found in each chromosome
+	localReadNumberByChr = (size_t*)malloc((nbchr)*sizeof(size_t));//Array with the number of reads found in each chromosome
+	Read ** anchor = (Read**)malloc((nbchr)*sizeof(Read));//Pointer on the first read of each chromosome
 
 	//Init first read
-	for(i = 0; i < nbchr; i++){
+	for(i = 0; i < (nbchr); i++){
 		reads[i] = malloc(sizeof(Read));
 		reads[i]->coord = 0;
 		anchor[i] = reads[i];
@@ -267,19 +357,20 @@ int main (int argc, char *argv[]){
 		// we load the buffer
 		local_data=(char*)calloc(size_to_read+1,sizeof(char));
 
-		// Original reading part is before 18/09/2015
-		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
-
-		size_t local_offset=0;
-
 
 
 
 		/*
-		 * TODO: Issue with MPI_BOTTOM on certain infrastructure
-		 * 		 We comme back to the previous mpi_file_read_at
+		 * TODO: Issue with MPI_BOTTOM on certain infrastructure problem
+		 * 		 of randomization with (void *)0
+		 * 		 We comme back to the previous mpi_file_read_at line 311
 		 *
 		 */
+
+		// Original reading part is before 18/09/2015
+		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
+		size_t local_offset=0;
+
 
 		// modification 18/09/2015
 		// we create a Datatype for the block
@@ -355,7 +446,7 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		parser_single(local_data, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		parser_paired(local_data, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 
 		//we go to the next line
 		poffset+=(offset_last_line+1);
@@ -387,7 +478,13 @@ int main (int argc, char *argv[]){
 	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 	fprintf(stderr, "Number of reads on rank %d = %zu/%zu \n", rank, nb_reads_total, nb_reads_global);
 
-	for(i = 0; i < (nbchr-1); i++){
+	/*
+	 *  We write the mapped reads in a file named chrX.bam
+	 *
+	 */
+
+
+	for(i = 0; i < (nbchr-2); i++){
 
 		localReadNumberByChr[i] = readNumberByChr[i];
 
@@ -411,22 +508,56 @@ int main (int argc, char *argv[]){
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
-	// we close mpi_filed in writeSAM_unmapped
-	//MPI_File_close(&mpi_filed);
 
-	reads[nbchr-1] = reads[nbchr-1]->next;
-	localReadNumberByChr[nbchr-1] = readNumberByChr[nbchr-1];
-	unmapped_start = unmappedOffset(rank, num_proc, unmappedSize, headerSize, nbchr, localReadNumberByChr[nbchr-1]);
+	/*
+	 *  We write the unmapped reads in a file named unmapped.bam
+	 *
+	 */
+
+	reads[nbchr-2] = reads[nbchr-2]->next;
+	localReadNumberByChr[nbchr-2] = readNumberByChr[nbchr-2];
+	unmapped_start = unmappedOffset(rank, num_proc, unmappedSize, headerSize, nbchr-2, localReadNumberByChr[nbchr-2]);
 
 	if(!unmapped_start){
 		fprintf(stderr, "No header was defined.\nShutting down.\n");
 		MPI_Finalize();
 		return 0;
 	}
-
 	else{
 
-		writeSam_unmapped(rank, output_dir, header, localReadNumberByChr[nbchr-1], chrNames[nbchr-1],
+		writeSam_unmapped(rank, output_dir, header, localReadNumberByChr[nbchr-2], chrNames[nbchr-2],
+			reads[nbchr-2], num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
+
+		while( reads[nbchr-2]->next != NULL){
+			Read *tmp_chr = reads[nbchr-2];
+			reads[nbchr-2] = reads[nbchr-2]->next;
+			free(tmp_chr->next);
+		}
+
+
+	}
+
+	/*
+     *  Now we write the discordant reads in a file names discordant_reads.sam
+	 */
+
+	reads[nbchr-1] = reads[nbchr-1]->next;
+	localReadNumberByChr[nbchr-1] = readNumberByChr[nbchr-1];
+	discordant_start = discordantOffset(rank, num_proc, unmappedSize, headerSize, nbchr-1, localReadNumberByChr[nbchr-1]);
+
+	if(!discordant_start){
+		fprintf(stderr, "No header was defined.\nShutting down.\n");
+		MPI_Finalize();
+		return 0;
+	}
+	else{
+
+		/*
+		 * discordant reads are reads where pair read don't align
+		 * in the same chromosome or one read is aligned and not the pair
+		 */
+
+		writeSam_discordant(rank, output_dir, header, localReadNumberByChr[nbchr-1], chrNames[nbchr-1],
 			reads[nbchr-1], num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
 
 		while( reads[nbchr-1]->next != NULL){
@@ -443,6 +574,7 @@ int main (int argc, char *argv[]){
 		MPI_Finalize();
 
 	}
+
 
 	free(localReadNumberByChr);
 

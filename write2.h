@@ -65,6 +65,11 @@ void writeSam_unmapped(int rank, char* output_dir, char* header, size_t readNum,
 				MPI_Comm NEW_COMM_WORLD, char *file_name,
 					MPI_File in, MPI_Info finfo, int compression_level);
 
+void writeSam_discordant(int rank, char* output_dir, char* header, size_t readNum,
+			char* chrName, Read* chr, int num_proc,
+				MPI_Comm NEW_COMM_WORLD, char *file_name,
+					MPI_File in, MPI_Info finfo, int compression_level);
+
 int issort(void *data, size_t size, size_t esize, int (*compare)(const void *key, const void *key2));
 int qksort(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
 int badCount(int k, int n);

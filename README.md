@@ -9,15 +9,20 @@ The presented version of the program has been tested on France Genomic cluster o
 !!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
-Optimizations are everywhere :)
-
 Contact us if you need information.
 
 
 Input Data:
 ----------
 
-a SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.  
+A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.
+
+Output:  
+-------
+
+Output are bam files per chromosome.
+A bam files for discordant reads.
+A bam file for unmapped reads.
 
 MPI version:
 ------------
@@ -33,8 +38,8 @@ A C compiler must be present also. We have tested the programm with GCC and Inte
 Configuration:
 --------------
 
-The programm make an intensive of cache buffer at the client level. The cache size depends of the variable you give to Lustre.
-In our experiement the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
+The programm make an intensive of cache buffer at the client level. The cache size depends of the variable you give to the distributed file system.
+For Lustre and for our experiment the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
 it makes 2.5 GB per jobs. 
 
 According to Lustre documentation you can reach 3/4 of the total node memory. 
@@ -49,61 +54,20 @@ At TGCC the striping factor is 128 (number of OSSs servers) and the striping siz
 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 
-The reading and writing are done in different ways so the configuration varies between the two.
-
 The parallel writing and reading are done via the MPI finfo structure. 
 
 !!!We recommand to test different parameters before setting them once for all.    
 
 1) for reading and set the Lustre buffer size.
 
-To do that edit the code of parallelMergeSort.c and change the parameters from the line 169 to 182. 
-
-MPI_Info_create(&finfo);<br />
-MPI_Info_set(finfo,"striping_factor","128"); OSS number <br />
-MPI_Info_set(finfo,"striping_unit","2684354560"); 2G striping <br />
-MPI_Info_set(finfo,"ind_rd_buffer_size","2684354560"); 2gb buffer <br />
-MPI_Info_set(finfo,"romio_ds_read","enable"); for data sieving reading <br />
-		
-MPI_Info_set(finfo,"nb_proc","128"); for collective buffering write <br />
-MPI_Info_set(finfo,"cb_nodes","128"); <br />
-MPI_Info_set(finfo,"cb_block_size","2147483648"); <br /> 
-MPI_Info_set(finfo,"cb_buffer_size","2147483648"); <br />
-
+To do that edit the code of mpiSort.c and change the parameters in the header part. 
 After tuning parameters recompile the application.
- 
-2) for the writing part
 
-Parameter for the writing part are located in the write2.c file from the line 2333 to 2340. 
-
-MPI_Info_set(finfo,"striping_factor","128"); // 128 OSS Lustre <br />
-MPI_Info_set(finfo,"striping_unit","268435456"); //256 MBytes striping <br />
-
-MPI_Info_set(finfo,"nb_proc","64"); // MPI_write <br />
-MPI_Info_set(finfo,"cb_nodes","64"); // MPI_write buffer nodes<br />
-MPI_Info_set(finfo,"cb_block_size","268435456"); /* 256 MBytes - should match FS block size */ <br />
-MPI_Info_set(finfo,"cb_buffer_size","536870912"); /* 512 MBytes or multiple of cb_block_size(Optional) */ <br />
-
-Writing are done with collective operation so you have to tell how many buffer nodes you have.
-
-
-Then after writing tell the programm to come back to parameters reading in the write2.c file from the line 2367 to 2373.
-
-MPI_Info_set(finfo,"striping_factor","128"); <br />
-MPI_Info_set(finfo,"striping_unit","2684354560"); <br />
-
-MPI_Info_set(finfo,"nb_proc","128"); <br />
-MPI_Info_set(finfo,"cb_nodes","128"); <br />
-MPI_Info_set(finfo,"cb_block_size","2684354560"); <br /> 
-MPI_Info_set(finfo,"cb_buffer_size","2684354560"); <br />
-
-
-Rmq: In future release those options will pe passed in argument. 
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 
-In write2.c: line 2362 and 629.
- 
+In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
+
 
 Cache tricks and sizes:
 ----------------------
@@ -187,9 +151,9 @@ the -q option is for quality filtering.
 Future developments
 -------------------
 
-1) Add options to manage cache optimizations from command lines <br />
-2) Mark and remove duplicates <br />
-3) Make a pile up of the reads <br /> 
+1) Manage single reads <br />
+3) Mark and remove duplicates <br />
+4) Make a pile up of the reads <br /> 
 
 
 

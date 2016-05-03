@@ -83,3 +83,25 @@ MPI_Offset unmappedOffset(int rank, int num_proc, size_t blockSize, size_t heade
 
 	return offset;
 }
+
+MPI_Offset discordantOffset(int rank, int num_proc, size_t blockSize, size_t headerSize, int nbchr, size_t readNum){
+	size_t delay = 0;
+	MPI_Offset offset = headerSize;
+
+	//arrays[nbchr-1] = saveArrays[nbchr-1]->next;
+	if(rank){
+
+		MPI_Recv(&delay, 1, MPI_LONG_LONG_INT, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		offset = delay;
+	}
+
+	if(rank < num_proc - 1){
+		delay += blockSize;
+
+		MPI_Send(&delay, 1, MPI_LONG_LONG_INT, rank + 1, 0, MPI_COMM_WORLD);
+
+	}
+
+	return offset;
+}

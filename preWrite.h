@@ -34,3 +34,4 @@
 #include "mpi.h"
 
 MPI_Offset unmappedOffset(int rank, int num_proc, size_t blockSize, size_t headerSize, int nbchr, size_t readNum);
+MPI_Offset discordantOffset(int rank, int num_proc, size_t blockSize, size_t headerSize, int nbchr, size_t readNum);
