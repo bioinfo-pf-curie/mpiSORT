@@ -43,31 +43,22 @@ For Lustre and for our experiment the max_cached_mb is 48 Gb. That is 1/3 of the
 it makes 2.5 GB per jobs. 
 
 According to Lustre documentation you can reach 3/4 of the total node memory. 
-
 To see the amount you really cache use "top" on a node and look at the cached figures.
-
 If you exceed the max_cached_mb the swap will enter in game and decrease performances. 
- 
 For the storage of the data we chose the largest striping of 2 GB.
-
 At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is 2 GB. 
-
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
-
 The parallel writing and reading are done via the MPI finfo structure. 
 
 !!!We recommand to test different parameters before setting them once for all.    
 
 1) for reading and set the Lustre buffer size.
-
 To do that edit the code of mpiSort.c and change the parameters in the header part. 
 After tuning parameters recompile the application.
-
 
 3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 
 In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
-
 
 Cache tricks and sizes:
 ----------------------
@@ -152,7 +143,8 @@ Future developments
 -------------------
 
 1) Manage single reads <br />
-3) Mark and remove duplicates <br />
+2) Mark and remove duplicates <br />
+3) Modify the data movement to support normal network <br />
 4) Make a pile up of the reads <br /> 
 
 
