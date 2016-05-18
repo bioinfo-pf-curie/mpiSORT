@@ -332,15 +332,11 @@ void bruck_offsets(int rank, int num_proc, int local_readNum, size_t* number_of_
 			if (data_offsets[recv_index[m]]){
 
 				free(data_offsets[recv_index[m]]);
-
 				data_offsets[recv_index[m]] = NULL;
-
-				if (recv_size_by_proc[m] > 0)
-					data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
+				data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
 
 				//data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
-				if (data_offsets[recv_index[m]])
-					data_offsets[recv_index[m]][0] = 0;
+				data_offsets[recv_index[m]][0] = 0;
 			}
 		}
 		/*
@@ -497,13 +493,10 @@ void bruck_size(int rank, int num_proc, size_t local_readNum, size_t* number_of_
 			if (data_size[recv_index[m]]){
 
 				free(data_size[recv_index[m]]);
-
-				if (recv_size_by_proc[m] != 0)
-					data_size[recv_index[m]] = (int *)malloc(sizeof(int)*(recv_size_by_proc[m]));
+				data_size[recv_index[m]] = (int *)malloc(sizeof(int)*(recv_size_by_proc[m]));
 
 				//data_size[recv_index[m]] = realloc(data_size[recv_index[m]], sizeof(int)*(recv_size_by_proc[m]) );
-				if (data_size[recv_index[m]])
-					data_size[recv_index[m]][0] = 0;
+				data_size[recv_index[m]][0] = 0;
 
 			}
 		}
@@ -1981,7 +1974,6 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 
 
 	free(new_offset_dest_index_phase2);
-	fprintf(stderr, "Rank %d :::::[WRITE] free1\n", rank);
 
 	size_t *new_offset_dest_index_phase3 = (size_t *)malloc(sizeof(size_t) * local_readNum);
 	//we sort the offset destination
@@ -2015,18 +2007,13 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 		{
 			data_size_to_sort[k + j] = data_size[m][k];
 		}
-		fprintf(stderr, "Rank %d :::::[WRITE] data_size[%d] = %zu\n", rank, m, data_size[m]);
 
-		if (data_size[m])
-			free(data_size[m]);
+		free(data_size[m]);
 
 		j += number_of_reads_by_procs[m];
 	}
-	fprintf(stderr, "Rank %d :::::[WRITE] free2\n", rank);
 
-	if (data_size)
-		free(data_size);
-	fprintf(stderr, "Rank %d :::::[WRITE] free3\n", rank);
+	free(data_size);
 
 	size_t *data_offsets_to_sort = malloc(local_readNum * sizeof(size_t));
 	j=0;
@@ -2039,17 +2026,12 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 		free(data_offsets[m]);
 		j += number_of_reads_by_procs[m];
 	}
-	fprintf(stderr, "Rank %d :::::[WRITE] free4\n", rank);
 
 
 	if (data_offsets != NULL)
 		free(data_offsets);
 
-	fprintf(stderr, "Rank %d :::::[WRITE] free5\n", rank);
-
-
 	free(number_of_reads_by_procs);
-	fprintf(stderr, "Rank %d :::::[WRITE] free6\n", rank);
 
 	base_arr2 = data_offsets_to_sort;
 	qksort(new_offset_dest_index_phase3, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
@@ -2081,7 +2063,6 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 
 
 	free(new_offset_dest_index_phase3);
-	fprintf(stderr, "Rank %d :::::[WRITE] free7\n", rank);
 	MPI_Barrier(COMM_WORLD);
 
 	MPI_Type_create_struct(local_readNum, new_read_size_sorted_phase3, (MPI_Aint*)reads_address_sorted,
