@@ -352,6 +352,10 @@ void Merge_split(
     size_t *temp_key_list = (size_t *)malloc(list_size*sizeof(size_t));
     size_t *temp_index_list = (size_t *)malloc(list_size*sizeof(size_t));
 
+    //inititalization
+    temp_key_list[0] = 0;
+    temp_index_list[0] = 0;
+
     MPI_Sendrecv(local_list, list_size, MPI_LONG_LONG_INT,
                  partner, 0, temp_key_list, list_size,
                  MPI_LONG_LONG_INT, partner, 0, comm, &status);
@@ -436,7 +440,11 @@ void Merge_list_high(
     size_t  index1 = list_size - 1;
     size_t  index2 = list_size - 1;
     size_t *scratch_list_key = (size_t *)malloc(list_size*sizeof(size_t));
+    scratch_list_key[0]=0;
+
     size_t *scratch_list_index = (size_t *)malloc(list_size*sizeof(size_t));
+    scratch_list_index[0]=0;
+
     size_t counter =0;
     int  rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

@@ -139,13 +139,13 @@ Options
 the -q option is for quality filtering.
 
 
-Future developments
--------------------
+Future developments and open tickets
+------------------------------------
 
-1) Manage single reads <br />
-2) Mark and remove duplicates <br />
-3) Modify the data movement to support normal network <br />
+1) Cut the data movements into little pieces to support low bandwidth network <br />
+2) Manage single reads <br />
+3) Mark or remove duplicates <br />
 4) Make a pile up of the reads <br /> 
-
+5) Write SAM files
 
 

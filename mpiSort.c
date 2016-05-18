@@ -77,10 +77,10 @@
 #define STRIPING_FACTOR "4"
 
 //#define STRIPING_UNIT "268435456"   // 256 MB
-//#define STRIPING_UNIT "536870912"   // 500 MB
+#define STRIPING_UNIT "536870912"   // 500 MB
 //#define STRIPING_UNIT "1073741824"  // 1GB
 //#define STRIPING_UNIT "1610612736"  // 1.5GB
-#define STRIPING_UNIT "2147483648"    // 2GB
+//#define STRIPING_UNIT "2147483648"  // 2GB
 //#define STRIPING_UNIT "2684354560"  // 2.5GB
 //#define STRIPING_UNIT "3221225472"  // 3GB
 //#define STRIPING_UNIT "3758096384"  // 3.5GB
@@ -112,7 +112,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset unmapped_start, discordant_start;
 	int num_proc, rank;
-	int nbchr, i;
+	int nbchr, i, paired=0; //we assume the reads are single ended
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir, *sam_dir;
 
@@ -130,6 +130,10 @@ int main (int argc, char *argv[]){
 	size_t *count_diffuse = NULL;
 	size_t **send_diffuse;
 	size_t *dsend[3];
+
+	//init dsend
+
+
 	clock_t tic, toc;
 	int compression_level = 3; //by default compression is 3
 
@@ -188,6 +192,11 @@ int main (int argc, char *argv[]){
 			if(argv[i][1] == 'q'){
 				threshold = atoi(argv[i+1]);
 				if(!rank)fprintf(stderr, "Reads' quality threshold : %d\n", threshold);
+			}
+
+			if(argv[i][1] == 'p'){
+				paired = 1;
+				if(!rank)fprintf(stderr, "Reads are paired \n");
 			}
 
 			if(argv[i][1] == 'c'){
@@ -260,7 +269,6 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"striping_factor", STRIPING_FACTOR);
 	MPI_Info_set(finfo,"striping_unit", STRIPING_UNIT); //2G striping
 	MPI_Info_set(finfo,"ind_rd_buffer_size", STRIPING_UNIT); //2gb buffer
-
 	MPI_Info_set(finfo,"romio_ds_read",DATA_SIEVING_READ);
 		
 	/*
@@ -357,9 +365,6 @@ int main (int argc, char *argv[]){
 		// we load the buffer
 		local_data=(char*)calloc(size_to_read+1,sizeof(char));
 
-
-
-
 		/*
 		 * TODO: Issue with MPI_BOTTOM on certain infrastructure problem
 		 * 		 of randomization with (void *)0
@@ -404,6 +409,8 @@ int main (int argc, char *argv[]){
 	 	char *u = local_data;
 	 	for ( k = 0; k < num_data_type_block; k++){
 	 		blocklens[k] = chunck_size;
+
+	 		//MPI_Get_address((u + k*chunck_size), &indices[k]);
 	 		indices[k] = (MPI_Aint)(u + k*chunck_size);
 	 		vector_offset[k] = poffset + k*chunck_size;
 	 		oldtypes[k] = MPI_CHAR;
@@ -428,7 +435,7 @@ int main (int argc, char *argv[]){
 
 		MPI_Type_free(&dt_data);
 		MPI_Type_free(&dt_view);
-		*/
+		 */
 
 		////////////////////////////////////
 		///// fin modification 18/09/2015
@@ -502,9 +509,6 @@ int main (int argc, char *argv[]){
 		writeSam(rank, output_dir, header, localReadNumberByChr[i], chrNames[i],
 				reads[i], offsets, num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
 
-		//if (reads[i])
-		//	free(reads[i]);
-
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
@@ -533,8 +537,6 @@ int main (int argc, char *argv[]){
 			reads[nbchr-2] = reads[nbchr-2]->next;
 			free(tmp_chr->next);
 		}
-
-
 	}
 
 	/*

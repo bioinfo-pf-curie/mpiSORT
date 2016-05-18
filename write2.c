@@ -547,16 +547,15 @@ void bruck_size(int rank, int num_proc, size_t local_readNum, size_t* number_of_
 
 void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *file_name,
 		size_t *number_of_reads_by_procs, size_t *buffs_by_procs, char *** data,
-		int *new_rank, int *new_size, size_t *new_offset, MPI_File in, MPI_Info finfo)
+		int *new_rank, int *new_size, size_t *new_offset, MPI_File in, MPI_Info finfo, MPI_Comm COMM_WORLD)
 {
 
 	/*
 	 * task: IN read_data_for_writing
 	 */
 
-	MPI_Comm comm = MPI_COMM_WORLD;
 	size_t k;
-
+	double t;
 	size_t new_data_sz = 0;
 
 	//MPI_File in;
@@ -571,29 +570,12 @@ void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *f
 	//The data in which what we read will be kept
 	data2 = (char**)malloc( num_proc * sizeof(char*));
 
-	//MPI_Info_create(&finfo);
-	// Lustre tuning (harmless on other filesystem)
-	/*
-	MPI_Info_set(finfo,"striping_factor","16");
-	MPI_Info_set(finfo,"cb_nodes","16");
-	ierr = MPI_File_open(comm, file_name, MPI_MODE_RDONLY, finfo, &in);
-
-	if (ierr) {
-		fprintf(stderr, "Rank %d failed to open the source file.\nAborting.\n\n", rank);
-		MPI_Abort(comm, ierr);
-		exit(2);
-	}
-	*/
-
 	// we compute the size of
 	// data for each rank and we put it in
 	// buffs and buffs_by_proc is
 	// the size of the buffer to send
 	size_t *buffs_by_procs2 = (size_t*)calloc( num_proc, sizeof(size_t));
 	size_t m = 0;
-
-	//void read_data_for_writing(int rank, int num_proc, size_t local_readNum, size_t *number_of_reads_by_procs, size_t *buffs_by_procs, char *** data2, int *new_rank, int *new_size, size_t *new_offset)
-	//
 
 	for(m = 0; m < local_readNum; m++)
 	{
@@ -615,28 +597,27 @@ void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *f
 		data2[m][buffs_by_procs[m]] = 0;
 	}
 
-	double t = MPI_Wtime();
-
 	//All is here! Creates the datatype for reading
 	create_read_dt(rank, num_proc, new_rank, new_size, data2, &dt_data, local_readNum);
-	t = MPI_Wtime();
 	MPI_Type_commit(&dt_data);
 
 	//fprintf(stderr, "%d ::::: [read_data_for_writing] local_readNum = %zu \n", rank, local_readNum);
 	//fprintf(stderr, "%d ::::: [read_data_for_writing] data size = %zu \n", rank,  new_data_sz);
+
 	//indexed_data_type_phase2 is for the view and contains the source offset sorted
+
 	MPI_Type_create_hindexed(local_readNum, new_size, (MPI_Aint*)new_offset, MPI_CHAR, &dt_view);
 	MPI_Type_commit(&dt_view);
 
 	//TODO: see if initialization is needed
 	t = MPI_Wtime();
+
 	MPI_File_set_view(in, 0, MPI_CHAR, dt_view, "native", finfo);
 	MPI_File_read(in, MPI_BOTTOM, 1, dt_data, MPI_STATUS_IGNORE);
-	fprintf(stderr, "%d ::::: [read_data_for_writing] Time in MPI_File_read %f sec\n", rank, MPI_Wtime() - t);
 
 	//MPI_File_read_at(in, new_offset[0], MPI_BOTTOM, new_data_sz, dt_data, MPI_STATUS_IGNORE);
 	//MPI_File_read_all(in, MPI_BOTTOM, 1, dt_data, MPI_STATUS_IGNORE);
-	MPI_Barrier(comm);
+	MPI_Barrier(COMM_WORLD);
 
 	//we don't need information of input offset
 	MPI_Type_free(&dt_data);
@@ -1830,7 +1811,6 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 
 	 //  task Phase 2: Dispatch everything
 
-
 	//Phase 2: Send all_offsets_dest from master_2 to all
 	send_size_t_master_to_all(rank, num_proc, master_job_phase_2, local_readNum, num_reads_per_jobs, start_num_reads_per_jobs_phase2,
 			all_offset_dest_file_phase2_to_send, new_offset_dest_phase2);
@@ -1892,6 +1872,7 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 	 */
 	/***************************************************/
 
+	MPI_Barrier(COMM_WORLD);
 
 	/* *****************************************
 	 * task Reading phase
@@ -1904,16 +1885,17 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 	size_t *buffs_by_procs = (size_t*)calloc( num_proc, sizeof(size_t));
 
 	time_count = MPI_Wtime();
+	fprintf(stderr, "Rank %d :::::[WRITE] We call read data for writing \n", rank);
 
 	read_data_for_writing(rank, num_proc, local_readNum,
 			file_name, number_of_reads_by_procs, buffs_by_procs,
 				&data2, new_rank_phase2, new_read_size_phase2,
-					new_offset_source_sorted_phase2, in, finfo);
+					new_offset_source_sorted_phase2, in, finfo, COMM_WORLD);
 
 	free(new_offset_source_sorted_phase2);
 
 	MPI_Barrier(COMM_WORLD);
-	fprintf(stderr, "Rank %d :::::[WRITE] Time for reading %f seconds\n", rank, MPI_Wtime() - time_count);
+	fprintf(stderr, "Rank %d :::::[WRITE] Time for reading %f seconds \n", rank, MPI_Wtime() - time_count);
 
 
 	//Free type
@@ -2109,13 +2091,14 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 		recv_offset = ( ( rank - i - 1 + num_proc ) % num_proc );
 
 		// first we size the size of the buffer to send
-		MPI_Send( y_message_sz + send_offset, blocksize , MPI_LONG_LONG_INT, successor, 0, MPI_COMM_WORLD);
-		MPI_Recv( y_message_sz + recv_offset, blocksize , MPI_LONG_LONG_INT, predecessor, 0, MPI_COMM_WORLD, &status);
+		MPI_Send( y_message_sz + send_offset, blocksize , MPI_LONG_LONG_INT, successor, 0, COMM_WORLD);
+		MPI_Recv( y_message_sz + recv_offset, blocksize , MPI_LONG_LONG_INT, predecessor, 0, COMM_WORLD, &status);
 
 	}
 
 	//we create a buffer for recieved data
 	char *char_buff_uncompressed = malloc(y_message_sz[predecessor] * sizeof(char) + 1);
+	char_buff_uncompressed[y_message_sz[predecessor]]='\0';
 
 	//now we send data
 	MPI_Sendrecv(MPI_BOTTOM, 1, Datatype_Read_to_write, successor, 0, char_buff_uncompressed, y_message_sz[predecessor],
@@ -2383,7 +2366,6 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 
 	fprintf(stderr, "Rank %d :::::[WRITE] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
 
-
 	free(fp->uncompressed_block);
 	free(fp->compressed_block);
 	free_cache(fp);
@@ -2443,6 +2425,12 @@ void writeSam(int rank, char* output_dir, char* header, size_t local_readNum, ch
 	{
 		free(data2[m]);
 	}
+	if(y)
+		free(y);
+
+	if (y2)
+		free(y2);
+
 	free(data2);
 	free(data_table);
 	free(data_reads_to_sort);
@@ -4324,33 +4312,34 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
 	/*
 	 * task: Create data structure for reading part
 	 */
-
 	assert(data != 0);
-
 	//buffs is the table with the read size
 
  	//Count variable
  	int i;
 
  	//Variable for datatype struct almost classic
- 	MPI_Aint indices[readNum];
 
+ 	MPI_Aint indices[readNum];
  	int blocklens[readNum];
 
+ 	fprintf(stderr, "Rank %d :::::[WRITE] readNum = %zu \n", rank, readNum );
+ 	MPI_Barrier(MPI_COMM_WORLD);
  	MPI_Datatype oldtypes[readNum];
-
 
  	/* Adress originally referencing on data
  	 * data : char** buff in which the read data must be organized by destination rank
  	 */
+
  	MPI_Aint adress_to_write_in_data_by_element[num_proc];
 
 
  	//init adress_to_write_in_data_by_element
- 	for(i = 0; i < num_proc; i++){
- 		adress_to_write_in_data_by_element[(rank+i)%num_proc] = (MPI_Aint)data[(rank-i+num_proc)%num_proc];
- 	}
 
+ 	for(i = 0; i < num_proc; i++){
+ 		//adress_to_write_in_data_by_element[(rank+i)%num_proc] = (MPI_Aint)data[(rank-i+num_proc)%num_proc];
+ 		MPI_Get_address(data[(rank-i+num_proc)%num_proc], &adress_to_write_in_data_by_element[(rank+i)%num_proc]);
+ 	}
 
  	//double time_count = MPI_Wtime();
  	//Set all classic datatype values
@@ -4359,8 +4348,8 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
  		 * Basically what we say here is that the i(th) item that we are going to read goes to the data row corresponding to it's destination rank
  		 *
  		 * indices[i] : The adress for the datatype to which the i(th) item should be written.
- 		 * 			Generally this is a relative adress. Like 0, 8, 16.
- 		 * 			Here, we use the adress in memory in order to be able to use an array of array without any problem.
+ 		 * 				Generally this is a relative adress. Like 0, 8, 16.
+ 		 * 				Here, we use the adress in memory in order to be able to use an array of array without any problem.
  		 * 				Else, the first index could be good
  		 * 				but (data + 8) wouldn't designate &(data[0][8]) if we need to write multiple times in the same row
  		 *
@@ -4381,6 +4370,8 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
  		//Set indices
  		//ranks[i] tell the position in adresse to write by elements
  		indices[i] = adress_to_write_in_data_by_element[ranks[i]];
+
+
 
  		//printf("num_proc %d - %d/%d     /    indices: %p   /   buffs: %d    /    ranks: %d\n", size, i, readNum, indices[i], buffs[i], ranks[i]);
  		//Increment position to write for ranks[i]
@@ -4406,9 +4397,8 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
 
 
  	//Create struct
- 	//time_count = MPI_Wtime();
  	MPI_Type_create_struct(readNum, blocklens, indices, oldtypes, dt);
- 	//fprintf(stderr, "Rank %d :::::[create_read_dt] Time for creating struct %f seconds\n", rank, MPI_Wtime()-time_count);
+
  }
 
 int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs, int **dest_size,

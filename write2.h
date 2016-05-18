@@ -49,7 +49,7 @@ void bruckWrite(int rank, int num_proc,
 
 void read_data_for_writing(int rank, int num_proc, size_t local_readNum,
 		char *file_name, size_t *number_of_reads_by_procs, size_t *buffs_by_procs,
-		char *** data, int *new_rank, int *new_size, size_t *new_offset, MPI_File in, MPI_Info finfo);
+		char *** data, int *new_rank, int *new_size, size_t *new_offset, MPI_File in, MPI_Info finfo, MPI_Comm COMM_WORLD);
 
 void send_size_t_all_to_master(int rank, int num_proc, int master, size_t size, size_t *size_per_jobs, size_t *start_size_per_job, size_t *all_data, size_t *data);
 void send_int_all_to_master(int rank, int num_proc, int master, size_t size, size_t *size_per_jobs, size_t *start_size_per_job, int *all_data, int *data);

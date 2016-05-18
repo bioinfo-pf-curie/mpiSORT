@@ -37,7 +37,8 @@
 #include "diffuse.h"
 #include "merge_utils.h"
 
-char merge(int rank, int num_proc, int headerSize, size_t readNum, size_t array_max_size, size_t **count_diffusep, size_t ***send_diffusep, size_t *dsend[]){
+char merge(int rank, int num_proc, int headerSize, size_t readNum, size_t array_max_size, size_t **count_diffusep,
+		size_t ***send_diffusep, size_t *dsend[3]){
 
 	int father, son, dest, src, last;
 	int nbSons;
@@ -159,6 +160,7 @@ void datasend(size_t *send[3], int dest, size_t readNum){
 
 	MPI_Send(&readNum,1, MPI_LONG_LONG_INT, dest, 0, MPI_COMM_WORLD);
 
+
 	MPI_Send(send[0],readNum, MPI_LONG_LONG_INT, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(send[1],readNum, MPI_LONG_LONG_INT, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(send[2],readNum, MPI_LONG_LONG_INT, dest, 0, MPI_COMM_WORLD);
@@ -206,7 +208,7 @@ size_t** recv_dispatch(size_t nbrecv, size_t disp, int rank, int num_proc, size_
 	return send_diffuse;
 }
 
-void data_pieces_send(size_t* send[], int rank, size_t readNum, size_t array_max_size){
+void data_pieces_send(size_t *send[3], int rank, size_t readNum, size_t array_max_size){
 
 	size_t rv = 1;
 	size_t cmax = 0, spent = 0;
@@ -307,7 +309,7 @@ void data_pieces_send(size_t* send[], int rank, size_t readNum, size_t array_max
 	free(send[2]);
 }
 
-int data_pieces_recv(size_t* send[], int rank, int num_proc, size_t readNum){
+int data_pieces_recv(size_t *send[3], int rank, int num_proc, size_t readNum){
 
 	size_t *recv1[3], *recv2[3], *tmp[3];
 	size_t spent = 0, last_spent = 0;

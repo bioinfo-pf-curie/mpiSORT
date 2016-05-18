@@ -33,9 +33,10 @@
 #include "mpi.h"
 #include "parser.h"
 
-char merge(int rank, int num_proc, int headerSize, size_t readNum, size_t array_max_size, size_t **count_diffusep, size_t ***send_diffusep, size_t *send[]);
+char merge(int rank, int num_proc, int headerSize, size_t readNum, size_t array_max_size,
+		size_t **count_diffusep, size_t ***send_diffusep, size_t *send[3]);
 size_t datarecv(size_t *send[3], int src, size_t readNum);
 void datasend(size_t *send[3], int dest, size_t readNum);
 size_t** recv_dispatch(size_t nbrecv, size_t disp, int rank, int num_proc, size_t **count_diffusep);
-void data_pieces_send(size_t* send[], int rank, size_t readNum, size_t array_max_size);
-int data_pieces_recv(size_t* send[], int rank, int num_proc, size_t readNum);
+void data_pieces_send(size_t *send[3], int rank, size_t readNum, size_t array_max_size);
+int data_pieces_recv(size_t *send[3], int rank, int num_proc, size_t readNum);
