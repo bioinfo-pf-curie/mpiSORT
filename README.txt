@@ -9,8 +9,9 @@ The presented version of the program has been tested on France Genomic cluster o
 !!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
-Contact us if you need information.
+But for small data samples a normal network and a  network file system can do the job.
 
+Contact us if you need information.
 
 Input Data:
 ----------
@@ -33,6 +34,11 @@ Compiler:
 ---------
 
 A C compiler must be present also. We have tested the programm with GCC and Inter Compiler. 
+
+Test:
+-----
+
+We furnish a sample sam to sort. We test it with 8 jobs and 2 nodes with a normal network and file system. 
 
 
 Configuration:
@@ -139,13 +145,13 @@ Options
 the -q option is for quality filtering.
 
 
-Future developments
--------------------
+Future developments and open tickets
+------------------------------------
 
-1) Manage single reads <br />
-2) Mark and remove duplicates <br />
-3) Modify the data movement to support normal network <br />
+1) Cut the data movements into little pieces to support low bandwidth network <br />
+2) Manage single reads <br />
+3) Mark or remove duplicates <br />
 4) Make a pile up of the reads <br /> 
-
+5) Write SAM files
 
 

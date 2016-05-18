@@ -9,9 +9,9 @@ The presented version of the program has been tested on France Genomic cluster o
 !!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
 
+But for small data samples a normal network and a  network file system can do the job.
 
 Contact us if you need information.
-
 
 Input Data:
 ----------
@@ -34,6 +34,11 @@ Compiler:
 ---------
 
 A C compiler must be present also. We have tested the programm with GCC and Inter Compiler. 
+
+Test:
+-----
+
+We furnish a sample sam to sort. We test it with 8 jobs and 2 nodes with a normal network and file system. 
 
 
 Configuration:

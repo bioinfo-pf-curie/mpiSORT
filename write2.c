@@ -330,9 +330,17 @@ void bruck_offsets(int rank, int num_proc, int local_readNum, size_t* number_of_
 			// we free and allocate data_offsets
 			// according to the recieve size
 			if (data_offsets[recv_index[m]]){
+
 				free(data_offsets[recv_index[m]]);
-				data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
-				data_offsets[recv_index[m]][0] = 0;
+
+				data_offsets[recv_index[m]] = NULL;
+
+				if (recv_size_by_proc[m] > 0)
+					data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
+
+				//data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
+				if (data_offsets[recv_index[m]])
+					data_offsets[recv_index[m]][0] = 0;
 			}
 		}
 		/*
@@ -489,8 +497,13 @@ void bruck_size(int rank, int num_proc, size_t local_readNum, size_t* number_of_
 			if (data_size[recv_index[m]]){
 
 				free(data_size[recv_index[m]]);
-				data_size[recv_index[m]] = (int *)malloc(sizeof(int)*(recv_size_by_proc[m]));
-				data_size[recv_index[m]][0] = 0;
+
+				if (recv_size_by_proc[m] != 0)
+					data_size[recv_index[m]] = (int *)malloc(sizeof(int)*(recv_size_by_proc[m]));
+
+				//data_size[recv_index[m]] = realloc(data_size[recv_index[m]], sizeof(int)*(recv_size_by_proc[m]) );
+				if (data_size[recv_index[m]])
+					data_size[recv_index[m]][0] = 0;
 
 			}
 		}
