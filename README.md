@@ -13,6 +13,13 @@ But for small data samples a normal network and a  network file system can do th
 
 Contact us if you need information.
 
+Known issue:
+------------
+
+The program hang and sometimes crashes when the number of jobs is under 6, sorry about that. 
+This trouble is related to the parallel merge sort design. 
+We are working on it it will be available soon.  
+
 Input Data:
 ----------
 

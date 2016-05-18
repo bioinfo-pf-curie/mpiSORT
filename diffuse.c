@@ -47,7 +47,7 @@ void diffuse(size_t *recv_diffuse, int rank, int num_proc, char sender, size_t l
 	MPI_Status stat;
 	//size_t* recv_diffuse;
 	//recv_diffuse = (size_t*)malloc(localReadNum*sizeof(size_t));
-
+	fprintf(stderr, "Rnk %d:::: in diffuse \n", rank );
 	if(sender){
 
 		reqs[0] = (MPI_Request*)malloc(num_proc*sizeof(MPI_Request));
@@ -56,9 +56,10 @@ void diffuse(size_t *recv_diffuse, int rank, int num_proc, char sender, size_t l
 		for(j = 0; j < num_proc; j++){
 
 			if(count_diffuse[j] && j != rank){
-
+				fprintf(stderr, "Rnk %d:::: in diffuse before MPI_Isend \n", rank );
 				MPI_Isend(&count_diffuse[j], 1, MPI_LONG_LONG_INT, j, j, MPI_COMM_WORLD, &reqs[0][j]);
 				MPI_Isend(send_diffuse[j], count_diffuse[j], MPI_LONG_LONG_INT, j, j, MPI_COMM_WORLD, &reqs[1][j]);
+				fprintf(stderr, "Rnk %d:::: in diffuse after MPI_Isend \n", rank );
 			}
 		}
 	}

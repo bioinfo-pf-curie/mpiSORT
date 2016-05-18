@@ -501,9 +501,13 @@ int main (int argc, char *argv[]){
 
 		reads[i] = reads[i]->next;
 		indexing(rank, readNumberByChr[i], reads[i], dsend);
+
 		count_diffuse = NULL; //used for the formatting
 		sender = merge(rank, num_proc, headerSize, readNumberByChr[i], array_max_size, &count_diffuse, &send_diffuse, dsend);
+		fprintf(stderr, "Rnk %d:::: after merge \n", rank );
 		size_t *offsets = (size_t*)malloc(localReadNumberByChr[i]*sizeof(size_t));
+
+		fprintf(stderr, "Rnk %d:::: before diffuse sender = %d  \n", rank, sender );
 		diffuse(offsets, rank, num_proc, sender, localReadNumberByChr[i], count_diffuse, send_diffuse);
 
 		writeSam(rank, output_dir, header, localReadNumberByChr[i], chrNames[i],
