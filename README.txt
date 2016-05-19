@@ -6,19 +6,19 @@ filesystem such as Lustre, GPFS,...
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
-!!!!! THIS PROGRAM NEEDS A LOW LATENCY NETWORK !!!! <br />
-!!!!! THIS PROGRAM NEEDS A PARALLEL FILE SYSTEM !!!!
+!!!!! THIS PROGRAM RUN BETTER ON A LOW LATENCY NETWORK !!!! <br />
+!!!!! THIS PROGRAM RUN BETTER ON A PARALLEL FILE SYSTEM !!!!
 
-But for small data samples a normal network and a  network file system can do the job.
+But for small data samples a normal network and a network file system can do the job.
 
 Contact us if you need information.
 
-Known issue:
-------------
+Known and important issue:
+--------------------------
 
-The program hang and sometimes crashes when the number of jobs is under 6, sorry about that. 
-This trouble is related to the parallel merge sort design. 
-We are working on it it will be available soon.  
+The program hang and sometimes crashes when the number of jobs is under 6. 
+We are investigating this issue, we are really sorry about that.
+Please take number of jobs greater than 6.   
 
 Input Data:
 ----------
