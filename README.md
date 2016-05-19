@@ -23,7 +23,7 @@ Please take number of jobs greater than 6.
 Input Data:
 ----------
 
-A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.
+A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
 
 Output:  
 -------
