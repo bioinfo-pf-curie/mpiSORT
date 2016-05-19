@@ -15,12 +15,16 @@ Nonetheless for small data samples a normal network and a network file system ca
 
 Contact us if you need information.
 
-Known and important issue:
+Known and important issues:
 --------------------------
 
-The program hang and sometimes crashes when the number of jobs is under 6. 
+1) The program hang when the number of jobs is under 6. 
 We are investigating this issue, we are really sorry about that.
 Please take number of jobs greater than 6.   
+
+2) When a job has no reads to sort for a chromosom the programm crashes, it happens when the data sample is to small <br />
+and the number of jobs is to high. To circumvent this issue reduce the number of jobs.
+This issue is also under investigation.
 
 Input Data:
 ----------
