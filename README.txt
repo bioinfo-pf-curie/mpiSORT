@@ -9,7 +9,9 @@ The presented version of the program has been tested on France Genomic cluster o
 !!!!! THIS PROGRAM RUN BETTER ON A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM RUN BETTER ON A PARALLEL FILE SYSTEM !!!!
 
-But for small data samples a normal network and a network file system can do the job.
+The development and feature program have been optimized for HPC architecture.
+
+Nonetheless for small data samples a normal network and a network file system can do the job.
 
 Contact us if you need information.
 
@@ -23,7 +25,7 @@ Please take number of jobs greater than 6.
 Input Data:
 ----------
 
-A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads should be paired.
+A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
 
 Output:  
 -------
