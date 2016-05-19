@@ -22,8 +22,9 @@ Known and important issues:
 We are investigating this issue, we are really sorry about that.
 Please take number of jobs greater than 6.   
 
-2) When a job has no reads to sort for a chromosom the programm crashes, it happens when the sample is to small. 
-To circumvent this issue reduce the number of jobs.
+2) When a job has no reads to sort for a chromosom the programm crashes, it happens when the data sample is to small <br />
+and the number of jobs is to high. To circumvent this issue reduce the number of jobs.
+This issue is also under investigation.
 
 Input Data:
 ----------
