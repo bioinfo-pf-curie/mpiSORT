@@ -9,7 +9,7 @@ AOBJS=		parabitonicsort.o diffuse.o format.o merge_utils.o merge.o mergeSort.o m
 			
 PROG=		psort
 INCLUDES=	
-LIBS=		-lm -lz -lpthread -lmpi -lopen-rte -lopen-pal -ldl -lnsl -lutil -ldl
+LIBS=		-lm -lz -lpthread -lmpi -ldl -lnsl -lutil -ldl
 SUBDIRS=	.
 
 .SUFFIXES:.c .o .cc

@@ -1,17 +1,24 @@
+Objectiv
+---------
+
+Sorting big whole genome NGS data file. 
+
 Requirements:
 -------------
 
-This programm is intended to run on supercomputer architectures equiped with Infiniband network and parallel 
-filesystem such as Lustre, GPFS,...
+
+Nonetheless for small data samples a normal network and a network file system can do the job.
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
+
+Because of the development design and feature program have been optimized for HPC architecture.
 
 !!!!! THIS PROGRAM RUN BETTER ON A LOW LATENCY NETWORK !!!! <br />
 !!!!! THIS PROGRAM RUN BETTER ON A PARALLEL FILE SYSTEM !!!!
 
-The development and feature program have been optimized for HPC architecture.
+This programm is intended to run on supercomputer architectures equiped with Infiniband network and parallel 
+filesystem such as Lustre, GPFS,... 
 
-Nonetheless for small data samples a normal network and a network file system can do the job.
 
 Contact us if you need information.
 

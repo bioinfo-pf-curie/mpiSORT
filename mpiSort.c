@@ -485,11 +485,110 @@ int main (int argc, char *argv[]){
 	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 	fprintf(stderr, "Number of reads on rank %d = %zu/%zu \n", rank, nb_reads_total, nb_reads_global);
 
+
 	/*
-	 *  We write the mapped reads in a file named chrX.bam
+	 *
+	 * In this part we are going to define a new communicator
+	 * in the case we have a job without reads to sort.
+	 *
+	 * We chose to use communicator to avoid modification
+	 * in the communication part of the writing process that could be
+	 * exhausting
+	 *
+	 * To do that:
+	 *
+	 * 1) we rank 0 collects all the local number of reads to sort.
+	 * 2) the rank 0 compute the new rank in the new communicator
+	 * 3) the rank 0 broadcast the new rank rank
+	 * 4) MPI_COMM_SPLIT create the new communicator NEW_MPI_COMM_WORLD
+	 * 5) free the new communicator
+	 * 6) loop the next chromosome
+	 *
 	 *
 	 */
+	/*
+	int chr_num = 0;
 
+	for (chr_num = 0; chr_num < (nbchr-2); chr_num++){
+
+		int *localReadsNum_vec = (int *) calloc(num_proc);
+		int *jobRank_vec = (int *) calloc(num_proc); //vector of rank jobs before split comm
+
+		//we build a vector with rank job
+		int zero_counter_1 = 0; // counter on localReadsNum_vec
+		int zero_counter_2 = 0; // counter on newRank_vec
+		int j = 0;
+
+		//rank 0 gather the vector
+		MPI_Gather( localReadNumberByChr[chr_num], 1, MPI_LONG_LONG_INT, localReadsNum_vec[chr_num], 1, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD)
+
+		if (rank == 0) {
+			//we compute the number of 0 in the localReadsNum_vec
+			for(i = 0; i < num_proc; i++){
+				if (localReadsNum_vec[i] == 0) counter++;
+				jobRank_vec[i] = i;
+			}
+			// if no jobs without reads we do nothing
+			if ( zero_counter_1 == 0 ){
+				// nothing to do
+				NEW_MPI_COMM_WORLD = MPI_COMM_WORLD;
+				break; //we exit the for loop
+			}
+			else{
+
+				int jobRank_vec_sz = num_proc - zero_counter_1;
+				// allocate new rank vector size of counter
+				int *jobRank_vec = (int *) calloc(jobRank_vec_sz);
+				// we initialize jobRank_vec
+				for(i = 0; i < jobRank_vec_sz; i++){
+					jobRank_vec[i] = i;
+				}
+
+				// if the localnumRead is 0 we update the rank
+				for (j = 0; j < zero_counter_1; j++){
+
+					if ( localReadsNum_vec[j] == 0 ){
+
+					}
+					else{
+					}
+
+				}
+
+		int key = 0; //everybody has a zero key
+		int color = 0;
+
+		//first we mus
+
+		if (localReadNumberByChr[i] == 0){
+			key=rank; 				 //except the rank who has no reads to sort
+			color=MPI_UNDEFINED;     //we exclude this rank
+		}
+
+		int color = 0;
+		MPI_Comm* NEW_MPI_COMM_WORLD;
+
+		if (localReadNumberByChr[i] == 0){
+			// then we shall split the communicator to exclude the rank with
+			// no reads
+			MPI_Comm_split( MPI_COMM_WORLD, color, key, NEW_MPI_COMM_WORLD);
+
+			//now we change the rank in the reads structure
+
+			//we must update the num_proc value
+			MPI_Comm_rank(New_Comm, &new_id);
+			//we must update the rank
+
+		}
+
+	}
+	*/
+
+
+	/*
+	*  We write the mapped reads in a file named chrX.bam
+	*
+	*/
 
 	for(i = 0; i < (nbchr-2); i++){
 
