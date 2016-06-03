@@ -55,7 +55,6 @@ unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *p
 	//RANK 0 WILL CALCULATE SIZE HEADER AND FIND CHRNAME
 	if(rank == 0){
 
-		i = 0;
 		j = 0;
 		header = (char*)malloc(sizeof(char));
 		lineSize = strlen(str) + 1;
@@ -94,14 +93,10 @@ unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *p
 				currentCarac = strtok(NULL, "\t");
 				currentCarac += 3;
 
-				chrNames[i] = (char*)malloc((strlen(currentCarac)+1)*sizeof(char));
-				chrNames[i][strlen(currentCarac)+1]=0;
-				strcpy(chrNames[i], currentCarac);
+				chrNames[nbchr++] = strdup(currentCarac);
 
-				nbchr++;
 				chrNames = (char**)realloc(chrNames, (nbchr+1)*sizeof(char*));
 
-				i++;
 			}
 
 			next = tokenizer(NULL, '\n', currentLine);
@@ -110,17 +105,10 @@ unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *p
 		//header[j++] = 0;
 
 		//we add UNMAPPED to chrNames
-		chrNames[i] = (char*)malloc((strlen(UNMAPPED)+1)*sizeof(char));
-		chrNames[i][strlen(UNMAPPED)]=0;
-		strcpy(chrNames[i], UNMAPPED);
-		nbchr++;
-		i++;
+		chrNames[nbchr++] = strdup(UNMAPPED);
 
 		//we add DISCORDANT to chrNames
-		chrNames[i] = (char*)malloc((strlen(DISCORDANT)+1)*sizeof(char));
-		chrNames[i][strlen(DISCORDANT)]=0;
-		strcpy(chrNames[i], DISCORDANT);
-		nbchr++;
+		chrNames[nbchr++] = strdup(DISCORDANT);
 
 	}
 
