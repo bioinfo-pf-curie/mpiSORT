@@ -105,6 +105,9 @@
 #define DEFAULT_INBUF_SIZE  (1024*1024*1024)
 
 
+static void usage(const char *);
+
+
 int main (int argc, char *argv[]){
 
 	DIR *dir = NULL;
@@ -163,24 +166,7 @@ int main (int argc, char *argv[]){
 	if(rank == 0)fprintf(stderr, "output : %s\n", output_dir);
 
 	if (argc < 2) {
-		fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
-				"Version: v1.0\n"
-				"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
-				"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
-				"output : a bam files per chromosome, a bam file of unmapped reads \n"
-				"		  a bam files of discordants reads. \n"
-
-				"Discordants reads are reads where one pairs align on a chromosome \n"
-				"and the other pair align on another chromosome \n"
-				"Unmapped reads are reads without coordinates on any genome \n"
-				"Requirements :  For perfomances matters the file you want to sort has to be \n"
-				"	stripped on parallel file system. \n"
-				"With Lustre you mention it with lfs setstripe command like this \n"
-				"lfs set stripe -c stripe_number -s stripe_size folder 		 \n"
-				"In mpiSort you mention the number of stripes with -c options \n"
-				"and mention the sripe size with with -s options. Example of command	 \n"
-				"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n"
-				 , basename(*argv));
+		usage(basename(*argv));
 		MPI_Finalize();
 		return 1;
 
@@ -205,24 +191,7 @@ int main (int argc, char *argv[]){
 			}
 
 			if(argv[i][1] == 'h'){
-				fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
-								"Version: v1.0\n"
-								"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
-								"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
-								"output : a bam files per chromosome, a bam file of unmapped reads \n"
-								"		  a bam files of discordants reads. \n"
-
-								"Discordants reads are reads where one pairs align on a chromosome \n"
-								"and the other pair align on another chromosome \n"
-								"Unmapped reads are reads without coordinates on any genome \n"
-								"Requirements :  For perfomances matters the file you want to sort has to be \n"
-								"	stripped on parallel file system. \n"
-								"With Lustre you mention it with lfs setstripe command like this \n"
-								"lfs set stripe -c stripe_number -s stripe_size folder 		 \n"
-								"In mpiSort you mention the number of stripes with -c options \n"
-								"and mention the sripe size with with -s options. Example of command	 \n"
-								"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n"
-								, basename(*argv));
+				usage(basename(*argv));
 				MPI_Finalize();
 				return 0;
 			}
@@ -782,3 +751,24 @@ void create_read_dt_for_parser(int rank, int num_proc, int *ranks, int* buffs, c
  }
 
 
+static void usage(const char *prg) {
+
+	fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
+		"Version: v1.0\n"
+		"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
+		"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
+		"output : a bam files per chromosome, a bam file of unmapped reads \n"
+		"                 a bam files of discordants reads. \n"
+		"Discordants reads are reads where one pairs align on a chromosome \n"
+		"and the other pair align on another chromosome \n"
+		"Unmapped reads are reads without coordinates on any genome \n"
+		"Requirements :  For perfomances matters the file you want to sort has to be \n"
+		"       stripped on parallel file system. \n"
+		"With Lustre you mention it with lfs setstripe command like this \n"
+		"lfs set stripe -c stripe_number -s stripe_size folder           \n"
+		"In mpiSort you mention the number of stripes with -c options \n"
+		"and mention the sripe size with with -s options. Example of command     \n"
+		"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n",
+		prg);
+
+	return; }
