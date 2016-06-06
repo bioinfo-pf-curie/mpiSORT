@@ -28,21 +28,24 @@
 	Paul Paganiban from Institut Curie
 */
 
+#include <assert.h>
 #include <err.h>
-
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <errno.h>
-#include <mpi.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <libgen.h>
 #include <unistd.h>
 
+#include <mpi.h>
+
+#include "diffuse.h"
+#include "mergeSort.h"
+#include "merge_utils.h"
+#include "parser.h"
+#include "preWrite.h"
+#include "write2.h"
+
+#if 0
 #include "mpi_globals.h"
 #include "merge.h"
 #include "diffuse.h"
@@ -52,14 +55,8 @@
 #include "parser.h"
 #include "merge_utils.h"
 #include "bufferized_read.h"
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
 #endif
 
-#define	PRIoff PRId64
-
-#define	MPI_OFF_T MPI_LONG_LONG_INT
 
 /*
  * Constant for Lustre striping
@@ -220,7 +217,7 @@ int main (int argc, char *argv[]){
 	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
 	//assert(in != -1);
 	if (ierr){
-		if (rank == 0) DEBUG("%s: Failed to open file in process 0 %s\n", argv[0], argv[1]);
+		if (rank == 0) fprintf(stderr, "%s: Failed to open file in process 0 %s\n", argv[0], argv[1]);
 		MPI_Abort(MPI_COMM_WORLD, errorcode);
 		exit(2);
 	}
