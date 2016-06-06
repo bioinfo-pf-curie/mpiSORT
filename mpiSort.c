@@ -559,11 +559,12 @@ int main (int argc, char *argv[]){
 		writeSam_unmapped(rank, output_dir, header, localReadNumberByChr[nbchr-2], chrNames[nbchr-2],
 			reads[nbchr-2], num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
 
-		while( reads[nbchr-2]->next != NULL){
+		while (reads[nbchr-2] != NULL) {
 			Read *tmp_chr = reads[nbchr-2];
 			reads[nbchr-2] = reads[nbchr-2]->next;
-			free(tmp_chr->next);
+			free(tmp_chr);
 		}
+
 	}
 
 	/*
@@ -589,10 +590,10 @@ int main (int argc, char *argv[]){
 		writeSam_discordant(rank, output_dir, header, localReadNumberByChr[nbchr-1], chrNames[nbchr-1],
 			reads[nbchr-1], num_proc, MPI_COMM_WORLD, file_name, mpi_filed, finfo, compression_level);
 
-		while( reads[nbchr-1]->next != NULL){
+		while (reads[nbchr-1] != NULL){
 			Read *tmp_chr = reads[nbchr-1];
 			reads[nbchr-1] = reads[nbchr-1]->next;
-			free(tmp_chr->next);
+			free(tmp_chr);
 		}
 		//free(reads[i]);
 		if(!rank){
