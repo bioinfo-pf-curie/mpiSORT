@@ -32,11 +32,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <mpi.h>
 #include <assert.h>
@@ -112,7 +110,7 @@ int main (int argc, char *argv[]){
 
 	MPI_File mpi_filed;
 
-	MPI_Offset unmapped_start, discordant_start;
+	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
 	int res, nbchr, i, paired=0; //we assume the reads are single ended
 	int ierr, errorcode = MPI_ERR_OTHER;
@@ -120,11 +118,11 @@ int main (int argc, char *argv[]){
 
 	char *header;
 	char **chrNames;
-	struct stat fileSize;
 	unsigned int headerSize;
 	unsigned char threshold = 0;
 	char sender;
 
+	size_t input_file_size;
 	size_t unmappedSize = 0;
 	size_t array_max_size = DEFAULT_MAX_SIZE; //maximum amount of data sent to the father
 	size_t *readNumberByChr = NULL, *localReadNumberByChr = NULL;
@@ -226,21 +224,14 @@ int main (int argc, char *argv[]){
 		MPI_Abort(MPI_COMM_WORLD, errorcode);
 		exit(2);
 	}
-
-	//then we get the file size
-	size_t input_file_size = stat(file_name, &fileSize);
-
-	if (input_file_size == -1){
-		fprintf(stderr,"Failed to find file size\n");
-		MPI_Abort(MPI_COMM_WORLD, errorcode);
-		exit(0);
-	}
-
-	input_file_size = (long long)fileSize.st_size;
-	if(!rank)fprintf(stderr, "The size of the file is %zu\n", fileSize.st_size);
+	ierr = MPI_File_get_size(mpi_filed, &fileSize);
+	assert(ierr == MPI_SUCCESS);
+	input_file_size = (long long)fileSize;
+	if (rank == 0)
+		fprintf(stderr, "The size of the file is %zu\n", input_file_size);
 
 	/* Get chunk offset and size */
-	fsiz = fileSize.st_size;
+	fsiz = input_file_size;
 	lsiz = fsiz / num_proc;
 	loff = rank * lsiz;
 	size_t lsiz2 = 150*sizeof(char)*1000; // load only the begining of file to check the read name and header
@@ -261,7 +252,7 @@ int main (int argc, char *argv[]){
 	free(rbuf);
 
 	//We place file offset of each process to the begining of one read's line
-	goff=init_goff(mpi_filed,headerSize,fileSize.st_size,num_proc,rank);
+	goff=init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
