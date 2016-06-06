@@ -28,12 +28,12 @@
 	Paul Paganiban from Institut Curie
 */
 
+#include <err.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -110,14 +110,13 @@ static void usage(const char *);
 
 int main (int argc, char *argv[]){
 
-	DIR *dir = NULL;
 	MPI_File mpi_filed;
 
 	MPI_Offset unmapped_start, discordant_start;
 	int num_proc, rank;
-	int nbchr, i, paired=0; //we assume the reads are single ended
+	int res, nbchr, i, paired=0; //we assume the reads are single ended
 	int ierr, errorcode = MPI_ERR_OTHER;
-	char *file_name, *output_dir, *sam_dir;
+	char *file_name, *output_dir;
 
 	char *header;
 	char **chrNames;
@@ -144,89 +143,58 @@ int main (int argc, char *argv[]){
 	size_t fsiz, lsiz, loff, *goff;
 
 	MPI_Info finfo;
-	MPI_Init(&argc,&argv);
-	/*
-	if (argc < 4){
-		fprintf(stderr, "Invalid arguments.\nShutting down.\n");
-		MPI_Finalize();
-		return 0;
-	}
-	*/
-    //finds out process rank
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	//finds out number of processes
-	MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
-	if(!rank)fprintf(stderr,"Number of processes : %d\n",num_proc);
-
-	file_name = argv[1];
-	output_dir = argv[2];
-
-	if(rank == 0)fprintf(stderr, "file to read : %s\n", file_name);
-	if(rank == 0)fprintf(stderr, "output : %s\n", output_dir);
-
-	if (argc < 2) {
-		usage(basename(*argv));
-		MPI_Finalize();
-		return 1;
-
-	}
-
-	//looking for optionsinfo
-	for(i = 0; i < argc; i++){
-		if(argv[i][0] == '-'){
-			if(argv[i][1] == 'q'){
-				threshold = atoi(argv[i+1]);
-				if(!rank)fprintf(stderr, "Reads' quality threshold : %d\n", threshold);
-			}
-
-			if(argv[i][1] == 'p'){
-				paired = 1;
-				if(!rank)fprintf(stderr, "Reads are paired \n");
-			}
-
-			if(argv[i][1] == 'c'){
-				compression_level = atoi(argv[i+1]);
-				if(!rank)fprintf(stderr, "Compression Level is : %d\n", compression_level);
-			}
-
-			if(argv[i][1] == 'h'){
+	/* Check command line */
+	while ((i = getopt(argc, argv, "c:hpq:")) != -1) {
+		switch(i) {
+			case 'c': /* Compression level */
+				compression_level = atoi(optarg);
+				break;
+			case 'h': /* Usage display */
 				usage(basename(*argv));
-				MPI_Finalize();
 				return 0;
-			}
-
+			case 'p': /* Paired reads */
+				paired = 1;
+				break;
+			case 'q': /* Quality threshold */
+				threshold = atoi(optarg);
+				break;
+			default:
+				usage(basename(*argv));
+				return 1;
 		}
 	}
-
-	//checking if everything's fine with the output directory, shutting down otherwise
-	sam_dir = (char*)malloc(strlen(output_dir)+11);
-	sprintf(sam_dir, "%s", output_dir);
-	if(!rank){
-		dir = opendir(sam_dir);
-		if(!dir){
-			perror("Failed to open directory");
-			if(errno == ENOENT){
-				fprintf(stderr, "rank %d Making directory...\n", rank);
-				ierr = mkdir(sam_dir, S_IRWXU);
-				if(ierr){
-					perror("Failed to make directory");
-					fprintf(stderr, "Shutting down...\n");
-					MPI_Abort(MPI_COMM_WORLD, errorcode);
-					exit(2);
-				}
-			}
-			else{
-				fprintf(stderr, "Shutting down...\n");
-				MPI_Abort(MPI_COMM_WORLD, errorcode);
-				exit(2);
-			}
-		}
-		else{
-			closedir(dir);
-		}
+	if (argc - optind != 2) {
+		usage(basename(*argv));
+		return 1;
 	}
+	file_name = argv[optind];
+	output_dir = argv[optind+1];
 
+	/* Check arguments */
+	res = access(file_name, F_OK|R_OK);
+	if (res == -1)
+		err(1, "%s", file_name);
+	res = access(output_dir, F_OK|W_OK);
+	if (res == -1)
+		err(1, "%s", output_dir);
+
+	/* MPI inits */
+	res = MPI_Init(&argc, &argv);
+	assert(res == MPI_SUCCESS);
+	res = MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	assert(res == MPI_SUCCESS);
+	res = MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
+	assert(res == MPI_SUCCESS);
+
+	/* Small summary */
+	if (rank == 0) {
+		fprintf(stderr, "Number of processes : %d\n", num_proc);
+		fprintf(stderr, "Reads' quality threshold : %d\n", threshold);
+		fprintf(stderr, "Compression Level is : %d\n", compression_level);
+		fprintf(stderr, "SAM file to read : %s\n", file_name);
+		fprintf(stderr, "Output directory : %s\n", output_dir);
+	}
 
 	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
 
