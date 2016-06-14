@@ -28,8 +28,13 @@
 	Paul Paganiban from Institut Curie
 */
 
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 #include <assert.h>
+#include <ctype.h>
 #include <err.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,11 +104,18 @@
 #define DEFAULT_MAX_SIZE 6000000000 //Default capacity for one process: 6G
 #define DEFAULT_INBUF_SIZE  (1024*1024*1024)
 
+/* Maximum chromosome number */
+#define MAXNBCHR 256
+
 
 static void usage(const char *);
 
 
 int main (int argc, char *argv[]){
+	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
+	int fd;
+	off_t hsiz;
+	struct stat st;
 
 	MPI_File mpi_filed;
 
@@ -114,7 +126,6 @@ int main (int argc, char *argv[]){
 	char *file_name, *output_dir;
 
 	char *header;
-	char **chrNames;
 	unsigned int headerSize;
 	unsigned char threshold = 0;
 	char sender;
@@ -191,6 +202,36 @@ int main (int argc, char *argv[]){
 		fprintf(stderr, "Output directory : %s\n", output_dir);
 	}
 
+	/* Process input file */
+	fd = open(file_name, O_RDONLY, 0666);
+	assert(fd != -1);
+	assert(fstat(fd, &st) != -1);
+	xbuf = mmap(NULL, st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
+	assert(xbuf != MAP_FAILED);
+
+	/* Parse SAM header */
+	memset(chrNames, 0, sizeof(chrNames));
+	x = xbuf; nbchr = 0;
+	while (*x == '@') {
+		y = strchr(x, '\n');
+		z = x; x = y + 1;
+		if (strncmp(z, "@SQ", 3) != 0) continue;
+		/* Save reference names */
+		y = strstr(z, "SN:");
+		assert(y != NULL);
+		z = y + 3;
+		while (*z && !isspace((unsigned char)*z)) z++;
+		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
+		assert(nbchr < MAXNBCHR - 2);
+	}
+	chrNames[nbchr++] = strdup(UNMAPPED);
+	chrNames[nbchr++] = strdup(DISCORDANT);
+	hsiz = x - xbuf; hbuf = strndup(xbuf, hsiz);
+	fprintf(stderr, "Header has %d+2 references\n", nbchr - 2);
+
+	assert(munmap(xbuf, st.st_size) != -1);
+	assert(close(fd) != -1);
+
 	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
 
 	/*
@@ -244,9 +285,9 @@ int main (int argc, char *argv[]){
 
 	//FIND HEADERSIZE AND CHRNAMES AND NBCHR
 	tic = MPI_Wtime();
-	headerSize=find_header(rbuf,rank,&unmappedSize,&nbchr,&header,&chrNames);
-	fprintf(stderr, "%d (%.2lf)::::: ***HEADER PART%d***\n", rank,(double)(MPI_Wtime()-tic),headerSize);
-	free(rbuf);
+	asprintf(&header, "@HD\tVN:1.0\tSO:coordinate\n%s", hbuf);
+	headerSize = unmappedSize = strlen(header);
+	free(hbuf); free(rbuf);
 
 	//We place file offset of each process to the begining of one read's line
 	goff=init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank);
@@ -610,7 +651,6 @@ int main (int argc, char *argv[]){
 
 	for(i = 0; i < nbchr; i++)
 		free(chrNames[i]);
-	free(chrNames);
 	// task: FREE READS
 	//free(reads);
 	free(readNumberByChr);
