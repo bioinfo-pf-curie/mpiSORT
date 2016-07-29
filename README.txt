@@ -1,14 +1,23 @@
-Objectiv
+Objective
 ---------
 
-Sorting big whole genome NGS data file. 
+Sorting big NGS data file Version 1.2. 
 
-This version fix bugs of the previous version (when data sample is too small, and jobs under 6). 
+Release notes
+---------
+
+29/07/2016
+
+1) Bug fix when data sample is too small and some jobs have nothing to sort
+2) Bug fix when jobs under 6
+2) We add new option -n for sorting by name
+3) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up)
+4) Refactoring and cleaning of the code
 
 Requirements:
 -------------
 
-Nonetheless for small data samples a normal network and a network file system can do the job.
+For small data samples a normal network and a network file system can do the job.
 
 The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
 
@@ -154,7 +163,7 @@ Options
 -------
 
 the -q option is for quality filtering.
-
+the -n for sorting by name
 
 Future developments and open tickets
 ------------------------------------
