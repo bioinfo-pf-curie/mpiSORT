@@ -8,11 +8,11 @@ Release notes
 
 29/07/2016
 
-1) Bug fix when data sample is too small and some jobs have nothing to sort
-2) Bug fix when jobs under 6
-2) We add new option -n for sorting by name
-3) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up)
-4) Refactoring and cleaning of the code
+1) Bug fix when data sample is too small and some jobs have nothing to sort <br />
+2) Bug fix when jobs under 6 <br />
+2) We add new option -n for sorting by name <br />
+3) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
+4) Refactoring and cleaning of the code <br />
 
 Requirements:
 -------------
