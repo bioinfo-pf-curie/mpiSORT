@@ -3,9 +3,10 @@ Objectiv
 
 Sorting big whole genome NGS data file. 
 
+This version fix bugs of the previous version (when data sample is too small, and jobs under 6). 
+
 Requirements:
 -------------
-
 
 Nonetheless for small data samples a normal network and a network file system can do the job.
 
@@ -19,24 +20,12 @@ Because of the development design and feature program have been optimized for HP
 This programm is intended to run on supercomputer architectures equiped with Infiniband network and parallel 
 filesystem such as Lustre, GPFS,... 
 
-
 Contact us if you need information.
-
-Known and important issues:
---------------------------
-
-1) The program hang when the number of jobs is under 6. 
-We are investigating this issue, we are really sorry about that.
-Please take number of jobs greater than 6.   
-
-2) When a job has no reads to sort for a chromosom the programm crashes, it happens when the data sample is to small <br />
-and the number of jobs is to high. To circumvent this issue reduce the number of jobs.
-This issue is also under investigation.
 
 Input Data:
 ----------
 
-A SAM file produced by an aligner (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
+A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
 
 Output:  
 -------
@@ -53,7 +42,7 @@ A MPI version should be installed first. We have tested the program with differe
 Compiler: 
 ---------
 
-A C compiler must be present also. We have tested the programm with GCC and Inter Compiler. 
+A C compiler must be present also. We have tested the programm with GCC and Intel Compiler. 
 
 Test:
 -----
@@ -132,7 +121,9 @@ Tune this parameters according to your configuration.
 Compilation:
 ------------
 
-To compile the program modify the makefile to tell where the mpicc is located. Then type make in the installation folder.
+To compile the program modify the makefile to tell where the mpicc is located. 
+
+Then type "make clean all" to compile or "make clean" for cleaning obj files.
 
 
 Example of code:
