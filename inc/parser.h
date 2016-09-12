@@ -80,21 +80,6 @@ typedef struct Read_chain
 }Read_chain;
 
 /**
- * \brief Find the header, its size and the chromosomes name
- *
- * \fn unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *pnbchr, char **pheader, char ***pchrNames)
- * \param localData The local data read directly from the input file
- * \param rank Rank of the process
- * \param unmappedSize Size of lines that are not "Read"
- * \param pnbchr The number of chromosome. Will be set in this function.
- * \param pheader Header in char *
- * \param pchrNames Reference array to the chromosomes names. Will be filled during the function.
- *
- * \return Size of the header, chromosome name
- */
-unsigned int find_header(char *localData, int rank, size_t *unmappedSize, int *pnbchr, char **pheader, char ***pchrNames);
-
-/**
  * \brief Initialize the start offset for each process
  *
  * \fn size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank)
