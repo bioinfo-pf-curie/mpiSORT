@@ -1,8 +1,3 @@
-#Colors for output
-#CC_TEXT=\033[0;32mCC\033[0m
-#LD_TEXT=\033[0;33mLD\033[0m
-#RM_TEXT=\033[0;31mRM\033[0m
-
 ##################################################################
 
 #Makefile for building mpiSORT
@@ -15,7 +10,6 @@ DEBUG ?=	true
 WARN ?= 	false
 
 ##################################################################
-
 #Theses may be changed
 INC_DIR ?=	inc
 SRC_DIR ?=	src
@@ -23,12 +17,10 @@ OBJ_DIR ?=	obj
 BIN_DIR ?=	bin
 
 PROG=		psort
-
 ##################################################################
 
 #Standard compilation values
-CC =		/bioinfo/local/build/openmpi/openmpi-1.10.3p/bin/mpicc
-#CC =		mpicc
+CC =		mpicc
 CXX =		mpic++
 
 CFLAGS =
