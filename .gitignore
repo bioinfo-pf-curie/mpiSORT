@@ -2,5 +2,6 @@ autom4te.cache
 config.log
 config.status
 Makefile
+mpisort-*.tar.gz
 *.o
 psort
