@@ -9,4 +9,3 @@ SRC = mpiSort.c mpiSort_utils.c mpi_globals.c mergeSort.c parabitonicsort.c \
 HDR = mpiSort_utils.h diffuse.h merge_utils.h merge.h mpi_globals.h \
 	mergeSort.h parabitonicsort.h qksort.h parser.h tokenizer.h \
 	preWrite.h write.h write_utils.h bgzf.c bgzf.h khash.h
-
