@@ -30,7 +30,9 @@
 
 
 #include <stdio.h>
-#include "mpi.h"
+
+#include <mpi.h>
+
 #include "parser.h"
 
 char merge(int rank, int num_proc, int headerSize, size_t readNum, size_t array_max_size,

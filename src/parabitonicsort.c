@@ -52,11 +52,13 @@
  * https://www.eecis.udel.edu/~saunders/courses/372/01f/ppmpi_c/chap14a/
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include "mpi.h"
+
+#include <mpi.h>
+
 #include "parabitonicsort.h"
 
 // we limit to 1gb per proc

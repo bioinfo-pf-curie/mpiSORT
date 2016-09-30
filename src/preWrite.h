@@ -31,7 +31,8 @@
 
 
 #include <stdio.h>
-#include "mpi.h"
+
+#include <mpi.h>
 
 MPI_Offset startOffset(int rank, int num_proc, size_t blockSize, size_t headerSize, int nbchr, size_t readNum, MPI_Comm comm);
 

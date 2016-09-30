@@ -30,10 +30,12 @@
 
 
 #include <stdlib.h>
+
+#include <mpi.h>
+
 #include "preWrite.h"
 #include "write_utils.h"
 #include "parser.h"
-#include "mpi.h"
 
 void preWrite(Read* chr, size_t readNum, char** data, int* size){
 	size_t j;

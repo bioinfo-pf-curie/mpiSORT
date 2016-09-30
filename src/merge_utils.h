@@ -31,18 +31,19 @@
 
 
 #ifndef MERGE_UTILS_H_
-	#define MERGE_UTILS_H_
+#define MERGE_UTILS_H_
 
-	#include <stdio.h>
-	#include <stdlib.h>
-	#include "parser.h"
-	#include "merge.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-	int number_sons(int rank, int num_proc);
-	void arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t size1, size_t size2);
-	size_t bucket_arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t* a4[], size_t s1, size_t s2, size_t s3, char lacking, size_t disp);
-	void cellcpy(size_t* src[], size_t* dst[], size_t i1, size_t i2);
+#include "parser.h"
+#include "merge.h"
 
-	void indexing(int rank, size_t readNum, Read* chr, size_t *send[]);
+int number_sons(int rank, int num_proc);
+void arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t size1, size_t size2);
+size_t bucket_arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t* a4[], size_t s1, size_t s2, size_t s3, char lacking, size_t disp);
+void cellcpy(size_t* src[], size_t* dst[], size_t i1, size_t i2);
+
+void indexing(int rank, size_t readNum, Read* chr, size_t *send[]);
 
 #endif

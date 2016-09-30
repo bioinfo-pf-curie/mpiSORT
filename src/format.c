@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "merge.h"
 #include "parser.h"
 #include "diffuse.h"

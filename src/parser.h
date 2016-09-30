@@ -32,11 +32,13 @@
 #ifndef PARSER
 	#define PARSER
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
+
 #include <mpi.h>
+
 #include "tokenizer.h"
 #include "time.h"
 

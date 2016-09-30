@@ -31,11 +31,13 @@
 
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <mpi.h>
+
 #include "diffuse.h"
 #include "merge.h"
-#include "mpi.h"
 
 void diffuse(size_t *recv_diffuse, int rank, int num_proc, char sender, size_t localReadNum, size_t* count_diffuse, size_t **send_diffuse){
 

@@ -28,14 +28,15 @@
 	Paul Paganiban from Institut Curie
 */
 
-
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
-#include <mpi.h>
-#include "bufferized_read.h"
 #include <assert.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <mpi.h>
+
+#include "bufferized_read.h"
 
 #define DEFAULT_INBUF_SIZE (512*1024*1024)
 //#define DEFAULT_INBUF_SIZE (512)

@@ -55,18 +55,6 @@
 #include "write_utils.h"
 #include "qksort.h"
 
-#if 0
-#include "mpi_globals.h"
-#include "merge.h"
-#include "diffuse.h"
-#include "preWrite.h"
-#include "write2.h"
-#include "mergeSort.h"
-#include "parser.h"
-#include "merge_utils.h"
-#include "bufferized_read.h"
-#endif
-
 
 /*
  * Constant for Lustre striping

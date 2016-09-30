@@ -29,8 +29,8 @@
 */
 
 
-
 #include <mpi.h>
+
 //typedef size_t size_t;
 void Generate_local_list(int list_size, size_t local_list[], size_t local_index[]);
 void Local_sort(size_t list_size, size_t local_keys[], size_t local_index[]);

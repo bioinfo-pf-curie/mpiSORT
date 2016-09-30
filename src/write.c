@@ -1,3 +1,4 @@
+
 #include "write.h"
 #include "bgzf.c"
 #include "bgzf.h"

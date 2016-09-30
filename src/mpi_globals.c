@@ -31,10 +31,12 @@
 
 
 #include <errno.h>
-#include <stdio.h>
 #include <limits.h>
+#include <stdio.h>
+
+#include <mpi.h>
+
 #include "mpi_globals.h"
-#include "mpi.h"
 
 int g_rank;
 int g_size;

@@ -28,10 +28,10 @@
 	Paul Paganiban from Institut Curie
 */
 
-
-
 #include <stdio.h>
-#include "mpi.h"
+
+#include <mpi.h>
+
 #include "merge.h"
 #include "format.h"
 #include "diffuse.h"

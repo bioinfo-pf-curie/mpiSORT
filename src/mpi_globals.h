@@ -34,12 +34,14 @@
 #ifndef _MPI_GLOBALS_H_
 #define _MPI_GLOBALS_H_
 
-#include <time.h>
 #include <sys/time.h>
-#include <stdio.h>
-#include <errno.h>
-#include <mpi.h>
+
 #include <assert.h>
+#include <errno.h>
+#include <time.h>
+#include <stdio.h>
+
+#include <mpi.h>
 
 extern int g_rank; // individual processor rank in MPI_COMM_WORLD
 extern int g_size; // the total number of processors in MPI_COMM_WORLD
