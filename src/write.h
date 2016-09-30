@@ -11,7 +11,6 @@
 
 #include "parser.h"
 #include "preWrite.h"
-#include "diffuse.h"
 #include "mpi_globals.h"
 #include "qksort.h"
 #include "write_utils.h"

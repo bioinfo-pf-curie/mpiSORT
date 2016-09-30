@@ -45,9 +45,7 @@
 
 #include <mpi.h>
 
-#include "diffuse.h"
 #include "mergeSort.h"
-#include "merge_utils.h"
 #include "parser.h"
 #include "preWrite.h"
 #include "write.h"
