@@ -422,7 +422,9 @@ int main (int argc, char *argv[]){
 	chrNames[nbchr++] = strdup(UNMAPPED);
 	chrNames[nbchr++] = strdup(DISCORDANT);
 	hsiz = x - xbuf; hbuf = strndup(xbuf, hsiz);
-	fprintf(stderr, "Header has %d+2 references\n", nbchr - 2);
+	if (rank == 0) {
+		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
+		fprintf(stderr, "Header has %d+2 references\n", nbchr - 2); }
 
 	assert(munmap(xbuf, (size_t)st.st_size) != -1);
 	assert(close(fd) != -1);
@@ -460,8 +462,6 @@ int main (int argc, char *argv[]){
 	ierr = MPI_File_get_size(mpi_filed, &fileSize);
 	assert(ierr == MPI_SUCCESS);
 	input_file_size = (long long)fileSize;
-	if (rank == 0)
-		fprintf(stderr, "The size of the file is %zu\n", input_file_size);
 
 	/* Get chunk offset and size */
 	fsiz = input_file_size;
