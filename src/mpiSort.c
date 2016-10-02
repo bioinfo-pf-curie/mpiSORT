@@ -336,7 +336,7 @@ int main (int argc, char *argv[]){
 	parse_mode = MODE_OFFSET;
 
 	/* Check command line */
-	while ((i = getopt(argc, argv, "nc:hpq:")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpq:")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -344,14 +344,14 @@ int main (int argc, char *argv[]){
 			case 'h': /* Usage display */
 				usage(basename(*argv));
 				return 0;
+			case 'n':
+				parse_mode = MODE_NAME;
+				break;
 			case 'p': /* Paired reads */
 				paired = 1;
 				break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
-				break;
-			case 'n':
-				parse_mode = MODE_NAME;
 				break;
 			default:
 				usage(basename(*argv));
