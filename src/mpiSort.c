@@ -325,7 +325,7 @@ int main (int argc, char *argv[]){
 	MPI_Comm split_comm; //used to split communication when jobs have no reads to sort
 	int split_rank, split_size; //after split communication we update the rank
 
-	clock_t tic, toc;
+	double tic, toc;
 	int compression_level = 3; //by default compression is 3
 
 	char *rbuf;
@@ -471,7 +471,7 @@ int main (int argc, char *argv[]){
 	rbuf = (char*)malloc((lsiz2 + 1)*sizeof(char));
 	tic = MPI_Wtime();
 	MPI_File_read_at(mpi_filed, loff, rbuf, lsiz2, MPI_CHAR, MPI_STATUS_IGNORE);
-	fprintf(stderr, "%d (%.2lf)::::: ***GET OFFSET BLOCKS TO READ ***\n", rank,(double)(MPI_Wtime()-tic));
+	fprintf(stderr, "%d (%.2lf)::::: ***GET OFFSET BLOCKS TO READ ***\n", rank, MPI_Wtime()-tic);
 
 	//FIND HEADERSIZE AND CHRNAMES AND NBCHR
 	tic = MPI_Wtime();
@@ -629,7 +629,7 @@ int main (int argc, char *argv[]){
 
 	//MPI_File_seek(mpi_filed, goff[rank], MPI_SEEK_SET);
 
-	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE chr1:%zu ***\n", rank,(double)(MPI_Wtime()-toc), readNumberByChr[0]);
+	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE chr1:%zu ***\n", rank, MPI_Wtime()-toc, readNumberByChr[0]);
 
 	free(goff);
 	//MPI_File_close(&mpi_filed);
