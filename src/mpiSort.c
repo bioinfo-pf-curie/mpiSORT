@@ -304,14 +304,14 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired=0; //we assume the reads are single ended
+	int res, nbchr, i, paired;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
 	char *header;
 
 	unsigned int headerSize;
-	unsigned char threshold = 0;
+	unsigned char threshold;
 
 	size_t input_file_size;
 	size_t unmappedSize = 0;
@@ -326,14 +326,18 @@ int main (int argc, char *argv[]){
 	int split_rank, split_size; //after split communication we update the rank
 
 	double tic, toc;
-	int compression_level = 3; //by default compression is 3
+	int compression_level;
 
 	char *rbuf;
 	size_t fsiz, lsiz, loff, *goff;
 
 	MPI_Info finfo;
 
+	/* Set default values */
+	compression_level = 3;
 	parse_mode = MODE_OFFSET;
+	paired = 0;
+	threshold = 0;
 
 	/* Check command line */
 	while ((i = getopt(argc, argv, "c:hnpq:")) != -1) {
