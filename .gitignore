@@ -6,3 +6,4 @@ Makefile
 mpisort-*.tar.gz
 *.o
 psort
+.local.el
