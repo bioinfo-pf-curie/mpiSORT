@@ -107,8 +107,6 @@ size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int n
  * \param preadNumberByChr Reference array to the number of reads by chromosome.
  * \param chrNames Reference array to the chromosomes names.
  * \param preads The reads linked list. Will be set in this function.
- *
- * \return void
  */
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 
