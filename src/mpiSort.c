@@ -1699,7 +1699,7 @@ int main (int argc, char *argv[]){
 static void usage(const char *prg) {
 
 	fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
-		"Version: v1.0\n"
+		"Version: v%s\n"
 		"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
 		"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
 		"output : a bam files per chromosome, a bam file of unmapped reads \n"
@@ -1714,7 +1714,7 @@ static void usage(const char *prg) {
 		"In mpiSort you mention the number of stripes with -c options \n"
 		"and mention the sripe size with with -s options. Example of command     \n"
 		"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n",
-		prg);
+		VERSION, prg);
 
 	return; }
 
