@@ -401,7 +401,7 @@ int main (int argc, char *argv[]){
 	fd = open(file_name, O_RDONLY, 0666);
 	assert(fd != -1);
 	assert(fstat(fd, &st) != -1);
-	xbuf = mmap(NULL, st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
+	xbuf = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
 	assert(xbuf != MAP_FAILED);
 
 	/* Parse SAM header */
@@ -424,7 +424,7 @@ int main (int argc, char *argv[]){
 	hsiz = x - xbuf; hbuf = strndup(xbuf, hsiz);
 	fprintf(stderr, "Header has %d+2 references\n", nbchr - 2);
 
-	assert(munmap(xbuf, st.st_size) != -1);
+	assert(munmap(xbuf, (size_t)st.st_size) != -1);
 	assert(close(fd) != -1);
 
 	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
