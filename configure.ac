@@ -6,5 +6,8 @@ AM_INIT_AUTOMAKE([1.15 foreign -Wall])
 # Checks for programs.
 AC_PROG_CC([mpicc])
 
+# Checks for libraries.
+AC_CHECK_LIB([z], [inflate])
+
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
