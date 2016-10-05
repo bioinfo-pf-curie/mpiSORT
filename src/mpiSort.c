@@ -445,7 +445,7 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"striping_unit", STRIPING_UNIT); //2G striping
 	MPI_Info_set(finfo,"ind_rd_buffer_size", STRIPING_UNIT); //2gb buffer
 	MPI_Info_set(finfo,"romio_ds_read",DATA_SIEVING_READ);
-		
+
 	/*
 	 * for collective reading and writing
 	 * should be adapted too and tested according to the file system
@@ -454,7 +454,7 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
-	
+
 
 	//we open the input file
 	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
@@ -1716,4 +1716,3 @@ static void usage(const char *prg) {
 		VERSION, prg);
 
 	return; }
-
