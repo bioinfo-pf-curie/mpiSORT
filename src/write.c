@@ -43,7 +43,6 @@ void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *f
 	 */
 
 	size_t k;
-	double t;
 	size_t new_data_sz = 0;
 
 	//MPI_File in;
@@ -1193,8 +1192,6 @@ uint8_t* write_compression_bgzf(int compression_level,
 		BGZF** fp, char* char_buff_uncompressed, int* compressed_size,
 		size_t* y_message_sz, BGZF** fp_header, uint8_t** compressed_header,
 		int* compressed_size_header, char* header) {
-	double time_count = MPI_Wtime();
-
 
 	*fp = calloc(1, sizeof(BGZF));
 	int block_length = MAX_BLOCK_SIZE;
@@ -1779,7 +1776,6 @@ void writeSam(size_t total_num_reads,
 
 	//Variables
 	//Common variables
-	size_t j;
 	size_t k;
 
 	//for initialisation
@@ -2000,7 +1996,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	int *all_read_size=NULL;
 	size_t *all_offset_source_file=NULL;
-	size_t *all_offset_source_index=NULL;
 	int *all_read_size_to_send=NULL;
 
 	// vector use in the reading and writing

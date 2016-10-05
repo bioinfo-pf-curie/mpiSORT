@@ -863,7 +863,6 @@ int main (int argc, char *argv[]){
 			// and indexed pbs is for parallel bitonic sort
 			size_t *pbs_local_reads_coordinates;
 			size_t *pbs_global_reads_coordinates_index;
-			size_t dataSize = 0;
 
 			//task Init offset and size for source - free chr
 			// from mpiSort_utils.c

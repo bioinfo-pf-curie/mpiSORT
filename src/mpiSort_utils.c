@@ -12,7 +12,6 @@
 void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *local_read_rank, size_t *coordinates,
 		size_t* offset, int* size, Read* data_chr, int local_readNum){
 
-	size_t dataSize = 0;
    	int j;
    	Read* chr = data_chr;
    	Read* to_free = NULL;
@@ -133,12 +132,4 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 
 		MPI_Send(data, size, MPI_LONG_LONG_INT, master,  0, split_comm);
 	}
-}
-
-
-MPI_Comm compute_split_comm(int rank, int chosen_rank, int numproc, int *color_vec_to_send, int *key_vec_to_send,
-		size_t *localReadsNum_rank0, MPI_Comm comm_world, MPI_Comm split_comm){
-
-
-
 }
