@@ -328,7 +328,6 @@ int main (int argc, char *argv[]){
 	double tic, toc;
 	int compression_level;
 
-	char *rbuf;
 	size_t fsiz, lsiz, loff, *goff;
 	const char *sort_name;
 
@@ -472,22 +471,10 @@ int main (int argc, char *argv[]){
 	fsiz = input_file_size;
 	lsiz = fsiz / num_proc;
 	loff = rank * lsiz;
-	size_t lsiz2 = 150*sizeof(char)*1000; // load only the begining of file to check the read name and header
-	if(lsiz2>lsiz){
-		lsiz2 = lsiz;
-	}
 
-	rbuf = (char*)malloc((lsiz2 + 1)*sizeof(char));
 	tic = MPI_Wtime();
-	MPI_File_read_at(mpi_filed, loff, rbuf, lsiz2, MPI_CHAR, MPI_STATUS_IGNORE);
-	fprintf(stderr, "%d (%.2lf)::::: ***GET OFFSET BLOCKS TO READ ***\n", rank, MPI_Wtime()-tic);
-
-	//FIND HEADERSIZE AND CHRNAMES AND NBCHR
-	tic = MPI_Wtime();
-
 
 	headerSize = unmappedSize = discordantSize = strlen(header);
-	free(rbuf);
 
 	//We place file offset of each process to the begining of one read's line
 	goff=init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank);
