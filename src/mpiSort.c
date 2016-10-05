@@ -956,8 +956,7 @@ int main (int argc, char *argv[]){
 			 * Collect sizes, coordinates and offsets
 			 * in all_vector
 			 */
-			time_count = MPI_Wtime();
-			time_count1 = MPI_Wtime();
+			time_count = time_count1 = MPI_Wtime();
 			if (split_rank ==chosen_split_rank){
 
 				MPI_Status status;
