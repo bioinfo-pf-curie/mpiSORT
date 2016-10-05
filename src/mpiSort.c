@@ -330,12 +330,14 @@ int main (int argc, char *argv[]){
 
 	char *rbuf;
 	size_t fsiz, lsiz, loff, *goff;
+	const char *sort_name;
 
 	MPI_Info finfo;
 
 	/* Set default values */
 	compression_level = 3;
 	parse_mode = MODE_OFFSET;
+	sort_name = "coordinate";
 	paired = 0;
 	threshold = 0;
 
@@ -350,6 +352,7 @@ int main (int argc, char *argv[]){
 				return 0;
 			case 'n':
 				parse_mode = MODE_NAME;
+				sort_name = "queryname";
 				break;
 			case 'p': /* Paired reads */
 				paired = 1;
@@ -425,6 +428,8 @@ int main (int argc, char *argv[]){
 	if (rank == 0) {
 		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
 		fprintf(stderr, "Header has %d+2 references\n", nbchr - 2); }
+	asprintf(&header, "@HD\tVN:1.0\tSO:%s\n%s", sort_name, hbuf);
+	free(hbuf);
 
 	assert(munmap(xbuf, (size_t)st.st_size) != -1);
 	assert(close(fd) != -1);
@@ -480,18 +485,9 @@ int main (int argc, char *argv[]){
 	//FIND HEADERSIZE AND CHRNAMES AND NBCHR
 	tic = MPI_Wtime();
 
-	if (parse_mode == MODE_OFFSET)
-		asprintf(&header, "@HD\tVN:1.0\tSO:coordinate\n%s", hbuf);
-	else {
-
-		header = (char*)malloc(strlen(hbuf)+1);
-		memcpy(header, hbuf, strlen(hbuf));
-		header[strlen(hbuf)] = 0;
-
-	}
 
 	headerSize = unmappedSize = discordantSize = strlen(header);
-	free(hbuf); free(rbuf);
+	free(rbuf);
 
 	//We place file offset of each process to the begining of one read's line
 	goff=init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank);
