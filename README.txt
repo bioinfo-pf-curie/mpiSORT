@@ -1,15 +1,15 @@
 Objective
 ---------
 
-Sorting big NGS data file Version 1.2. 
+Sorting big NGS data file Version 1.0. 
 
 Release notes
 ---------
 
 06/10/2016
 
-1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed
-2) We uncounter a bug for indexing the bam results. The only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam 
+1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed. <br />
+2) We uncounter a bug for indexing the bam results. The only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam <br />
 
 29/07/2016
 
@@ -19,26 +19,50 @@ Release notes
 4) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
 5) Refactoring and cleaning of the code <br />
 
+Installation
+--------
+
+You need automake 1.15 for the installation. <br />
+You can install automake and autoconf in differents directories and export the path like this: <br />
+export PATH=../automake-1.15/bin:../autoconf-2.69/bin:$PATH <br />
+
+Download from git. In the folder mpiSORT type: <br />
+./configure && make install && make <br />
+
+or for distribution  <br />
+ 
+make dist  <br />
+tar xzf .tar.gz  <br />
+cd mpisort-1.0  <br />
+./configure && make install && make<br />
+
+for passing mpi path: <br />
+./configure CC=mpi_bin_path  <br />
+add --prefix in configure if you need  <br />
+
+
+
 Consideration
 -----------
 
-We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on distributed memory computer. 
+We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on distributed memory computer. <br />
 
-There are several aspects in this sorting algorithm that are important: the bitonic-sort and the distributed cache buffering.
+There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache buffering. <br />
 
-The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm (https://en.wikipedia.org/wiki/Bitonic_sorter). The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitive. This is why the program runs faster with low latency network.
+The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm (https://en.wikipedia.org/wiki/Bitonic_sorter). The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitive. This is why the program runs faster with low latency network.<br />
 
-The program makes an intensive use of IO reads cache buffering at the client level. The cache size depends of the stripping of your data on the distributed file system.
-The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations and file management.
+The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
 
-Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion but MPI does. 
+The program makes an intensive use of IO reads cache buffering at the client level. The cache size depends of the stripping of your data on the distributed file system. The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations and file management.<br />
+
+Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
 
 Requirements:
 -------------
 
-For small data samples a normal network and a network file system can do the job.
+For small data samples a normal network and a network file system can do the job. <br />
 
-The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). 
+The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). <br />
 
 Because of the development design and feature program have been optimized for HPC architecture.
 
