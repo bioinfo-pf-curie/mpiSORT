@@ -6,6 +6,11 @@ Sorting big NGS data file Version 1.2.
 Release notes
 ---------
 
+06/10/2016
+
+1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed
+2) We uncounter a bug for indexing the bam results. The only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam 
+
 29/07/2016
 
 1) Bug fix when data sample is too small and some jobs have nothing to sort <br />
@@ -191,3 +196,5 @@ Future developments and open tickets
 4) Make a pile up of the reads <br /> 
 5) Write SAM files <br />
 6) Propose an option to write a big SAM file <br />
+
+
