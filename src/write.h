@@ -9,7 +9,6 @@
 #include "parser.h"
 #include "assert.h"
 #include "preWrite.h"
-#include "diffuse.h"
 #include "math.h"
 #include "sys/mman.h"
 #include "mpi_globals.h"
