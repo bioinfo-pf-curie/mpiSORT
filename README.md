@@ -6,15 +6,15 @@ Sorting big NGS data file Version 1.0.
 Sections:
 -------
 
-[release notes] 1) Release notes <br />
-[installation] 2) Installation <br />
+1) Release notes <br />
+2) Installation <br />
 3)  Algorithm <br />
 4) Requirements <br />
 5) Memory usage <br />
 6) Inputs <br />
 8) Outputs <br />
 9) Compiler <br />
-10) Sample test
+10) Sample test  <br />
 11) Configuration <br />
 11) Lustre configuration <br />
 12) File system management <br />
@@ -27,7 +27,7 @@ Sections:
 ==============================================================================
 
 
-# release notes  
+1) Release notes 
 -------------
 
 Release 1.0 from 06/10/2016
@@ -43,7 +43,7 @@ Release 0.9 from 29/07/2016
 4) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
 5) Refactoring and cleaning of the code <br />
 
-## installation
+2) Installation
 -----------
 
 You need automake 1.15 for the installation. <br />
