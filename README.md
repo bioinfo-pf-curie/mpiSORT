@@ -33,6 +33,7 @@ Sections:
 06/10/2016
 
 1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed. <br />
+2) New packaging for distribution (autotools) <br />
 2) We uncounter a bug for indexing the bam results. The only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam <br />
 
 29/07/2016
@@ -53,8 +54,7 @@ export PATH=../automake-1.15/bin:../autoconf-2.69/bin:$PATH <br />
 Download from git. In the folder mpiSORT type: <br />
 ./configure && make install && make <br />
 
-or for distribution  <br />
- 
+or for distribution: <br />
 make dist  <br />
 tar xzf .tar.gz  <br />
 cd mpisort-1.0  <br />
@@ -154,20 +154,18 @@ The parallel writing and reading are done via the MPI finfo structure.
 
 !!!We recommand to test different parameters before setting them once for all.
 
-	* for reading and set the Lustre buffer size.
+	- for reading and set the Lustre buffer size.
 To do that edit the code of mpiSort.c and change the parameters in the header part. 
 After tuning parameters recompile the application.
 
-	* If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
+	- If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
 
-	*The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
+	- The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
 We do data sieving reading and a colective write is done with 128 servers.
 The default are unharmed for other filesystem.
 
-	*Tune this parameters according to your configuration.
-
-
+	- Tune this parameters according to your configuration.
 
 12) File system management:
 -----------------------
