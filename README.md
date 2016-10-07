@@ -12,10 +12,10 @@ Sections:
 4) Requirements <br />
 5) Memory usage <br />
 6) Inputs <br />
-8) Outputs <br />
-9) Compiler <br />
-10) Sample test  <br />
-11) Configuration <br />
+7) Outputs <br />
+8) Compiler <br />
+9) Sample test  <br />
+10) Configuration <br />
 11) Lustre configuration <br />
 12) File system management <br />
 13) Results <br />
