@@ -603,21 +603,46 @@ void writeSam(
 		int* new_read_size,
 		int* new_rank){
 
-	//fprintf(stderr, "rank %d in write sam step 1 local_readNum = %zu \n",rank, local_readNum);
-	//task: variables declaration
+
+	/*
+	 * This section is divided in 4 steps
+	 *
+	 * First step:
+	 *
+	 * To accelerate the writing the output are written in blocks. Each rank is going to write a block of contiguous reads.
+	 * To do that we sort the offset destinations and gives a new rank to contigues read.
+	 *
+	 * Second step:
+	 *
+	 * Now read the reads. The reading is done in contiguous blocks.
+	 * So we sort the offsets sources before reading the reads
+	 *
+	 * Third step:
+	 *
+	 * The shuffle of the read according to the offset destinations
+	 * The shuffle is optimized with Bruck method.
+	 *
+	 * Fourth step:
+	 *
+	 * The writing.
+	 *
+	 */
+
+
+
+
 	size_t j;
 	size_t k;
 	int ierr;
 
+	//COMM_WORLD will become our new communicator
 	COMM_WORLD = split_comm;
 
 	int master_job_phase_1 = master_rank;
 	int master_job_phase_2 = master_rank;
 
 	MPI_Status status;
-	//size_t dataSize;
 
-	//size_t *all_offset_dest_index_phase1;
 	int *all_rank_to_send=NULL;
 	size_t *all_offset_dest_file_to_send=NULL;
 	int *all_read_size_to_send=NULL;
@@ -627,14 +652,9 @@ void writeSam(
 	 * phase 1 variables
 	 */
 
-	//size_t *all_offset_source_file_to_send_phase1=NULL;
 	int *all_read_size_phase1_to_send=NULL;
 	int *all_rank_phase1_to_send=NULL;
-
 	size_t* all_offset_source_file_phase1_to_send=NULL;
-	//size_t *all_offset_dest_file_phase1_to_send=NULL;
-
-	//vector allocation for the phase 1
 	size_t *new_offset_dest_phase1 = (size_t *) malloc(local_readNum* sizeof(size_t));
 	size_t *new_offset_source_phase1 = (size_t *) malloc(local_readNum* sizeof(size_t));
 	size_t *new_offset_source_sorted_phase1 = (size_t *) malloc(local_readNum* sizeof(size_t));
@@ -654,9 +674,6 @@ void writeSam(
 	int *all_read_size_phase2_to_send=NULL;
 	size_t *all_offset_dest_file_phase2_to_send=NULL;
 	int *all_rank_phase2_to_send=NULL;
-
-
-	//vector allocation for the phase 2
 	size_t *new_offset_dest_phase2 = (size_t *) malloc(local_readNum* sizeof(size_t));
 	size_t *new_offset_source_sorted_phase2 = (size_t *) malloc(local_readNum* sizeof(size_t));
 	int *new_read_size_phase2 = (int *) malloc(local_readNum* sizeof(int));
@@ -668,7 +685,6 @@ void writeSam(
 
 	size_t *all_offset_source_sorted_index_phase2=NULL;
 	//variables for the writing part
-	//new_offset_source_index_phase1[0] = 0;
 
 	//the MPI datatype
 	MPI_Datatype Datatype_Read_to_write;
@@ -690,13 +706,7 @@ void writeSam(
 	 * use master_rank_global_count
 	 */
 
-	//dataSize = 0;
-
 	char **data2;
-
-	//task Init offset and size for source - free chr
-	//Read *read_tmp = chr;
-	//dataSize = init_offset_and_size_free_chr(offset_source, size_source, read_tmp, local_readNum);
 
 
 	/* *****************************************************************************
@@ -704,7 +714,7 @@ void writeSam(
 	 *
 	 * In this phase we are going to sort the destination
 	 * offset .and change the rank of the reads to tell them
-	 * where to go to be writed in the same block block
+	 * where to go to in order to be writen in the same block block
 	 *
 	 * Each job has new vector of offset read, of offset write
 	 * and of read size :: new_offset_source, new_offset_dest,  new_read_size
@@ -712,6 +722,9 @@ void writeSam(
 	 * We need a new vector with the rank for sending the reads
 	 * after reading.
 	 *
+	 * There is nothing really new compare with the sorting of the
+	 * coordinates and same optimization could be done, except we compute
+	 * new rank for each reads at the end
 	 ******************************************************************************/
 
 
@@ -726,11 +739,6 @@ void writeSam(
 		size_t *all_offset_source_file_phase1=NULL;
 		int *all_read_size_phase1=NULL;
 		int *all_rank_phase1=NULL;
-
-		/*
-		 * Phase 2: master_2 gets the total of reads
-		 */
-
 
 		size_t total_num_read_phase1 = 0;
 		MPI_Reduce(&local_readNum, &total_num_read_phase1, 1, MPI_LONG_LONG_INT, MPI_SUM, master_job_phase_1, COMM_WORLD);
@@ -755,7 +763,7 @@ void writeSam(
 		}
 
 		/*
-		 * Phase 2: master_2 defines the following two vectors
+		 * Phase 1: master_1 defines the following two vectors
 		 */
 		// vector of number of read per jobs
 		size_t *num_reads_per_jobs_phase1 = (size_t *) malloc(total_num_proc* sizeof(size_t));
@@ -782,12 +790,6 @@ void writeSam(
 				start_num_reads_per_jobs_phase1[k] = tmp + tmp2;
 			}
 		}
-
-		/*
-		 * split_chosen_rank
-		 * Collect sizes, coordinates and offsets
-		 * in all_vector
-		 */
 
 		if (rank == master_job_phase_1){
 
@@ -866,10 +868,6 @@ void writeSam(
 		free(new_rank);
 
 		/*
-		 * task phase 1: bitonic sort of destination offset
-		 */
-
-		/*
 		 * In this section we implement a parallel Bitonic sort
 		 * algorithm.
 		 * Input are
@@ -879,9 +877,6 @@ void writeSam(
 		 *
 		 */
 
-		//int num_processes;
-			// Cube Dimension
-		//MPI_Comm_size(COMM_WORLD, &num_processes);
 
 		// the master rank compute the number of
 		// dimension is the number of processors where we
@@ -1063,8 +1058,8 @@ void writeSam(
 			}
 
 			time_count = MPI_Wtime();
-			// we gather the offset dest sorted
 
+			// we gather the offset dest sorted
 			chosen_split_rank_gather_size_t(
 					COMM_WORLD,
 					rank,
@@ -1113,10 +1108,15 @@ void writeSam(
 
 				}
 
+
 				//now we change the rank
 				// we initialize all_offset_rank_to_send constains
 				// the rank of the sorted read
-
+				/*
+				 * improvement
+				 *
+				 *
+				 */
 				size_t total = 0;
 				for(j = 0; j < total_num_proc; j++){
 
@@ -1148,7 +1148,7 @@ void writeSam(
 			free(all_offset_source_file_phase1);
 		}
 
-		 //  task Phase 2: Dispatch everything
+		 //  task Phase 1: Dispatch everything
 
 		if (rank != master_job_phase_1){
 
@@ -1245,6 +1245,7 @@ void writeSam(
 
 	/*
 	 * Phase 2: master_2 gets the total of reads
+	 * Improvement: see if the total num read is the same of the phase1
 	 */
 
 
@@ -1369,10 +1370,6 @@ void writeSam(
 		}
 	}
 
-
-
-
-
 	/**************************/
 	// We free some variable
 	/**************************/
@@ -1384,10 +1381,7 @@ void writeSam(
 	free(num_reads_per_jobs_phase2);
 
 	/*
-	 * task phase 2: bitonic sort of source offset
-	 */
-
-	/*
+	 * task phase 3: bitonic sort of source offset
 	 * In this section we implement a parallel Bitonic sort
 	 * algorithm.
 	 * Input are
@@ -1396,10 +1390,6 @@ void writeSam(
 	 * all_offset_dest_file_phase1
 	 *
 	 */
-
-	//int num_processes;
-		// Cube Dimension
-	//MPI_Comm_size(COMM_WORLD, &num_processes);
 
 	// the master rank compute the number of
 	// dimension is the number of processors where we
@@ -1527,10 +1517,6 @@ void writeSam(
 		// pbs_local_dest_offset_index
 
 		// we call the parallel bitonic sort
-
-		if (rank == master_job_phase_2)
-				fprintf(stderr, "Rank %d :::::[WRITE][PHASE 2] BITONIC \n", rank);
-
 		time_count = MPI_Wtime();
 		ParallelBitonicSort(
 				COMM_WORLD,
@@ -1540,10 +1526,6 @@ void writeSam(
 				pbs_local_source_offset_index,
 				pbs_local_num_read_per_job_phase2[rank],
 				pbs_num_offsets_to_recieve_left);
-
-		if (rank == master_job_phase_2)
-				fprintf(stderr, "Rank %d :::::[WRITE][PHASE 2] FINISH BITONIC \n", rank);
-
 
 		for(j = 0; j < pbs_local_num_read_per_job_phase2[rank]; j++){
 			assert(pbs_local_source_offset_index[j] <= total_num_read_phase2);
@@ -1645,14 +1627,6 @@ void writeSam(
 				}
 			}
 
-
-			/*
-			 * FOR DEBUG
-			for ( j = 0; j < total_num_read_phase2; j++){
-				assert(all_offset_dest_file_phase2_to_send[j] != 0);
-			}
-			*/
-
 			size_t total = 0;
 			for(j = 0; j < total_num_proc; j++){
 				total += num_reads_per_jobs[j];
@@ -1664,23 +1638,6 @@ void writeSam(
 	} //end if (rank < dimensions)
 
 	MPI_Barrier(COMM_WORLD);
-
-	/*
-	* FOR DEBUG
-	*
-
-	if (rank == master_job_phase_2) {
-		for ( j = 0; j < (total_num_read_phase2 - 1); j++){
-			assert( all_offset_source_file_to_send_phase2[j] < all_offset_source_file_to_send_phase2[j + 1]);
-		}
-
-		for ( j = 0; j < total_num_read_phase2; j++){
-			assert(all_offset_dest_file_phase2_to_send[j] != 0);
-			assert(all_read_size_phase2_to_send[j] != 0);
-			assert(all_rank_phase2_to_send[j] < num_proc);
-		}
-	}
-	*/
 
 	if (rank < dimensions){
 

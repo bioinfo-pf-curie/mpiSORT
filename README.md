@@ -3,8 +3,32 @@ Objective
 
 Sorting big NGS data file Version 1.0. 
 
-Release notes
----------
+Sections:
+-------
+
+1) Release notes <br />
+2) Installation <br />
+3)  Algorithm <br />
+4) Requirements <br />
+5) Memory usage <br />
+6) Inputs <br />
+8) Outputs <br />
+9)Compiler <br />
+10) Sample test
+11) Configuration <br />
+11) Lustre configuration <br />
+12) File system management <br />
+13) Results <br />
+14) Job rank <br />
+15) Example of code <br />
+16) Options <br />
+17) Improvements and future work <br />
+
+==============================================================================
+
+
+1) Release notes
+-------------
 
 06/10/2016
 
@@ -19,8 +43,8 @@ Release notes
 4) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
 5) Refactoring and cleaning of the code <br />
 
-Installation
---------
+2) Installation
+-----------
 
 You need automake 1.15 for the installation. <br />
 You can install automake and autoconf in differents directories and export the path like this: <br />
@@ -40,10 +64,10 @@ for passing mpi path: <br />
 ./configure CC=mpi_bin_path  <br />
 add --prefix in configure if you need  <br />
 
+3) Algorithm
+----------
 
-
-Consideration
------------
+Sorting a file is all about IO's and shuffling of data. 
 
 We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on distributed memory computer. <br />
 
@@ -57,7 +81,7 @@ The program makes an intensive use of IO reads cache buffering at the client lev
 
 Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
 
-Requirements:
+4) Requirements:
 -------------
 
 For small data samples a normal network and a network file system can do the job. <br />
@@ -74,41 +98,44 @@ filesystem such as Lustre, GPFS,...
 
 Contact us if you need information.
 
-Memory
--------
+5) Memory
+---------
 
-Less than 4gb per jobs is needed. A peak of 10gb can be observed on jobs master rank 0 with very big file. 
+For a 1 TB SAM file (paired 100pb, 100X coverage) less than 4gb per jobs is needed over 512 cores. 
+A peak of 10gb can be observed on jobs master rank 0 with very big file. 
+This peak will be solved in next release and less memory will be needed.
 
-Input Data:
-----------
+6) Input Data:
+-----------
 
 A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
 If the input file is striped the buffer cache can be used.
 
-Output: 
--------
+7) Outputs: 
+--------
 
 Output are bam files per chromosome.
 A bam files for discordant reads.
 A bam file for unmapped reads.
 
-MPI version:
+8) MPI version:
 ------------
 
-A MPI version should be installed first. We have tested the program with different version: OpenMPI 1.10, MVAPICH.
+A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10, MVAPICH.
 
-Compiler: 
+9) Compiler: 
 ---------
 
-A C compiler must be present also. We have tested the programm with GCC and Intel Compiler. 
+A C compiler must be present. We have tested the programm with GCC and Intel Compiler. 
 
-Test:
------
+10) Sample test:
+------------
 
-We furnish a sample sam to sort. We test it with 8 jobs and 2 nodes with a normal network and file system. 
+We furnish a sample sam to sort for testing your installation.
+We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. 
 
-Configuration:
---------------
+11) Lustre configuration:
+-------------------
 
 For Lustre and for our experiment the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
 it makes 2.5 GB per jobs. 
@@ -127,16 +154,23 @@ The parallel writing and reading are done via the MPI finfo structure.
 
 !!!We recommand to test different parameters before setting them once for all.
 
-1) for reading and set the Lustre buffer size.
+	* for reading and set the Lustre buffer size.
 To do that edit the code of mpiSort.c and change the parameters in the header part. 
 After tuning parameters recompile the application.
 
-3) If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
-
+	* If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
 
-Cache tricks and sizes:
-----------------------
+	*The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
+We do data sieving reading and a colective write is done with 128 servers.
+The default are unharmed for other filesystem.
+
+	*Tune this parameters according to your configuration.
+
+
+
+12) File system management:
+-----------------------
 
 The cache optimization is critical for IO operations. 
 The sorting algorithm does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
@@ -159,9 +193,26 @@ The max_cached_mb tells how much cache can use the client.
 From our experiment on computing nodes with 16 cpu and 128 GB of RAM, a cache of 48 GB is enough <br />
 This cache is 1/3 of the total memory on server and approximately 2.5 Gb per cpu. <br />
  
+For NFS users there is a bug.
+https://www.open-mpi.org/community/lists/users/2016/06/29434.php
 
-Job rank:
+a patch is available here:
+https://trac.mpich.org/projects/mpich/attachment/ticket/2338/ADIOI_NFS_ReadStrided.patch
+
+13) Results:
 ---------
+
+To see results and speed-ups please check out those links
+
+2015: This link was the first presentation of the tools 
+http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequencage_jarlier.pdf?id=jdev2015%3Aposters&cache=cache
+
+2016: OpenSFS conference Lustre LAD 2016 
+http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf
+
+
+14) Job rank:
+----------
 
 The number of jobs or jobs rank rely on the size of input data and the cache buffer size.
 For our development on TGCC the cache size is 2.5GB per job.
@@ -169,22 +220,7 @@ For our development on TGCC the cache size is 2.5GB per job.
 If you divide the size input by the buffer cache you got the number of jobs you need. 
 Of course the more cache you have the less jobs you need.
 
-Default parameters:
--------------------
-
-The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
-We do data sieving reading and a colective write is done with 128 servers.
-
-Tune this parameters according to your configuration.
-
-Compilation:
-------------
-
-To compile the program modify the makefile to tell where the mpicc is located. 
-
-Then type "make clean all" to compile or "make clean" for cleaning obj files.
-
-Example of code:
+15) Example of code:
 -----------------
 How to launch the program with 
 
@@ -205,14 +241,14 @@ OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
 FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
 mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 
-Options 
--------
+16) Options 
+----------
 
 the -q option is for quality filtering.
 the -n for sorting by name
 
-Future developments and open tickets
-------------------------------------
+17) Improvements
+---------------
 
 1) Optimize memory pressure on job rank 0 <br />
 2) Manage single reads <br />
