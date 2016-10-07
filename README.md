@@ -6,14 +6,14 @@ Sorting big NGS data file Version 1.0.
 Sections:
 -------
 
-1) Release notes <br />
-2) Installation <br />
+[release notes] <br />
+[installation] <br />
 3)  Algorithm <br />
 4) Requirements <br />
 5) Memory usage <br />
 6) Inputs <br />
 8) Outputs <br />
-9)Compiler <br />
+9) Compiler <br />
 10) Sample test
 11) Configuration <br />
 11) Lustre configuration <br />
@@ -27,16 +27,15 @@ Sections:
 ==============================================================================
 
 
-1) Release notes
+# release notes 
 -------------
 
-06/10/2016
+Release 1.0 from 06/10/2016
 
 1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed. <br />
-2) New packaging for distribution (autotools) <br />
-2) We uncounter a bug for indexing the bam results. The only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam <br />
+2) New packaging with autools for distribution. <br />
 
-29/07/2016
+Release 0.9 from 29/07/2016
 
 1) Bug fix when data sample is too small and some jobs have nothing to sort <br />
 2) Bug fix when jobs under 6 <br />
@@ -44,7 +43,7 @@ Sections:
 4) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
 5) Refactoring and cleaning of the code <br />
 
-2) Installation
+# installation
 -----------
 
 You need automake 1.15 for the installation. <br />
@@ -117,6 +116,8 @@ If the input file is striped the buffer cache can be used.
 Output are bam files per chromosome.
 A bam files for discordant reads.
 A bam file for unmapped reads.
+
+Up to now the only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam <br />
 
 8) MPI version:
 ------------
