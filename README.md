@@ -154,18 +154,18 @@ The parallel writing and reading are done via the MPI finfo structure.
 
 !!!We recommand to test different parameters before setting them once for all.
 
-	- for reading and set the Lustre buffer size.
+For reading and set the Lustre buffer size.
 To do that edit the code of mpiSort.c and change the parameters in the header part. 
 After tuning parameters recompile the application.
 
-	- If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
+If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
 In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
 
-	- The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
+The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
 We do data sieving reading and a colective write is done with 128 servers.
 The default are unharmed for other filesystem.
 
-	- Tune this parameters according to your configuration.
+Tune this parameters according to your configuration.
 
 12) File system management:
 -----------------------
@@ -223,14 +223,14 @@ Of course the more cache you have the less jobs you need.
 How to launch the program with 
 
 !/bin/bash
-MSUB -r mpiSORT_HCC1187_20X_380cpu
-MSUB -@ frederic.jarlier@curie.fr:begin,end
-MSUB -n 380
-MSUB -T 6000
-MSUB -q large
-MSUB -o $SCRATCHDIR/ngs_data/ERROR/output_%I.o
-MSUB -e $SCRATCHDIR/ngs_data/ERROR/erreur_%I.e
-MSUB -w
+MSUB -r mpiSORT_HCC1187_20X_380cpu <br />
+MSUB -@ frederic.jarlier@curie.fr:begin,end <br />
+MSUB -n 380 <br />
+MSUB -T 6000 <br />
+MSUB -q large <br />
+MSUB -o $SCRATCHDIR/ngs_data/ERROR/output_%I.o <br />
+MSUB -e $SCRATCHDIR/ngs_data/ERROR/erreur_%I.e <br />
+MSUB -w <br />
 
 mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT <br />
 BIN_NAME=psort <br />
@@ -242,8 +242,8 @@ mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 16) Options 
 ----------
 
-the -q option is for quality filtering.
-the -n for sorting by name
+the -q option is for quality filtering. <br />
+the -n for sorting by name <br />
 
 17) Improvements
 ---------------
