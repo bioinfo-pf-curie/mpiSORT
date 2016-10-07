@@ -1,16 +1,17 @@
 #ifndef WRITE_H
 #define WRITE_H
 
-#include <assert.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <mpi.h>
-
+#include <errno.h>
+#include "mpi.h"
 #include "parser.h"
+#include "assert.h"
 #include "preWrite.h"
+#include "diffuse.h"
+#include "math.h"
+#include "sys/mman.h"
 #include "mpi_globals.h"
 #include "qksort.h"
 #include "write_utils.h"
@@ -25,23 +26,26 @@ void writeSam(
 		MPI_Comm comm);
 */
 
-void writeSam(size_t total_num_reads,
-		int master_rank,
-		int split_comm_size,
-		int dimensions,
+void writeSam(
+		int rank,
 		char* output_dir,
+		char* header,
+		size_t local_readNum,
+		size_t total_num_read,
+		char* chrName,
+		Read* chr,
+		int total_num_proc,  //this is the number of proc in split communication
+		MPI_Comm split_comm,
+		int master_rank,
 		char *file_name,
 		MPI_File in,
 		MPI_Info finfo,
-		char* header,
-		char* chrName, Read* reads,
-		size_t *local_dest_offsets_sorted,
-		size_t *local_source_offsets_sorted,
-		int *local_read_size_sorted,
-		int *local_rank_sorted,
-		size_t readNum,
 		int compression_level,
-		MPI_Comm comm);
+		size_t* new_offset_dest,
+		size_t* new_offset_source,
+		int* new_read_size,
+		int* new_rank);
+
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum);
 void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *file_name,
