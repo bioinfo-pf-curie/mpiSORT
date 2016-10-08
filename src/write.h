@@ -8,7 +8,6 @@
 
 #include <mpi.h>
 
-#include "mpi_globals.h"
 #include "qksort.h"
 #include "write_utils.h"
 #include "parabitonicsort.h"

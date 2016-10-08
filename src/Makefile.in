@@ -101,10 +101,9 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__objects_1 = mpiSort.$(OBJEXT) mpiSort_utils.$(OBJEXT) \
-	mpi_globals.$(OBJEXT) mergeSort.$(OBJEXT) \
-	parabitonicsort.$(OBJEXT) qksort.$(OBJEXT) parser.$(OBJEXT) \
-	tokenizer.$(OBJEXT) preWrite.$(OBJEXT) write.$(OBJEXT) \
-	write_utils.$(OBJEXT)
+	mergeSort.$(OBJEXT) parabitonicsort.$(OBJEXT) qksort.$(OBJEXT) \
+	parser.$(OBJEXT) tokenizer.$(OBJEXT) preWrite.$(OBJEXT) \
+	write.$(OBJEXT) write_utils.$(OBJEXT)
 am_psort_OBJECTS = $(am__objects_1)
 psort_OBJECTS = $(am_psort_OBJECTS)
 psort_LDADD = $(LDADD)
@@ -251,10 +250,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_HEADERS = $(HDR)
 psort_SOURCES = $(SRC)
-SRC = mpiSort.c mpiSort_utils.c mpi_globals.c mergeSort.c parabitonicsort.c \
+SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
 	qksort.c parser.c tokenizer.c preWrite.c write.c write_utils.c
 
-HDR = mpiSort_utils.h mpi_globals.h mergeSort.h parabitonicsort.h qksort.h \
+HDR = mpiSort_utils.h mergeSort.h parabitonicsort.h qksort.h \
 	parser.h tokenizer.h preWrite.h write.h write_utils.h \
 	bgzf.c bgzf.h khash.h
 
@@ -347,7 +346,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mergeSort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpiSort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpiSort_utils.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_globals.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parabitonicsort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/preWrite.Po@am__quote@

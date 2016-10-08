@@ -322,6 +322,8 @@ int main (int argc, char *argv[]){
 	double time_count;
 	double time_count1;
 
+	int g_rank, g_size;
+
 	MPI_Comm split_comm; //used to split communication when jobs have no reads to sort
 	int split_rank, split_size; //after split communication we update the rank
 
