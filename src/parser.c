@@ -141,7 +141,7 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 			//GO TO COORD
 			currentCarac = strstr(currentCarac+1, "\t");
 
-			
+
 			if (parse_mode == MODE_NAME) {
 				coord = strtoull(currentLine, NULL, strlen(currentLine));
 				//coord = strtoull(currentLine, NULL, strlen(currentLine));
