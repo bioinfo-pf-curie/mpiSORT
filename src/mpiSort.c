@@ -1439,7 +1439,7 @@ int main (int argc, char *argv[]){
 			}
 
 			if (split_rank == chosen_split_rank)
-				fprintf(stderr,	"rank %d :::::[MPISORT] CALL WRITE SAM 2\n", split_rank, MPI_Wtime() - time_count);
+				fprintf(stderr,	"rank %d :::::[MPISORT] CALL WRITE SAM\n", split_rank);
 
 			writeSam(split_rank,
 					output_dir,
