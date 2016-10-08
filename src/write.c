@@ -42,7 +42,6 @@ void read_data_for_writing(int rank, int num_proc, size_t local_readNum, char *f
 	 */
 
 	size_t k;
-	double t;
 	size_t new_data_sz = 0;
 
 	//MPI_File in;
@@ -2348,7 +2347,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	int *all_read_size=NULL;
 	size_t *all_offset_source_file=NULL;
-	size_t *all_offset_source_index=NULL;
 	int *all_read_size_to_send=NULL;
 
 	// vector use in the reading and writing

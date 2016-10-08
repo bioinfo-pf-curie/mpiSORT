@@ -888,7 +888,6 @@ int main (int argc, char *argv[]){
 			// pbs_vector hold the coordinates and index of the coordinates
 			size_t *pbs_local_reads_coordinates;
 			size_t *pbs_global_reads_coordinates_index;
-			size_t dataSize = 0;
 
 			//task Init offset and size for source - free chr
 			// from mpiSort_utils.c
@@ -1009,8 +1008,7 @@ int main (int argc, char *argv[]){
 			 * split_chosen_rank collects sizes, coordinates and offsets
 			 * in all_vector_
 			 */
-			time_count = MPI_Wtime();
-			time_count1 = MPI_Wtime();
+			time_count = time_count1 = MPI_Wtime();
 			if (split_rank ==chosen_split_rank){
 
 				MPI_Status status;

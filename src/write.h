@@ -5,12 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "mpi.h"
-#include "parser.h"
-#include "assert.h"
-#include "preWrite.h"
-#include "math.h"
-#include "sys/mman.h"
+
+#include <mpi.h>
+
 #include "mpi_globals.h"
 #include "qksort.h"
 #include "write_utils.h"
