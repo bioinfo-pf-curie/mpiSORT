@@ -55,8 +55,6 @@ extern double g_elapsed;
 #define DEBUG(format, ...) fprintf(stderr, "DEBUG %s:%d" format "\n", __FILE__, __LINE__, ##__VA_ARGS__);
 #endif
 
-#define FREE_IF_NOT_NULL(x) if((x) != NULL) free (x)
-
 /*
  	char tempString[128];
 	char timestamp[100];

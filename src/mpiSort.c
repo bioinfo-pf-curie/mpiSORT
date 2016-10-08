@@ -1066,10 +1066,10 @@ int main (int argc, char *argv[]){
 			if (split_rank == chosen_split_rank)
 				fprintf(stderr,	"rank %d :::::[MPISORT] Time to collect before bitonic part  %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
-			FREE_IF_NOT_NULL(local_reads_sizes_sorted); //ok
-			FREE_IF_NOT_NULL(local_reads_rank_sorted); //ok
-			FREE_IF_NOT_NULL(local_offset_source_sorted); //ok
-			FREE_IF_NOT_NULL(local_reads_coordinates_sorted); //ok
+			free(local_reads_sizes_sorted); //ok
+			free(local_reads_rank_sorted); //ok
+			free(local_offset_source_sorted); //ok
+			free(local_reads_coordinates_sorted); //ok
 
 			/*
 			 * ENTER BITONIC PART
@@ -1196,7 +1196,7 @@ int main (int argc, char *argv[]){
 				}
 
 				if (split_rank == chosen_split_rank){
-					FREE_IF_NOT_NULL(all_reads_coordinates);
+					free(all_reads_coordinates);
 				}
 
 
@@ -1294,7 +1294,7 @@ int main (int argc, char *argv[]){
 							start_index);
 
 
-				FREE_IF_NOT_NULL(pbs_local_reads_coordinates); //ok
+				free(pbs_local_reads_coordinates); //ok
 
 
 				//now we verify that all_reads_coordinates_sorted is sorted
@@ -1306,8 +1306,8 @@ int main (int argc, char *argv[]){
 				if (split_rank == chosen_split_rank)
 					fprintf(stderr,	"rank %d :::::[MPISORT] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
-				FREE_IF_NOT_NULL(pbs_global_reads_coordinates_index); //ok
-				FREE_IF_NOT_NULL(pbs_local_num_read_per_job);
+				free(pbs_global_reads_coordinates_index); //ok
+				free(pbs_local_num_read_per_job);
 
 			} //end if (split_rank < dimensions)
 
@@ -1324,7 +1324,7 @@ int main (int argc, char *argv[]){
 			 *
 			 */
 
-			FREE_IF_NOT_NULL(pbs_start_num_coordinates_per_jobs); //ok
+			free(pbs_start_num_coordinates_per_jobs); //ok
 
 			// we create a datatype by split_rank
 			size_t *all_offset_dest_sorted=NULL;
@@ -1347,9 +1347,9 @@ int main (int argc, char *argv[]){
 
 				}
 
-				FREE_IF_NOT_NULL(all_reads_sizes); //ok
-				FREE_IF_NOT_NULL(all_offsets_sources); //ok
-				FREE_IF_NOT_NULL(all_reads_rank); //ok
+				free(all_reads_sizes); //ok
+				free(all_offsets_sources); //ok
+				free(all_reads_rank); //ok
 
 				// all_offset_dest holds the output offset of sorted reads
 				all_offset_dest_sorted = (size_t *)malloc(sizeof(size_t) * total_num_read);
@@ -1420,22 +1420,22 @@ int main (int argc, char *argv[]){
 			if (split_rank == chosen_split_rank)
 				fprintf(stderr,	"rank %d :::::[MPISORT] Time dispatch all_offset_dest %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
-			FREE_IF_NOT_NULL(start_num_reads_per_jobs); // ok
-			FREE_IF_NOT_NULL(num_reads_per_jobs); // ok
+			free(start_num_reads_per_jobs); // ok
+			free(num_reads_per_jobs); // ok
 
 
 			if (split_rank == chosen_split_rank){
-				FREE_IF_NOT_NULL(all_reads_rank_sorted);
-				FREE_IF_NOT_NULL(all_offsets_sources_sorted);
-				FREE_IF_NOT_NULL(all_offset_dest_sorted);
-				FREE_IF_NOT_NULL(all_reads_size_sorted);
+				free(all_reads_rank_sorted);
+				free(all_offsets_sources_sorted);
+				free(all_offset_dest_sorted);
+				free(all_reads_size_sorted);
 			}
 
 
 			MPI_Barrier(split_comm);
 
 			if (split_rank < dimensions){
-				FREE_IF_NOT_NULL(all_reads_coordinates_index); //ok
+				free(all_reads_coordinates_index); //ok
 			}
 
 			if (split_rank == chosen_split_rank)
@@ -1464,10 +1464,10 @@ int main (int argc, char *argv[]){
 				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
 			}
 
-			//FREE_IF_NOT_NULL(local_source_offsets_sorted);
-			//FREE_IF_NOT_NULL(local_read_size_sorted);
-			//FREE_IF_NOT_NULL(local_dest_offsets_sorted);
-			//FREE_IF_NOT_NULL(local_rank_sorted);
+			//free(local_source_offsets_sorted);
+			//free(local_read_size_sorted);
+			//free(local_dest_offsets_sorted);
+			//free(local_rank_sorted);
 
 
 		} //if ((local_color == 0) && (i < (nbchr - 2))) //in the splitted dimension
@@ -1704,9 +1704,9 @@ int main (int argc, char *argv[]){
 				while( reads[nbchr-s]->next != NULL){
 						Read *tmp_chr = reads[nbchr-s];
 						reads[nbchr-s] = reads[nbchr-s]->next;
-						//FREE_IF_NOT_NULL(tmp_chr->next);
+						//free(tmp_chr->next);
 				}
-				FREE_IF_NOT_NULL(localReadsNum_rank0);
+				free(localReadsNum_rank0);
 			}
 			else{
 				// we do nothing
@@ -1730,23 +1730,23 @@ int main (int argc, char *argv[]){
 			split_comm_to_free = 0;
 			file_pointer_to_free = 0;
 
-			FREE_IF_NOT_NULL(color_vec_to_send);
-			FREE_IF_NOT_NULL(key_vec_to_send);
+			free(color_vec_to_send);
+			free(key_vec_to_send);
 
 		}
 	} //end for (s=1; s < 3; s++){
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	FREE_IF_NOT_NULL(header); //ok
-	FREE_IF_NOT_NULL(localReadNumberByChr); //ok
+	free(header); //ok
+	free(localReadNumberByChr); //ok
 
 	for(i = 0; i < nbchr; i++){
-		FREE_IF_NOT_NULL(chrNames[i]);
+		free(chrNames[i]);
 	}
 
 
-	FREE_IF_NOT_NULL(reads); //ok
-	FREE_IF_NOT_NULL(readNumberByChr); //ok
+	free(reads); //ok
+	free(readNumberByChr); //ok
 
 	res = MPI_Finalize();
 	assert(res == MPI_SUCCESS);

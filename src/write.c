@@ -2669,7 +2669,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 			start_index++;
 		}
 
-		FREE_IF_NOT_NULL(pbs_local_offset_source_file); //ok
+		free(pbs_local_offset_source_file); //ok
 
 		pbs_local_num_read_per_job[split_rank] -=  start_index;
 		all_reads_offset_source_index = (size_t *)malloc(sizeof(size_t) * total_num_read);
@@ -2704,8 +2704,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		if (split_rank == chosen_split_rank)
 			fprintf(stderr,	"rank %d :::::[mpiSort] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
-		FREE_IF_NOT_NULL(pbs_global_reads_offset_source_index); //ok
-		FREE_IF_NOT_NULL(pbs_local_num_read_per_job);
+		free(pbs_global_reads_offset_source_index); //ok
+		free(pbs_local_num_read_per_job);
 
 	} //end if (split_rank < dimensions)
 
@@ -2717,7 +2717,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	 *
 	 */
 
-	FREE_IF_NOT_NULL(pbs_start_num_coordinates_per_jobs); //ok
+	free(pbs_start_num_coordinates_per_jobs); //ok
 
 	// we create a datatype by split_rank
 
@@ -2738,8 +2738,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 		}
 
-		FREE_IF_NOT_NULL(all_offset_source_file);
-		FREE_IF_NOT_NULL(all_read_size);
+		free(all_offset_source_file);
+		free(all_read_size);
 
 	} //end if (split_rank == chosen_rank)
 
