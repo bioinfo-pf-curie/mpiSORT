@@ -1680,8 +1680,21 @@ int main (int argc, char *argv[]){
 
 					time_count = MPI_Wtime();
 
-					writeSam_discordant_and_unmapped(split_rank, output_dir, header, localReadNumberByChr[nbchr-s], chrNames[nbchr-s], reads[nbchr-s],
-													split_size, split_comm, file_name, mpi_file_split_comm2, finfo, compression_level);
+					writeSam_discordant_and_unmapped(
+							split_rank,
+							output_dir,
+							header,
+							localReadNumberByChr[nbchr-s],
+							chrNames[nbchr-s],
+							reads[nbchr-s],
+							split_size,
+							split_comm,
+							file_name,
+							mpi_file_split_comm2,
+							finfo,
+							compression_level,
+							local_data,
+							goff[rank]);
 
 
 					if (split_rank == chosen_rank){
@@ -1703,8 +1716,21 @@ int main (int argc, char *argv[]){
 					time_count = MPI_Wtime();
 
 
-					writeSam_discordant_and_unmapped(g_rank, output_dir, header, localReadNumberByChr[nbchr-s], chrNames[nbchr-s], reads[nbchr-s],
-							g_size, split_comm, file_name, mpi_file_split_comm2, finfo, compression_level);
+					writeSam_discordant_and_unmapped(
+							g_rank,
+							output_dir,
+							header,
+							localReadNumberByChr[nbchr-s],
+							chrNames[nbchr-s],
+							reads[nbchr-s],
+							g_size,
+							split_comm,
+							file_name,
+							mpi_file_split_comm2,
+							finfo,
+							compression_level,
+							local_data,
+							goff[rank]);
 
 
 					if (split_rank == chosen_rank){

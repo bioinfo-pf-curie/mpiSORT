@@ -2413,7 +2413,8 @@ void writeSam(
 }
 
 void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* header, size_t local_readNum, char* chrName, Read* chr,
-		int split_size, MPI_Comm split_comm, char *file_name, MPI_File in, MPI_Info finfo, int compression_level){
+		int split_size, MPI_Comm split_comm, char *file_name, MPI_File in, MPI_Info finfo, int compression_level,
+		char* data, size_t start_offset_in_file){
 
 	/*
 	 * task: writeSam_unmapped write unmapped reads
@@ -2434,8 +2435,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	int *read_size_sorted = (int *)malloc(local_readNum * sizeof(int));
 	offset_source_index[0] = 0;
 
-	//the MPI datatype
-	MPI_Datatype indexed_datatype_1;
 
 	//variables for MPI writes and read
 	//MPI_File in, out;
@@ -2451,7 +2450,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	size_source = (int*)malloc(local_readNum*sizeof(int));
 	size_source[0] = 0;
 	dataSize = 0;
-	char *data;
 
 	int master_job = 0;
 	double start_phase2, finish_phase2;
@@ -2974,47 +2972,48 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 	size_t new_data_sz = 0;
-	for (k = 0; k < local_readNum; k++){
-			new_data_sz += read_size_sorted[k];
-	}
+
 
 	MPI_Barrier(split_comm);
-
-	//assert(new_data_sz == dataSize);
-	data = (char *)malloc((new_data_sz + 1)*sizeof(char));
-	data[new_data_sz]=0;
-
 
 	/*
-	 *
-	ierr = MPI_File_open(split_comm, file_name, MPI_MODE_RDONLY, info1, &in);
-
-	MPI_Barrier(split_comm);
-	if (ierr) {
-			fprintf(stderr, "Rank %d failed to open the source file.\nAborting.\n\n", rank);
-			MPI_Abort(split_comm, ierr);
-			exit(2);
-	}
+	 * first we pack data in data_pack1
+	 * to have consecutive reads of the
+	 * chromosoms
 	 */
-	MPI_Type_create_hindexed(local_readNum, &read_size_sorted[0], (MPI_Aint*)offset_source_sorted, MPI_CHAR, &indexed_datatype_1);
-	MPI_Type_commit(&indexed_datatype_1);
 
-	//we open the file
-	//TODO: see if initialization is needed
-	//data[new_data_sz] = '\0';
-	MPI_File_set_view(in, 0, MPI_CHAR, indexed_datatype_1, "native", finfo);
-	start = MPI_Wtime();
+	int m;
+	size_t i;
 
-	MPI_File_read(in, &data[0], new_data_sz, MPI_CHAR, MPI_STATUS_IGNORE);
 
-	assert(strlen(data) == new_data_sz);
-	finish = MPI_Wtime();
-	io_time = finish - start;
-	if (split_rank == master_job)
-		fprintf(stderr, "Rank %d ::::: read source file = %f seconds\n", split_rank, io_time);
+	MPI_Datatype dt_data0;
+	char *data_pack;
 
-	MPI_Type_free(&indexed_datatype_1);
+	//we compute the size of data_pack
+	for (k = 0; k < local_readNum; k++){
+		new_data_sz += read_size_sorted[k];
+	}
 
+	data_pack = malloc(new_data_sz +1);
+	data_pack[new_data_sz] = 0;
+
+	//we create a new offset vector
+	//wich is the offset in the data
+	size_t *offset_in_data = (size_t *) malloc(local_readNum* sizeof(size_t));
+
+	//we compute the new offset of reads in data buffer
+	//we remove the start offset in the file
+
+	for (k=0; k < local_readNum;k++){
+		offset_in_data[k] = offset_source[k] - start_offset_in_file;
+	}
+
+	MPI_Type_hindexed(local_readNum, &size_source[0], (MPI_Aint*)offset_in_data, MPI_CHAR, &dt_data0);
+	MPI_Type_commit(&dt_data0);
+
+	int position=0;
+
+	MPI_Pack(data, 1, dt_data0, data_pack, new_data_sz, &position, COMM_WORLD);
 
 	//Here we are going to send the data to a buffer in the next rank job
 	//The next job will compress data and send it back to the prvious job
@@ -3033,7 +3032,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	int successor = ( split_rank + 1 ) % split_size;
 	int predecessor = ( split_rank - 1 + split_size ) % split_size;
 
-	int i=0;
+
 	size_t send_offset;
 	size_t recv_offset;
 
@@ -3053,7 +3052,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	char_buff_uncompressed[y_message_sz[predecessor]] = 0;
 
 	//now we send data
-	MPI_Sendrecv(data, new_data_sz, MPI_CHAR, successor, 0,
+	MPI_Sendrecv(data_pack, new_data_sz, MPI_CHAR, successor, 0,
 				 char_buff_uncompressed, y_message_sz[predecessor],
 				 MPI_CHAR, predecessor, 0, split_comm,  &status);
 
@@ -3380,7 +3379,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	free(y);
 	free(y2);
 	free(path);
-	free(data);
+	free(data_pack);
 
 }
 
