@@ -30,6 +30,13 @@ Sections:
 1) Release notes 
 -------------
 
+Release 1.0 from 11/10/2016
+
+1) In this release we use the local data buffer, instead of the linux client, cache for re-reading. <br />
+Because for slow network (aka NFS) the time to get the data back from the client or server buffer can be long. <br />
+Now re-reading the data is intantaneous. <br />
+2) Add documentation and free some variables. <br />
+
 Release 1.0 from 06/10/2016
 
 1) The previous version didn't sort the offset destination before the shuffle. This bug is fixed. <br />
@@ -76,7 +83,7 @@ The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic
 
 The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
 
-The program makes an intensive use of IO reads cache buffering at the client level. The cache size depends of the stripping of your data on the distributed file system. The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations and file management.<br />
+As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations and file management.<br />
 
 Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
 
@@ -102,7 +109,7 @@ Contact us if you need information.
 
 For a 1 TB SAM file (paired 100pb, 100X coverage) less than 4gb per jobs is needed over 512 cores. 
 A peak of 10gb can be observed on jobs master rank 0 with very big file. 
-This peak will be solved in next release and less memory will be needed.
+This peak will be solved in next release and less memory will be needed (improvement n° 1).
 
 6) Input Data:
 -----------
@@ -249,11 +256,12 @@ the -n for sorting by name <br />
 17) Improvements
 ---------------
 
-1) Optimize memory pressure on job rank 0 <br />
+0) Problem with the output BAM 
+1) Optimize memory pressure on job rank 0 = (do the indexing in the bitonic sort)<br />
 2) Manage single reads <br />
 3) Mark or remove duplicates <br />
 4) Make a pile up of the reads <br /> 
 5) Write SAM files <br />
-6) Propose an option to write a big SAM file <br />
+6) Propose an option to write a big SAM/BAM file <br />
 
 
