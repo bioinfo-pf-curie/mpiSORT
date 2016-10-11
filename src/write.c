@@ -600,7 +600,9 @@ void writeSam(
 		size_t* new_offset_dest,
 		size_t* new_offset_source,
 		int* new_read_size,
-		int* new_rank){
+		int* new_rank,
+		char *data,
+		size_t start_offset_in_file){
 
 
 	/*
@@ -626,9 +628,6 @@ void writeSam(
 	 * The writing.
 	 *
 	 */
-
-
-
 
 	size_t j;
 	size_t k;
@@ -726,6 +725,9 @@ void writeSam(
 	 * new rank for each reads at the end
 	 ******************************************************************************/
 
+
+	if (rank == master_job_phase_2)
+		fprintf(stderr, "Rank %d :::::[WRITE][PHASE 1] SORT OFFSET DESTINATION \n", rank);
 
 	size_t *num_reads_per_jobs = (size_t *) malloc(total_num_proc * sizeof(size_t));
 
@@ -1191,12 +1193,8 @@ void writeSam(
 				}
 			}
 		}
-
-		if (rank == master_job_phase_1)
-			fprintf(stderr, "Rank %d :::::[WRITE][PHASE 1] finnish dispatch \n", rank);
-
 		/*
-		 * Phase 2: Clean memory
+		 * Phase 1: Clean memory
 		 */
 
 		if (rank < dimensions){
@@ -1232,7 +1230,7 @@ void writeSam(
 	MPI_Gather(&local_readNum, 1, MPI_LONG_LONG_INT, &num_reads_per_jobs[rank - master_job_phase_2], 1,
 			MPI_LONG_LONG_INT, master_job_phase_2 , COMM_WORLD);
 	if (rank == master_job_phase_2)
-		fprintf(stderr, "Rank %d :::::[WRITE][PHASE 2] ENTER PHASE2 \n", rank);
+		fprintf(stderr, "Rank %d :::::[WRITE][PHASE 2] SORT OFFSET SOURCES \n", rank);
 
 
 
@@ -1603,7 +1601,7 @@ void writeSam(
 						start_index);
 
 		if (rank == master_job_phase_2){
-			fprintf(stderr, "Rank %d :::::[WRITE][PHASE 2] Time for gathering source offset and index %f\n", rank, MPI_Wtime() - time_count);
+			fprintf(stderr, "Rank %d :::::[WRITE][PHASE 3] Time for gathering source offset and index %f\n", rank, MPI_Wtime() - time_count);
 
 
 			// now we apply the new index to all the
@@ -1745,27 +1743,145 @@ void writeSam(
 	size_t *buffs_by_procs = (size_t*)calloc( total_num_proc, sizeof(size_t));
 
 	time_count = MPI_Wtime();
-
-
-//	int num_proc = 0;
-	//MPI_Comm_size(COMM_WORLD, &num_proc);
-
 	int num_proc = total_num_proc;
-	read_data_for_writing(rank, num_proc, local_readNum,
-			file_name, number_of_reads_by_procs, buffs_by_procs,
-				&data2, new_rank_phase2, new_read_size_phase2,
-					new_offset_source_sorted_phase2, in, finfo, COMM_WORLD);
-
-	//we check the size of reads data
 
 
+	/*
+	 *
+	read_data_for_writing(
+				rank,
+				num_proc,
+				local_readNum,
+				file_name,
+				number_of_reads_by_procs,
+				buffs_by_procs,
+				&data2,
+				new_rank_phase2,
+				new_read_size_phase2,
+				new_offset_source_sorted_phase2,
+				in,
+				finfo,
+				COMM_WORLD);
+	 */
 
+	time_count = MPI_Wtime();
+
+
+	/*
+	 * first we pack data in data_pack1
+	 * to have consecutive reads of the
+	 * chromosoms
+	 */
+
+	int m;
+	size_t i;
+	size_t new_data_sz = 0;
+
+	MPI_Datatype dt_data0;
+	char *data_pack;
+
+	//we compute the size of data_pack
+	for (k = 0; k < local_readNum; k++){
+		new_data_sz += new_read_size_phase2[k];
+	}
+
+	data_pack = malloc(new_data_sz +1);
+	data_pack[new_data_sz] = 0;
+
+	//we create a new offset vector
+	//wich is the offset in the data
+	size_t *offset_in_data = (size_t *) malloc(local_readNum* sizeof(size_t));
+
+	//we compute the new offset of reads in data buffer
+	//we remove the start offset in the file
+
+	for (k=0; k < local_readNum;k++){
+		offset_in_data[k] = new_offset_source_sorted_phase2[k] - start_offset_in_file;
+	}
+
+	MPI_Type_hindexed(local_readNum, &new_read_size_phase2[0], (MPI_Aint*)offset_in_data, MPI_CHAR, &dt_data0);
+	MPI_Type_commit(&dt_data0);
+
+	int position=0;
+
+	MPI_Pack(data, 1, dt_data0, data_pack, new_data_sz, &position, COMM_WORLD);
+	MPI_Datatype dt_data;
+
+	//The data in which what we read will be kept
+	data2 = (char**)malloc( num_proc * sizeof(char*));
+
+	// we compute the size of
+	// data for each rank and we put it in
+	// buffs and buffs_by_proc is
+	// the size of the buffer to send
+	size_t *buffs_by_procs2 = (size_t*)calloc( num_proc, sizeof(size_t));
+
+	for(m = 0; m < local_readNum; m++)
+	{
+		buffs_by_procs2[new_rank_phase2[m]] += new_read_size_phase2[m];
+		number_of_reads_by_procs[new_rank_phase2[m]]++;
+	}
+
+	for(m = 0; m < num_proc; m++)
+	{
+		buffs_by_procs[(rank + m)%num_proc] = buffs_by_procs2[(rank - m + num_proc)%num_proc];
+	}
+
+	free(buffs_by_procs2);
+
+	//Allocate data and initialization
+	for(m = 0; m < num_proc; m++)
+	{
+		data2[m] = (char*)malloc(buffs_by_procs[m]*sizeof(char) + 1);
+		data2[m][buffs_by_procs[m]] = 0;
+	}
+
+	//Variable for datatype struct almost classic
+	MPI_Aint *indices = (MPI_Aint *)malloc(local_readNum*sizeof(MPI_Aint));
+	int *blocklens = (int *)malloc(local_readNum*sizeof(int));
+
+	MPI_Datatype *oldtypes = (MPI_Datatype *)malloc(local_readNum*sizeof(MPI_Datatype));
+	MPI_Aint adress_to_write_in_data_by_element[num_proc];
+	for(i = 0; i < num_proc; i++){
+		MPI_Get_address(data2[(rank-i+num_proc)%num_proc], &adress_to_write_in_data_by_element[(rank+i)%num_proc]);
+	}
+	for(i = 0; i < local_readNum; i++){
+ 		indices[i] = adress_to_write_in_data_by_element[new_rank_phase2[i]];
+ 		adress_to_write_in_data_by_element[new_rank_phase2[i]] += new_read_size_phase2[i];
+ 		blocklens[i] = new_read_size_phase2[i];
+ 		oldtypes[i] = MPI_CHAR;
+	 }
+
+	 for(i = 0; i < local_readNum; i++){
+	 	assert (indices[i] != (MPI_Aint)NULL);
+	 }
+	 //Create struct
+	 MPI_Type_create_struct(local_readNum, blocklens, indices, oldtypes, &dt_data);
+	 MPI_Type_commit(&dt_data);
+	 int pos=0;
+	 MPI_Unpack(data_pack, new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
+
+	/*
+	 if (rank == master_job_phase_2){
+		int j =0;
+		for (j = 0; j < num_proc; j++){
+			fprintf(stderr, "rank %d ::::: [read_data_for_writing] data2 = \n", rank);
+			for (m = 0; m < buffs_by_procs[j]; m++){
+				fprintf(stderr, "%c", data2[j][m]);
+			}
+			fprintf(stderr, "\n");
+		}
+	 }
+	*/
+	MPI_Type_free(&dt_data);
+	MPI_Type_free(&dt_data0);
+	free(data_pack);
+	free(blocklens);
+	free(indices);
+	free(oldtypes);
 	free(new_offset_source_sorted_phase2);
-
-	MPI_Barrier(COMM_WORLD);
 	if (rank == master_job_phase_2)
-		fprintf(stderr, "Rank %d :::::[WRITE][READING] Time for reading %f seconds\n", rank, MPI_Wtime() - time_count);
-
+		fprintf(stderr, "Rank %d :::::[WRITE][PACK] Time in packing data for bruck %f seconds\n", rank, MPI_Wtime() - time_count);
 
 	//Free type
 
@@ -1791,7 +1907,7 @@ void writeSam(
 	 */
 
 	/****************************
-	 * 	BEGIN BRUCK PHASE 2    	*
+	 * 	BEGIN BRUCK PHASE     	*
 	 *****************************/
 	//task Beginning of the Bruck phase
 	size_t **data_offsets = (size_t **)malloc(sizeof(size_t *)*num_proc);
@@ -1822,7 +1938,6 @@ void writeSam(
 	if (rank == master_job_phase_2)
 		fprintf(stderr, "Rank %d :::::[WRITE][BRUCK] Time for Bruck phases %f seconds\n", rank, MPI_Wtime() - time_count);
 
-	int m;
 	local_readNum = 0;
 
 	for (m = 0; m < num_proc; m++){
@@ -1949,7 +2064,7 @@ void writeSam(
 	int successor = ( rank + 1 ) % num_proc;
 	int predecessor = ( rank - 1 + num_proc ) % num_proc;
 
-	int i=0;
+	//int i=0;
 	size_t send_offset;
 	size_t recv_offset;
 
@@ -2103,6 +2218,8 @@ void writeSam(
 			//}
 		}
 	}
+
+	free(char_buff_uncompressed);
 
 	MPI_Barrier(COMM_WORLD);
 
@@ -2702,7 +2819,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 
 		if (split_rank == chosen_split_rank)
-			fprintf(stderr,	"rank %d :::::[mpiSort] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
+			fprintf(stderr,	"rank %d :::::[WRITE] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
 		free(pbs_global_reads_offset_source_index); //ok
 		free(pbs_local_num_read_per_job);
@@ -2722,7 +2839,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	// we create a datatype by split_rank
 
 	size_t *all_offset_source_to_send = NULL;
-	//size_t *all_read_size_to_send = NULL;
 
 	if (split_rank == chosen_split_rank){
 

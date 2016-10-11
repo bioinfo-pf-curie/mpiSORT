@@ -613,15 +613,19 @@ int main (int argc, char *argv[]){
 		//we go to the next line
 		poffset+=(offset_last_line+1);
 		local_offset+=(offset_last_line+1);
-		free(local_data);
-	}
 
-	//MPI_File_seek(mpi_filed, goff[rank], MPI_SEEK_SET);
+		/*
+		 * Here is the novelty
+		 * we don't free local_data
+		 */
+
+		//free(local_data); //modification 10/10/2016
+	}
 
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE chr1:%zu ***\n", rank, MPI_Wtime()-toc, readNumberByChr[0]);
 
-	free(goff);
-	//MPI_File_close(&mpi_filed);
+	//free(goff); //modification 10/10/2016
+
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//We set attribute next of the last read and go back to first read of each chromosome
@@ -1460,7 +1464,9 @@ int main (int argc, char *argv[]){
 					local_dest_offsets_sorted,
 					local_source_offsets_sorted,
 					local_read_size_sorted,
-					local_rank_sorted);
+					local_rank_sorted,
+					local_data,
+					goff[rank]);
 
 			if (split_rank == chosen_split_rank){
 				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
@@ -1676,6 +1682,8 @@ int main (int argc, char *argv[]){
 
 					writeSam_discordant_and_unmapped(split_rank, output_dir, header, localReadNumberByChr[nbchr-s], chrNames[nbchr-s], reads[nbchr-s],
 													split_size, split_comm, file_name, mpi_file_split_comm2, finfo, compression_level);
+
+
 					if (split_rank == chosen_rank){
 							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
 									chrNames[nbchr-s], MPI_Wtime() - time_count);
@@ -1694,8 +1702,10 @@ int main (int argc, char *argv[]){
 
 					time_count = MPI_Wtime();
 
+
 					writeSam_discordant_and_unmapped(g_rank, output_dir, header, localReadNumberByChr[nbchr-s], chrNames[nbchr-s], reads[nbchr-s],
 							g_size, split_comm, file_name, mpi_file_split_comm2, finfo, compression_level);
+
 
 					if (split_rank == chosen_rank){
 							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
@@ -1737,6 +1747,10 @@ int main (int argc, char *argv[]){
 
 		}
 	} //end for (s=1; s < 3; s++){
+
+
+	free(local_data);
+
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	free(header); //ok

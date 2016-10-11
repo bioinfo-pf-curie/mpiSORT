@@ -39,7 +39,9 @@ void writeSam(
 		size_t* new_offset_dest,
 		size_t* new_offset_source,
 		int* new_read_size,
-		int* new_rank);
+		int* new_rank,
+		char* data,
+		size_t offset_data_in_file);
 
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum);
