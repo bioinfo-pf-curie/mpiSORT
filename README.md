@@ -8,7 +8,7 @@ Sections:
 
 1) Release notes <br />
 2) Installation <br />
-3)  Algorithm <br />
+3) Algorithm <br />
 4) Architectures <br />
 5) Memory usage <br />
 6) Inputs <br />
@@ -31,8 +31,8 @@ Sections:
 
 Release 1.0 from 11/10/2016
 
-1) In this release we use the local data buffer, instead of the linux client, cache for re-reading. <br />
-Because for slow network the time to get the data back from the client or server buffer can be long. <br />
+1) In this release we use the local data buffer for re-reading instead of the linux client cache. <br />
+Because for slow network the time to get the data back from the client or server cache can be long. <br />
 Now re-reading the data is intantaneous. <br />
 2) Add documentation and free some variables. <br />
 
