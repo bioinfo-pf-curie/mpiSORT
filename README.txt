@@ -165,13 +165,16 @@ At TGCC the striping factor is 128 (number of OSSs servers) and the striping siz
 12) Network File system configuration:
 -------------------------------
 
-We don't recommend to use MPI with NFS (it works but it does not scale very well). 
+We don't recommend to use MPI with NFS (it works but it does not scale very well). <br />
 
-For NFS users there is a bug in openMPI.
+For NFS users there is a bug in openMPI. <br />
 https://www.open-mpi.org/community/lists/users/2016/06/29434.php
 
-a patch is available here:
+a patch is available here:<br />
 https://trac.mpich.org/projects/mpich/attachment/ticket/2338/ADIOI_NFS_ReadStrided.patch
+
+To improve TCP communications over openMPI : <br />
+https://www.open-mpi.org/faq/?category=tcp
 
 13) Results:
 ---------
