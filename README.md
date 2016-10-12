@@ -119,6 +119,9 @@ tabix -p sam chrN.bam <br />
 To uncompress the results:<br />
 samtools view -Sh chrN.bam > chrN.sam <br />
 
+Or rename the file with suffix .gz and 
+bgzip -d chrN.gz > chrN.sam
+
 8) MPI version:
 ------------
 
