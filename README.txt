@@ -9,20 +9,19 @@ Sections:
 1) Release notes <br />
 2) Installation <br />
 3)  Algorithm <br />
-4) Requirements <br />
+4) Architectures <br />
 5) Memory usage <br />
 6) Inputs <br />
 7) Outputs <br />
 8) Compiler <br />
 9) Sample test  <br />
 10) Configuration <br />
-11) Lustre configuration <br />
-12) File system management <br />
+11) Parallel file system configuration <br />
+12) Network file system configuration <br />
 13) Results <br />
-14) Job rank <br />
-15) Example of code <br />
-16) Options <br />
-17) Improvements and future work <br />
+14) Example of code <br />
+15) Options <br />
+16) Improvements and future work <br />
 
 ==============================================================================
 
@@ -33,7 +32,7 @@ Sections:
 Release 1.0 from 11/10/2016
 
 1) In this release we use the local data buffer, instead of the linux client, cache for re-reading. <br />
-Because for slow network (aka NFS) the time to get the data back from the client or server buffer can be long. <br />
+Because for slow network the time to get the data back from the client or server buffer can be long. <br />
 Now re-reading the data is intantaneous. <br />
 2) Add documentation and free some variables. <br />
 
@@ -83,53 +82,47 @@ The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic
 
 The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
 
-As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations and file management.<br />
+As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations.<br />
 
 Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
 
-4) Requirements:
+4) Architectures:
 -------------
 
-For small data samples a normal network and a network file system can do the job. <br />
+We have tested the programm on different architectures.
 
-The presented version of the program has been tested on France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France). <br />
+In the Institut Curie we have a NFS and a 10Gb network. The France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France) is equiped with Lustre. <br />
 
-Because of the development design and feature program have been optimized for HPC architecture.
-
-!!!!! THIS PROGRAM RUN BETTER ON A LOW LATENCY NETWORK !!!! <br />
-!!!!! THIS PROGRAM RUN BETTER ON A PARALLEL FILE SYSTEM !!!!
-
-This programm is intended to run on supercomputer architectures equiped with Infiniband network and parallel 
-filesystem such as Lustre, GPFS,... 
+Because of the development design the programm is optimized for HPC architecture. This programm runs better on low latency network and parallel file system. <br />
 
 Contact us if you need information.
 
 5) Memory
 ---------
 
-For a 1 TB SAM file (paired 100pb, 100X coverage) less than 4gb per jobs is needed over 512 cores. 
-A peak of 10gb can be observed on jobs master rank 0 with very big file. 
-This peak will be solved in next release and less memory will be needed (improvement n° 1).
+The total memory used during the sorting is around three times the size of the SAM file. <br />
 
 6) Input Data:
 -----------
 
-A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
-If the input file is striped the buffer cache can be used.
+A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired. <br />
 
 7) Outputs: 
 --------
 
-Output are bam files per chromosome.
-A bam files for discordant reads.
-A bam file for unmapped reads.
+Output are bam files per chromosome, a bam file for discordant reads and a bam file for unmapped reads. <br />
 
-Up to now the only way to uncompress the results: samtools view -Sh chrN.bam > chrN.sam <br />
+To index the bam file use tabix like this: <br />
+tabix -p sam chrN.bam <br />
+(samtools index doesn't work yet)<br />
+
+To uncompress the results:<br />
+samtools view -Sh chrN.bam > chrN.sam <br />
 
 8) MPI version:
 ------------
 
-A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10, MVAPICH.
+A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3.
 
 9) Compiler: 
 ---------
@@ -142,23 +135,16 @@ A C compiler must be present. We have tested the programm with GCC and Intel Com
 We furnish a sample sam to sort for testing your installation.
 We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. 
 
-11) Lustre configuration:
--------------------
+11) Parallel file system configuration:
+-----------------------------
 
-For Lustre and for our experiment the max_cached_mb is 48 Gb. That is 1/3 of the total RAM on each nodes for a node with 16 cores and 128 GB of memory
-it makes 2.5 GB per jobs. 
+MPI improves IOs by means of parallelization. 
 
-According to Lustre documentation you can reach 3/4 of the total node memory. 
-
-To see the amount you really cache use "top" on a node and look at the cached figures.
-
-If you exceed the max_cached_mb the swap will enter in game and decrease performances. 
-For the storage of the data we chose the largest striping of 2.5 GB.
-
-At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is maximum 2.5 GB. 
+On parallel file system like Lustre, GPFS one way of accelerating IO is to stripe them across servers. 
+You chose the number of servers with the striping factor and the size of chunks with the striping size. 
 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
-The parallel writing and reading are done via the MPI finfo structure. 
+The parallel writing and reading are done via the MPI finfo structure in the first line of mpiSort.c.
 
 !!!We recommand to test different parameters before setting them once for all.
 
@@ -167,39 +153,18 @@ To do that edit the code of mpiSort.c and change the parameters in the header pa
 After tuning parameters recompile the application.
 
 If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
-In file write2.c in the function read_data_for_writing and writeSam, writeSam_unmapped, writeSam_discordant
+In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant
 
-The default parameters are for 128 OSS servers, with 2.5GB striping unit (maximum).
-We do data sieving reading and a colective write is done with 128 servers.
-The default are unharmed for other filesystem.
+The default parameters of the programm are unharmed for other filesystem.
 
-Tune this parameters according to your configuration.
+At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is maximum 2.5 GB a SAM file of 1.2TB could be loaded in memory in less than 1 minute.
 
-12) File system management:
------------------------
+12) Network File system configuration:
+-------------------------------
 
-The cache optimization is critical for IO operations. 
-The sorting algorithm does repeated reads to avoid disk access as explain in the Lustre documentation chapter 31.4. 
-The cache keep the data of individual jobs in RAM and drastically improve IO performance.
+We don't recommend to use MPI with NFS (it works but it does not scale very well). 
 
-You have the choice to use OSS cache or client (computer node) cache. Setting the cache at servers level is explained chapter 31.4.3.1.
-Setting client cache is done via RPC as explain in chapter 31.4.1. Using the cache at client (computing node) side is recommended.
-
-Here are parameters we set at TGCC for our experiments for client cache
-
-Client side
- 
-max_cached_mb: 48301 <br />
-max_read_ahead_mb=40 <br />
-max_pages_per_rpc=256 <br />
-max_rpcs_in_flight=32 <br />
-
-The max_cached_mb tells how much cache can use the client. 
-
-From our experiment on computing nodes with 16 cpu and 128 GB of RAM, a cache of 48 GB is enough <br />
-This cache is 1/3 of the total memory on server and approximately 2.5 Gb per cpu. <br />
- 
-For NFS users there is a bug.
+For NFS users there is a bug in openMPI.
 https://www.open-mpi.org/community/lists/users/2016/06/29434.php
 
 a patch is available here:
@@ -216,19 +181,9 @@ http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequenc
 2016: OpenSFS conference Lustre LAD 2016 
 http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf
 
-
-14) Job rank:
-----------
-
-The number of jobs or jobs rank rely on the size of input data and the cache buffer size.
-For our development on TGCC the cache size is 2.5GB per job.
- 
-If you divide the size input by the buffer cache you got the number of jobs you need. 
-Of course the more cache you have the less jobs you need.
-
-15) Example of code:
+14) Example of code:
 -----------------
-How to launch the program with 
+How to launch the program with Torque:
 
 !/bin/bash
 MSUB -r mpiSORT_HCC1187_20X_380cpu <br />
@@ -247,21 +202,21 @@ OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
 FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
 mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 
-16) Options 
+15) Options 
 ----------
 
 the -q option is for quality filtering. <br />
 the -n for sorting by name <br />
 
-17) Improvements
+16) Improvements
 ---------------
 
-0) Problem with the output BAM 
-1) Optimize memory pressure on job rank 0 = (do the indexing in the bitonic sort)<br />
-2) Manage single reads <br />
-3) Mark or remove duplicates <br />
-4) Make a pile up of the reads <br /> 
-5) Write SAM files <br />
-6) Propose an option to write a big SAM/BAM file <br />
+1) Generate index with the bam 
+2) Optimize memory pressure on job rank 0 (do the indexing in the bitonic sort)<br />
+3) Manage single reads <br />
+4) Mark or remove duplicates <br />
+5) Make a pile up of the reads <br /> 
+6) Write SAM files per chromosom<br />
+7) Propose an option to write a big SAM/BAM file <br />
 
 
