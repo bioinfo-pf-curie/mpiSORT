@@ -1,10 +1,10 @@
 Objective
----------
+-----------
 
-Sorting big NGS data file Version 1.0. 
+Sorting big NGS data file in the context of distributed cluster and high performance computing, Version 1.0.
 
 Sections:
--------
+----------
 
 1) Release notes <br />
 2) Installation <br />
@@ -72,19 +72,31 @@ add --prefix in configure if you need  <br />
 3) Algorithm
 ----------
 
-Sorting a file is all about IO's and shuffling of data. 
+Sorting a file is all about IO's and shuffling (or movements) of data. 
 
-We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on distributed memory computer. <br />
+We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on message passing interface paradigm (MPI) and distributed memory computer. <br />
 
-There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache buffering. <br />
+There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache. <br />
 
-The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm (https://en.wikipedia.org/wiki/Bitonic_sorter). The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitive. This is why the program runs faster with low latency network.<br />
+The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitive. <br />
 
 The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
 
 As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations.<br />
 
 Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
+
+Here are some links fo further reading and MPI technics. <br />
+
+Description of Bruck algorithm:<br />
+http://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf<br />
+http://authors.library.caltech.edu/12348/1/BRUieeetpds97.pdf<br />
+http://hunoldscience.net/paper/classical_sahu_2014.pdf<br />
+
+Description of Bitonic sorting:<br />
+https://en.wikipedia.org/wiki/Bitonic_sorter<br />
+
+
 
 4) Architectures:
 -------------
