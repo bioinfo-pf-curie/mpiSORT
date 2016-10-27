@@ -161,6 +161,10 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
 
    		//fprintf(stderr, "Rank %d ::::: recv from = %d ::: send to  = %d \n", rank, srank, rrank);
 
+   		int count = badCount(k, num_proc);
+   		recv_index = (int*)malloc(sizeof(int) * count);
+
+
    		count = create_send_datatype_for_offsets(rank, num_proc, number_of_reads_by_procs,
    				data_offsets, k, &dt_send, &recv_index);
 
@@ -218,11 +222,10 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
    			// according to the recieve size
    			if (data_offsets[recv_index[m]]){
 
-   				free(data_offsets[recv_index[m]]);
-   				data_offsets[recv_index[m]] = NULL;
-   				data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
-
-   				//data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
+   				//free(data_offsets[recv_index[m]]);
+   				//data_offsets[recv_index[m]] = NULL;
+   				//data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
+   				data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
    				data_offsets[recv_index[m]][0] = 0;
    			}
    		}
@@ -330,7 +333,7 @@ int main (int argc, char *argv[]){
 	double tic, toc;
 	int compression_level;
 
-	size_t fsiz, lsiz, loff, *goff;
+	size_t fsiz, lsiz, loff;
 	const char *sort_name;
 
 	MPI_Info finfo;
@@ -479,7 +482,8 @@ int main (int argc, char *argv[]){
 	headerSize = unmappedSize = discordantSize = strlen(header);
 
 	//We place file offset of each process to the begining of one read's line
-	goff=init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank);
+	size_t *goff =(size_t*)calloc((size_t)(num_proc+1), sizeof(size_t));
+	init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank,goff);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
@@ -648,7 +652,7 @@ int main (int argc, char *argv[]){
 	 *
 	 */
 	MPI_Barrier(MPI_COMM_WORLD);
-
+	//nbchr=2;
 	for(i = 0; i < (nbchr-2); i++){
 
 
@@ -672,6 +676,7 @@ int main (int argc, char *argv[]){
 
 		int i1,i2;
 		size_t localReadsNum_rank0[num_proc];
+		localReadsNum_rank0[0]=0;
 		int file_pointer_to_free = 0;
 		int split_comm_to_free = 0;
 		//we build a vector with rank job
@@ -1168,7 +1173,7 @@ int main (int argc, char *argv[]){
 				// pbs_local_reads_coordinates is a table containing the unsorted
 				// reference coordinates
 				pbs_local_reads_coordinates = (size_t *)malloc(sizeof(size_t) * pbs_local_num_read_per_job[split_rank]);
-
+				pbs_local_reads_coordinates[0] = 0;
 
 				//now the master send
 				time_count = MPI_Wtime();
@@ -1210,7 +1215,7 @@ int main (int argc, char *argv[]){
 				// the index we be used to reoder offset and read size
 				// to comput the offset destination
 				pbs_global_reads_coordinates_index = (size_t *)malloc(pbs_local_num_read_per_job[split_rank]*sizeof(size_t));
-
+				pbs_global_reads_coordinates_index[0] = 0;
 				for (j = 0; j < pbs_local_num_read_per_job[split_rank]; j++){
 
 					if (split_rank == chosen_split_rank){
@@ -1313,9 +1318,12 @@ int main (int argc, char *argv[]){
 					fprintf(stderr,	"rank %d :::::[MPISORT] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
 
 				free(pbs_global_reads_coordinates_index); //ok
-				free(pbs_local_num_read_per_job);
+
 
 			} //end if (split_rank < dimensions)
+
+			free(pbs_local_num_read_per_job);
+			free(pbs_start_num_coordinates_per_jobs); //ok
 
 			/*
 			 * Bitonic is finished
@@ -1330,7 +1338,6 @@ int main (int argc, char *argv[]){
 			 *
 			 */
 
-			free(pbs_start_num_coordinates_per_jobs); //ok
 
 			// we create a datatype by split_rank
 			size_t *all_offset_dest_sorted=NULL;
@@ -1442,6 +1449,7 @@ int main (int argc, char *argv[]){
 
 			if (split_rank < dimensions){
 				free(all_reads_coordinates_index); //ok
+				free(all_reads_coordinates_sorted);
 			}
 
 			if (split_rank == chosen_split_rank)
@@ -1471,13 +1479,6 @@ int main (int argc, char *argv[]){
 			if (split_rank == chosen_split_rank){
 				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
 			}
-
-			//free(local_source_offsets_sorted);
-			//free(local_read_size_sorted);
-			//free(local_dest_offsets_sorted);
-			//free(local_rank_sorted);
-
-
 		} //if ((local_color == 0) && (i < (nbchr - 2))) //in the splitted dimension
 		else{
 			//we do nothing here
@@ -1508,7 +1509,9 @@ int main (int argc, char *argv[]){
 	// first we test if the there's reads to sort
 	// rank 0 recieve the sum of all the reads count
 
+
 	int s=0;
+	//nbchr=27;
 	for (s=1; s < 3; s++){
 
 		MPI_File mpi_file_split_comm2;
@@ -1533,6 +1536,7 @@ int main (int argc, char *argv[]){
 
 			int i1,i2;
 			size_t *localReadsNum_rank0 = (size_t *)malloc(num_proc*sizeof(size_t));
+			localReadsNum_rank0[0] = 0;
 			int file_pointer_to_free = 0;
 			int split_comm_to_free = 0;
 			//we build a vector with rank job
@@ -1754,9 +1758,6 @@ int main (int argc, char *argv[]){
 			MPI_Barrier(MPI_COMM_WORLD);
 			//we free the file pointer
 
-			/*
-			 * TODO problem freeing this pointer
-			 */
 			if  (file_pointer_to_free)
 				MPI_File_close(&mpi_file_split_comm2);
 
@@ -1775,6 +1776,7 @@ int main (int argc, char *argv[]){
 	} //end for (s=1; s < 3; s++){
 
 
+	free(goff);
 	free(local_data);
 
 	MPI_Barrier(MPI_COMM_WORLD);

@@ -56,8 +56,9 @@ size_t hash_name(char * line, int max)
  	return result;
  }
 
-size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank){
-	size_t * goff =(size_t*)calloc((size_t)(numproc+1), sizeof(size_t));
+void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank, size_t *goff){
+
+
 	char * current_line = NULL;
 	MPI_Status status;
 	int i = 0;
@@ -83,7 +84,7 @@ size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int n
 		free(current_line);
 	}
 
-	return goff;
+
 }
 
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,

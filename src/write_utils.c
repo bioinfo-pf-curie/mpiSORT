@@ -20,7 +20,6 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
  	int i;
 
  	//Variable for datatype struct almost classic
-
  	MPI_Aint indices[readNum];
  	int blocklens[readNum];
 
@@ -72,8 +71,6 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
  		//ranks[i] tell the position in adresse to write by elements
  		indices[i] = adress_to_write_in_data_by_element[ranks[i]];
 
-
-
  		//printf("num_proc %d - %d/%d     /    indices: %p   /   buffs: %d    /    ranks: %d\n", size, i, readNum, indices[i], buffs[i], ranks[i]);
  		//Increment position to write for ranks[i]
  		adress_to_write_in_data_by_element[ranks[i]] += buffs[i];
@@ -112,7 +109,7 @@ int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs
 
 	int i, j;
 	int count = badCount(k, size);
-	*recv_index = (int*)malloc(sizeof(int) * count);
+	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
 	MPI_Aint indices[count];
@@ -175,7 +172,7 @@ int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_pr
 	 */
 	int i, j;
 	int count = badCount(k, size);
-	*recv_index = (int*)malloc(sizeof(int) * count);
+	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
 	MPI_Aint indices[count];
@@ -239,7 +236,7 @@ int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** dat
 
 	int i, j;
 	int count = badCount(k, size);
-	*recv_index = (int*)malloc(sizeof(int) * count);
+	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
 	MPI_Aint indices[count];

@@ -93,7 +93,7 @@ typedef struct Read_chain
  *
  * \return An array of "numproc" cells with the first offset to read for each process (last cell is the last offset of mpi_filed = fsize)
  */
-size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank);
+void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank, size_t *goff);
 
 /**
  * \brief Parse localData to reads. This functions takes care of the mate of each read.

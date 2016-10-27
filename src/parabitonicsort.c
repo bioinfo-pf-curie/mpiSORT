@@ -350,17 +350,31 @@ void Merge_split(
     /* key_mpi_t is an MPI (derived) type */
     /* send recieve on local_list*/
 
-    size_t *temp_key_list = (size_t *)malloc(list_size*sizeof(size_t));
-    size_t *temp_index_list = (size_t *)malloc(list_size*sizeof(size_t));
+    //size_t *temp_key_list = (size_t *)malloc(list_size*sizeof(size_t));
+    //size_t *temp_index_list = (size_t *)malloc(list_size*sizeof(size_t));
+
+    size_t temp_key_list[list_size];
+    size_t temp_index_list[list_size];
 
     //inititalization
-    temp_key_list[0] = 0;
-    temp_index_list[0] = 0;
+    memset(temp_key_list, 0, sizeof(size_t)*list_size);
+    //temp_key_list[list_size] = 0;
+    //temp_index_list[list_size] = 0;
 
-    MPI_Sendrecv(local_list, list_size, MPI_LONG_LONG_INT,
-                 partner, 0, temp_key_list, list_size,
-                 MPI_LONG_LONG_INT, partner, 0, COMM_WORLD, &status);
+    MPI_Sendrecv(local_list,
+    			 list_size,
+    			 MPI_LONG_LONG_INT,
+                 partner,
+                 0,
+                 temp_key_list,
+                 list_size,
+                 MPI_LONG_LONG_INT,
+                 partner,
+                 0,
+                 COMM_WORLD,
+                 &status);
 
+    memset(temp_index_list, 0, sizeof(size_t)*list_size);
 
     MPI_Sendrecv(local_index, list_size, MPI_LONG_LONG_INT,
                      partner, 0, temp_index_list, list_size,
@@ -379,8 +393,6 @@ void Merge_split(
         Merge_list_low(list_size, local_list, local_index, temp_key_list, temp_index_list);
         // fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] After Merge list low \n", rank);
     }
-    free(temp_key_list);
-    free(temp_index_list);
 
 } /* Merge_split */
 
@@ -401,6 +413,9 @@ void Merge_list_low(
 
     size_t *scratch_list_key = (size_t *)malloc(list_size*sizeof(size_t));
     size_t *scratch_list_index = (size_t *)malloc(list_size*sizeof(size_t));
+    scratch_list_key[0] = 0;
+    scratch_list_index[0] = 0;
+
 
     for (i = 0; i < list_size; i++){
         if (list_key[index1] <= list_tmp_key[index2]) {
@@ -583,6 +598,7 @@ int bitonic_partition(void *data, size_t esize, size_t i, size_t k, int (*compar
 		free(pval);
 		return -1;
 	}
+
 
 	/*
 	 * Use the median-of-three method to find partition value
