@@ -32,7 +32,6 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
-
 #include <assert.h>
 #include <ctype.h>
 #include <err.h>
@@ -88,6 +87,8 @@
 #define CB_BLOCK_SIZE  "268435456" /* 256 MBytes - should match FS block size */
 #define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
 #define DATA_SIEVING_READ "enable"
+
+
 
 /*
  * Capacity constant no need to change it
@@ -297,6 +298,10 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
 
 int main (int argc, char *argv[]){
 
+
+
+
+
 	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
 	int fd;
 	off_t hsiz;
@@ -307,7 +312,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired;
+	int res, nbchr, i, paired, write_sam;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -344,7 +349,7 @@ int main (int argc, char *argv[]){
 	sort_name = "coordinate";
 	paired = 0;
 	threshold = 0;
-
+	write_sam = 0;
 	/* Check command line */
 	while ((i = getopt(argc, argv, "c:hnpq:")) != -1) {
 		switch(i) {
@@ -648,11 +653,278 @@ int main (int argc, char *argv[]){
 	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 	/*
+	 *
+	 * We care for unmapped and discordants reads
+	 *
+	 */
+
+
+	// first we test if the there's reads to sort
+	// rank 0 recieve the sum of all the reads count
+
+
+	int s=0;
+	nbchr=27;
+	for (s=1; s < 3; s++){
+
+		MPI_File mpi_file_split_comm2;
+		double time_count;
+
+		size_t total_reads = 0;
+		MPI_Allreduce(&readNumberByChr[nbchr-s], &total_reads , 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+		if ((rank == 0) && (s == 1))
+			fprintf(stderr, "rank %d :::: total read to sort for unmapped = %zu \n", rank, total_reads);
+
+		if ((rank == 0) && (s == 2))
+			fprintf(stderr, "rank %d :::: total read to sort for discordant = %zu \n", rank, total_reads);
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		if (total_reads == 0){
+			// nothing to sort for unmapped
+			// maybe write an empty bam file
+			// we go directly to discordant reads
+		}
+		else{
+			int i1,i2;
+			size_t *localReadsNum_rank0 = (size_t *)malloc(num_proc*sizeof(size_t));
+			localReadsNum_rank0[0] = 0;
+			int file_pointer_to_free = 0;
+			int split_comm_to_free = 0;
+			//we build a vector with rank job
+			int val_tmp1 = 0;
+			int val_tmp2 = 0;
+			int chosen_rank = 0;
+			// the color tells in what communicator the rank pertain
+			// color = 0 will be the new communicator color
+			// otherwise the color is 1
+			int *color_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
+			// the key value tell the order in the new communicator
+			int *key_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
+
+			//rank 0 gather the vector
+			MPI_Allgather(&readNumberByChr[nbchr-s] , 1, MPI_LONG_LONG_INT, localReadsNum_rank0 , 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
+			MPI_Barrier(MPI_COMM_WORLD);
+
+			if (rank == 0){
+				//we must chose the first rank with reads to sort
+				i1=0;
+				while (localReadsNum_rank0[i1] == 0){
+					chosen_rank++;
+					i1++;
+				}
+			}
+
+			//we broadcast the chosen rank
+			//task: replace the broadcast with a sendrecieve
+			MPI_Bcast( &chosen_rank, 1, MPI_INT, 0, MPI_COMM_WORLD);
+			MPI_Barrier(MPI_COMM_WORLD);
+
+			//we must chose which rank is going to split the communication
+			if (((rank == chosen_rank) || rank == 0) && (chosen_rank != 0)){
+				//the rank 0 will recieve the key_vec_to_send and colorvec_to_send
+				//first we exchange the size o
+				if (rank == chosen_rank){
+					header=(char *)malloc((headerSize + 1)*sizeof(char));
+					MPI_Recv(header, headerSize + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				}
+				if (rank == 0){
+					MPI_Send(header, headerSize + 1, MPI_CHAR, chosen_rank,  0, MPI_COMM_WORLD);
+				}
+			}
+			else {
+				//we do nothing here
+			}
+
+			if (rank == chosen_rank) {
+
+				int counter = 0;
+				//we compute the number of 0 in the localReadsNum_vec
+				for(i1 = 0; i1 < num_proc; i1++){
+					if (localReadsNum_rank0[i1] == 0) {
+						counter++;
+					}
+				}
+				// if no jobs without reads we do nothing
+				if ( counter == 0 ){
+					// nothing to do we associate split_comm with
+					split_comm = MPI_COMM_WORLD;
+					for (i2 = 0; i2 < num_proc; i2++) {
+
+						if (localReadsNum_rank0[i] == 0) {
+							color_vec_to_send[i2] = 1;
+							key_vec_to_send[i2] = val_tmp2;
+							val_tmp2++;
+						} else {
+							color_vec_to_send[i2] = 0;
+							key_vec_to_send[i2] = val_tmp1;
+							val_tmp1++;
+						}
+					}
+				}
+				else{
+					// now we compute the color according to
+					// the number of reads to sort
+					for(i2 = 0; i2 < num_proc; i2++){
+						if (localReadsNum_rank0[i2] == 0){
+							color_vec_to_send[i2] = 1;
+							key_vec_to_send[i2] = val_tmp2;
+							val_tmp2++;
+						} else{
+							color_vec_to_send[i2] = 0;
+							key_vec_to_send[i2] = val_tmp1;
+							val_tmp1++;
+						}
+					} // end for loop
+				}// end if
+			}// end if (rank == chosen_rank)
+
+			MPI_Barrier(MPI_COMM_WORLD);
+			// we scatter the key and color vector
+			// we create key and color variable for each job
+			int local_color = 0;
+			int local_key = 0;
+			// we scatter the color and key
+			MPI_Scatter( color_vec_to_send, 1, MPI_INT, &local_color, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
+			MPI_Scatter( key_vec_to_send, 1, MPI_INT, &local_key, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
+			// we create a communicator
+			// we group all communicator
+			// with color of zero
+			if (local_color == 0){
+
+				MPI_Comm_split( MPI_COMM_WORLD, local_color, local_key, &split_comm);
+				ierr = MPI_File_open(split_comm, file_name,  MPI_MODE_RDONLY , finfo, &mpi_file_split_comm2);
+				//we ask to liberate file pointer
+				file_pointer_to_free = 1;
+				//we ask to liberate the split_comm
+				split_comm_to_free = 1;
+			}
+			else{
+				MPI_Comm_split( MPI_COMM_WORLD, MPI_UNDEFINED, local_key, &split_comm);
+				mpi_file_split_comm2 = mpi_filed;
+			}
+			//we broadcast to_free at the end of the loop
+			//MPI_Bcast(&to_free, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+			//now we change the rank in the reads structure
+			if (local_color == 0){
+				MPI_Comm_rank(split_comm, &split_rank);
+				MPI_Comm_size(split_comm, &split_size);
+
+				g_rank = split_rank;
+				g_size = split_size;
+
+				reads[nbchr-s] = reads[nbchr-s]->next;
+				localReadNumberByChr[nbchr-s] = readNumberByChr[nbchr-s];
+				if (s == 2){
+					unmapped_start = startOffset(g_rank, g_size,
+										unmappedSize, headerSize,
+											nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
+
+					if(!unmapped_start){
+						fprintf(stderr, "No header was defined for unmapped. \n Shutting down.\n");
+						MPI_Finalize();
+						return 0;
+					}
+
+					time_count = MPI_Wtime();
+					writeSam_discordant_and_unmapped(
+							split_rank,
+							output_dir,
+							header,
+							localReadNumberByChr[nbchr-s],
+							chrNames[nbchr-s],
+							reads[nbchr-s],
+							split_size,
+							split_comm,
+							file_name,
+							mpi_file_split_comm2,
+							finfo,
+							compression_level,
+							local_data,
+							goff[rank],
+							write_sam);
+
+
+					if (split_rank == chosen_rank){
+							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
+									chrNames[nbchr-s], MPI_Wtime() - time_count);
+					}
+
+				}
+				else{
+					discordant_start = startOffset(g_rank, g_size,
+													discordantSize, headerSize,
+														nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
+					if(!discordant_start){
+						fprintf(stderr, "No header was defined for discordant.\n Shutting down.\n");
+						MPI_Finalize();
+						return 0;
+					}
+					time_count = MPI_Wtime();
+
+					writeSam_discordant_and_unmapped(
+							g_rank,
+							output_dir,
+							header,
+							localReadNumberByChr[nbchr-s],
+							chrNames[nbchr-s],
+							reads[nbchr-s],
+							g_size,
+							split_comm,
+							file_name,
+							mpi_file_split_comm2,
+							finfo,
+							compression_level,
+							local_data,
+							goff[rank],
+							write_sam);
+
+
+					if (split_rank == chosen_rank){
+							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
+								chrNames[nbchr-s], MPI_Wtime() - time_count);
+					}
+
+				}
+				while( reads[nbchr-s]->next != NULL){
+						Read *tmp_chr = reads[nbchr-s];
+						reads[nbchr-s] = reads[nbchr-s]->next;
+						//free(tmp_chr->next);
+				}
+				free(localReadsNum_rank0);
+			}
+			else{
+				// we do nothing
+			}
+
+			//we put a barrier before freeing pointers
+			MPI_Barrier(MPI_COMM_WORLD);
+			//we free the file pointer
+
+			if  (file_pointer_to_free)
+				MPI_File_close(&mpi_file_split_comm2);
+
+			//we free the split_comm
+			if (split_comm_to_free)
+				MPI_Comm_free(&split_comm);
+
+
+			split_comm_to_free = 0;
+			file_pointer_to_free = 0;
+
+			free(color_vec_to_send);
+			free(key_vec_to_send);
+
+		}
+	} //end for (s=1; s < 3; s++){
+
+	/*
 	 *  We write the mapped reads in a file named chrX.bam
 	 *
 	 */
 	MPI_Barrier(MPI_COMM_WORLD);
-	//nbchr=2;
+	nbchr=27;
 	for(i = 0; i < (nbchr-2); i++){
 
 
@@ -1499,282 +1771,6 @@ int main (int argc, char *argv[]){
 
 	}// end loop upon chromosoms
 
-	/*
-	 *
-	 * NOW we care for unmapped and discordants reads
-	 *
-	 */
-
-
-	// first we test if the there's reads to sort
-	// rank 0 recieve the sum of all the reads count
-
-
-	int s=0;
-	//nbchr=27;
-	for (s=1; s < 3; s++){
-
-		MPI_File mpi_file_split_comm2;
-		double time_count;
-
-		size_t total_reads = 0;
-		MPI_Allreduce(&readNumberByChr[nbchr-s], &total_reads , 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
-		if ((rank == 0) && (s == 1))
-			fprintf(stderr, "rank %d :::: total read to sort for unmapped = %zu \n", rank, total_reads);
-
-		if ((rank == 0) && (s == 2))
-			fprintf(stderr, "rank %d :::: total read to sort for discordant = %zu \n", rank, total_reads);
-
-		MPI_Barrier(MPI_COMM_WORLD);
-
-		if (total_reads == 0){
-			// nothing to sort for unmapped
-			// maybe write an empty bam file
-			// we go directly to discordant reads
-		}
-		else{
-
-			int i1,i2;
-			size_t *localReadsNum_rank0 = (size_t *)malloc(num_proc*sizeof(size_t));
-			localReadsNum_rank0[0] = 0;
-			int file_pointer_to_free = 0;
-			int split_comm_to_free = 0;
-			//we build a vector with rank job
-			int val_tmp1 = 0;
-			int val_tmp2 = 0;
-			int chosen_rank = 0;
-			// the color tells in what communicator the rank pertain
-			// color = 0 will be the new communicator color
-			// otherwise the color is 1
-			int *color_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
-			// the key value tell the order in the new communicator
-			int *key_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
-
-			//rank 0 gather the vector
-			MPI_Allgather(&readNumberByChr[nbchr-s] , 1, MPI_LONG_LONG_INT, localReadsNum_rank0 , 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
-			MPI_Barrier(MPI_COMM_WORLD);
-
-			if (rank == 0){
-				//we must chose the first rank with reads to sort
-				i1=0;
-				while (localReadsNum_rank0[i1] == 0){
-					chosen_rank++;
-					i1++;
-				}
-			}
-
-			//we broadcast the chosen rank
-			//task: replace the broadcast with a sendrecieve
-			MPI_Bcast( &chosen_rank, 1, MPI_INT, 0, MPI_COMM_WORLD);
-			MPI_Barrier(MPI_COMM_WORLD);
-
-			//we must chose which rank is going to split the communication
-			if (((rank == chosen_rank) || rank == 0) && (chosen_rank != 0)){
-				//the rank 0 will recieve the key_vec_to_send and colorvec_to_send
-
-
-				//first we exchange the size o
-				if (rank == chosen_rank){
-					header=(char *)malloc((headerSize + 1)*sizeof(char));
-					MPI_Recv(header, headerSize + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				}
-				if (rank == 0){
-					MPI_Send(header, headerSize + 1, MPI_CHAR, chosen_rank,  0, MPI_COMM_WORLD);
-				}
-			}
-			else {
-				//we do nothing here
-			}
-
-			if (rank == chosen_rank) {
-
-				int counter = 0;
-				//we compute the number of 0 in the localReadsNum_vec
-				for(i1 = 0; i1 < num_proc; i1++){
-					if (localReadsNum_rank0[i1] == 0) {
-						counter++;
-					}
-				}
-				// if no jobs without reads we do nothing
-				if ( counter == 0 ){
-					// nothing to do we associate split_comm with
-					split_comm = MPI_COMM_WORLD;
-					for (i2 = 0; i2 < num_proc; i2++) {
-
-						if (localReadsNum_rank0[i] == 0) {
-							color_vec_to_send[i2] = 1;
-							key_vec_to_send[i2] = val_tmp2;
-							val_tmp2++;
-						} else {
-							color_vec_to_send[i2] = 0;
-							key_vec_to_send[i2] = val_tmp1;
-							val_tmp1++;
-						}
-					}
-				}
-				else{
-
-					// now we compute the color according to
-					// the number of reads to sort
-					for(i2 = 0; i2 < num_proc; i2++){
-
-						if (localReadsNum_rank0[i2] == 0){
-							color_vec_to_send[i2] = 1;
-							key_vec_to_send[i2] = val_tmp2;
-							val_tmp2++;
-						} else{
-							color_vec_to_send[i2] = 0;
-							key_vec_to_send[i2] = val_tmp1;
-							val_tmp1++;
-						}
-					} // end for loop
-				}// end if
-
-			}// end if (rank == chosen_rank)
-
-			MPI_Barrier(MPI_COMM_WORLD);
-			// we scatter the key and color vector
-			//we create key and color variable for each job
-			int local_color = 0;
-			int local_key = 0;
-			// we scatter the color and key
-			MPI_Scatter( color_vec_to_send, 1, MPI_INT, &local_color, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
-			MPI_Scatter( key_vec_to_send, 1, MPI_INT, &local_key, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
-			// now we create a communicator
-			// we group all communicator
-			// with color of zero
-
-			if (local_color == 0){
-
-				MPI_Comm_split( MPI_COMM_WORLD, local_color, local_key, &split_comm);
-				ierr = MPI_File_open(split_comm, file_name,  MPI_MODE_RDONLY , finfo, &mpi_file_split_comm2);
-				//we ask to liberate file pointer
-				file_pointer_to_free = 1;
-				//we ask to liberate the split_comm
-				split_comm_to_free = 1;
-			}
-			else{
-				MPI_Comm_split( MPI_COMM_WORLD, MPI_UNDEFINED, local_key, &split_comm);
-				mpi_file_split_comm2 = mpi_filed;
-			}
-
-			//we broadcast to_free at the end of the loop
-			//MPI_Bcast(&to_free, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-			//now we change the rank in the reads structure
-			if (local_color == 0){
-				MPI_Comm_rank(split_comm, &split_rank);
-				MPI_Comm_size(split_comm, &split_size);
-
-				g_rank = split_rank;
-				g_size = split_size;
-
-				reads[nbchr-s] = reads[nbchr-s]->next;
-				localReadNumberByChr[nbchr-s] = readNumberByChr[nbchr-s];
-				if (s == 2){
-					unmapped_start = startOffset(g_rank, g_size,
-										unmappedSize, headerSize,
-											nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
-
-					if(!unmapped_start){
-						fprintf(stderr, "No header was defined for unmapped. \n Shutting down.\n");
-						MPI_Finalize();
-						return 0;
-					}
-
-					time_count = MPI_Wtime();
-
-					writeSam_discordant_and_unmapped(
-							split_rank,
-							output_dir,
-							header,
-							localReadNumberByChr[nbchr-s],
-							chrNames[nbchr-s],
-							reads[nbchr-s],
-							split_size,
-							split_comm,
-							file_name,
-							mpi_file_split_comm2,
-							finfo,
-							compression_level,
-							local_data,
-							goff[rank]);
-
-
-					if (split_rank == chosen_rank){
-							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
-									chrNames[nbchr-s], MPI_Wtime() - time_count);
-					}
-
-				}
-				else{
-					discordant_start = startOffset(g_rank, g_size,
-													discordantSize, headerSize,
-														nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
-					if(!discordant_start){
-						fprintf(stderr, "No header was defined for discordant.\n Shutting down.\n");
-						MPI_Finalize();
-						return 0;
-					}
-
-					time_count = MPI_Wtime();
-
-
-					writeSam_discordant_and_unmapped(
-							g_rank,
-							output_dir,
-							header,
-							localReadNumberByChr[nbchr-s],
-							chrNames[nbchr-s],
-							reads[nbchr-s],
-							g_size,
-							split_comm,
-							file_name,
-							mpi_file_split_comm2,
-							finfo,
-							compression_level,
-							local_data,
-							goff[rank]);
-
-
-					if (split_rank == chosen_rank){
-							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
-								chrNames[nbchr-s], MPI_Wtime() - time_count);
-					}
-
-				}
-				while( reads[nbchr-s]->next != NULL){
-						Read *tmp_chr = reads[nbchr-s];
-						reads[nbchr-s] = reads[nbchr-s]->next;
-						//free(tmp_chr->next);
-				}
-				free(localReadsNum_rank0);
-			}
-			else{
-				// we do nothing
-			}
-
-			//we put a barrier before freeing pointers
-			MPI_Barrier(MPI_COMM_WORLD);
-			//we free the file pointer
-
-			if  (file_pointer_to_free)
-				MPI_File_close(&mpi_file_split_comm2);
-
-			//we free the split_comm
-			if (split_comm_to_free)
-				MPI_Comm_free(&split_comm);
-
-
-			split_comm_to_free = 0;
-			file_pointer_to_free = 0;
-
-			free(color_vec_to_send);
-			free(key_vec_to_send);
-
-		}
-	} //end for (s=1; s < 3; s++){
-
 
 	free(goff);
 	free(local_data);
@@ -1787,7 +1783,6 @@ int main (int argc, char *argv[]){
 	for(i = 0; i < nbchr; i++){
 		free(chrNames[i]);
 	}
-
 
 	free(reads); //ok
 	free(readNumberByChr); //ok

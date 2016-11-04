@@ -14,7 +14,7 @@ void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *lo
 
    	int j;
    	Read* chr = data_chr;
-   	Read* to_free = NULL;
+   	Read* to_free = chr;
 
    	//we initialize offset source and size_source
    	for(j = 0; j < local_readNum; j++){
@@ -33,7 +33,7 @@ void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *lo
    		to_free = chr;
 		chr = chr->next;
 
-		free(to_free);
+		if (to_free) free(to_free);
 
    	}
 
@@ -101,6 +101,8 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 {
 	MPI_Status status;
 	int j, k;
+	//size_t *temp_buf = malloc(sizeof(size_t));
+
 
 	if (rank == master){
 		// we copy element for rank master_2
@@ -114,9 +116,16 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 
 		for(j = 0; j < num_proc; j++){
 
-			if (j != master){
+			if (j != master && size_per_jobs[j] != 0){
 
-				size_t *temp_buf =(size_t *) malloc(size_per_jobs[j]* sizeof(size_t));
+				/*
+				temp_buf  = realloc(temp_buf, size_per_jobs[j]*sizeof(size_t));
+				assert( temp_buf !=0);
+				*/
+
+				size_t temp_buf[size_per_jobs[j]];
+				temp_buf[size_per_jobs[j]] = 0;
+				assert(temp_buf !=0 );
 				MPI_Recv(temp_buf, size_per_jobs[j], MPI_LONG_LONG_INT, j, 0, split_comm, &status);
 
 				size_t st = start_size_per_job[j];
@@ -124,12 +133,12 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 					all_data[st] = temp_buf[k];
 					st++;
 				}
-				free(temp_buf);
+
 			}
 		}
 	}
 	else{
-
 		MPI_Send(data, size, MPI_LONG_LONG_INT, master,  0, split_comm);
 	}
+
 }

@@ -229,7 +229,7 @@ void bruck_reads(int rank, int num_proc, size_t * buffs_by_procs, char** data2)
 
 		for(m = 0; m<count; m++)
 		{
-			buffs_by_procs[recv_index[m]] = strlen(data2[recv_index[m]]);
+			buffs_by_procs[recv_index[m]] = strlen(data2[recv_index[m]])+1;
 		}
 
 
@@ -1790,7 +1790,7 @@ void writeSam(
 
 
 	/*
-	 * first we pack data in data_pack1
+	 * first we pack data in data_pack
 	 * to have consecutive reads of the
 	 * chromosoms
 	 */
@@ -1799,9 +1799,9 @@ void writeSam(
 	size_t i;
 	size_t new_data_sz = 0;
 
-	MPI_Datatype dt_data0;
-	char *data_pack;
 
+	char *data_pack;
+	char *tmp_tab;
 	//we compute the size of data_pack
 	for (k = 0; k < local_readNum; k++){
 		new_data_sz += new_read_size_phase2[k];
@@ -1810,29 +1810,27 @@ void writeSam(
 	data_pack = malloc(new_data_sz +1);
 	data_pack[new_data_sz] = 0;
 
-	//we create a new offset vector
-	//wich is the offset in the data
-	size_t offset_in_data[local_readNum];
-	memset(offset_in_data, 0, sizeof(size_t)*local_readNum);
-	//offset_in_data[local_readNum] = 0;
-
+	char *q = data;
+	char *p = data_pack;
+	size_t offset_in_data = 0;
+	int pos = 0;
 	//we compute the new offset of reads in data buffer
 	//we remove the start offset in the file
 
-	for (k=0; k < local_readNum;k++){
-		offset_in_data[k] = new_offset_source_sorted_phase2[k] - start_offset_in_file;
+	//we copy elements from data in data_pack
+	for (k=0; k < local_readNum; k++){
+		pos = 0;
+		offset_in_data = new_offset_source_sorted_phase2[k] - start_offset_in_file;
+		q = data + offset_in_data;
+		while (*q && (pos < new_read_size_phase2[k])) {	*p=*q; q++;	p++; pos++;}
 	}
 
-	MPI_Type_create_hindexed(local_readNum, &new_read_size_phase2[0], (MPI_Aint*)offset_in_data, MPI_CHAR, &dt_data0);
-	MPI_Type_commit(&dt_data0);
+	int res;
 
-	int packsize = 0;
-	MPI_Pack_size(1, dt_data0, COMM_WORLD, &packsize);
-	assert(packsize == new_data_sz);
+	/*
+	 * We unpack in a loop the same way
+	 */
 
-	int position=0;
-
-	MPI_Pack(data, 1, dt_data0, data_pack, new_data_sz, &position, COMM_WORLD);
 	MPI_Datatype dt_data;
 
 	//The data in which what we read will be kept
@@ -1864,7 +1862,7 @@ void writeSam(
 		data2[m][buffs_by_procs[m]] = 0;
 	}
 
-	//Variable for datatype struct almost classic
+	//Variable for datatype struct
 	MPI_Aint *indices = (MPI_Aint *)malloc(local_readNum*sizeof(MPI_Aint));
 	int *blocklens = (int *)malloc(local_readNum*sizeof(int));
 
@@ -1886,8 +1884,11 @@ void writeSam(
 	 //Create struct
 	 MPI_Type_create_struct(local_readNum, blocklens, indices, oldtypes, &dt_data);
 	 MPI_Type_commit(&dt_data);
-	 int pos=0;
-	 MPI_Unpack(data_pack, new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
+	 pos=0;
+	 res = MPI_Unpack(data_pack, new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
+	 assert(res == MPI_SUCCESS);
+	 //MPI_Sendrecv(data, 1, dt_data0, rank, 0, MPI_BOTTOM, 1, dt_data,
+	 // rank, 0, MPI_COMM_SELF, MPI_STATUS_IGNORE);
 
 	/*
 	 if (rank == master_job_phase_2){
@@ -1903,7 +1904,7 @@ void writeSam(
 	*/
 	//free(offset_in_data);
 	MPI_Type_free(&dt_data);
-	MPI_Type_free(&dt_data0);
+
 	free(data_pack);
 	free(blocklens);
 	free(indices);
@@ -2283,7 +2284,7 @@ void writeSam(
 
 
 	/*
-	 * Now we write results of compression
+	 * We write results of compression
 	 */
 	MPI_Barrier(COMM_WORLD);
 	size_t write_offset = 0;
@@ -2312,12 +2313,6 @@ void writeSam(
 	}
 
 	MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
-
-
-	/*
-	 * now we compute offset where to write
-	 */
-
 	// we create the path where to write for collective write
 	path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
 	sprintf(path, "%s/%s.gz", output_dir, chrName);
@@ -2407,7 +2402,7 @@ void writeSam(
 
 void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* header, size_t local_readNum, char* chrName, Read* chr,
 		int split_size, MPI_Comm split_comm, char *file_name, MPI_File in, MPI_Info finfo, int compression_level,
-		char* data, size_t start_offset_in_file){
+		char* data, size_t start_offset_in_file, int write_sam){
 
 	/*
 	 * task: writeSam_unmapped write unmapped reads
@@ -2454,8 +2449,20 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 	int *all_read_size=NULL;
-	size_t *all_offset_source_file=NULL;
-	int *all_read_size_to_send=NULL;
+	size_t *all_offset_source_file = malloc(sizeof(size_t));
+	//int *all_read_size_to_send = malloc(sizeof(int));
+
+	size_t *all_offset_source_to_send = malloc( 1*sizeof(size_t));
+	//size_t all_offset_source_to_send[total_num_read];
+	assert( all_offset_source_to_send!=0 );
+	all_offset_source_to_send[0] = 0;
+
+
+	int *all_read_size_to_send = malloc( 1*sizeof(int));
+	//int all_read_size_to_send[total_num_read];
+	assert(all_read_size_to_send !=0);
+	all_read_size_to_send[0] = 0;
+
 
 	// vector use in the reading and writing
 	// for the phase 1
@@ -2463,6 +2470,27 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	int *new_rank = (int *) malloc(local_readNum* sizeof(int));
 	size_t *new_offset_source = (size_t *) malloc(local_readNum* sizeof(size_t));
 	int *new_read_size = (int *) malloc(local_readNum* sizeof(int));
+
+	//char *data_pack = malloc(1024*1024);
+	//assert(data_pack != 0);
+	size_t *offset_in_data = malloc(local_readNum*sizeof(size_t));
+	assert(offset_in_data != 0);
+	char *char_buff_uncompressed = malloc(1024*1024*sizeof(char));
+	assert(char_buff_uncompressed != 0);
+	char_buff_uncompressed[0]=0;
+	uint8_t *compressed_buff = malloc(1024*1024 * sizeof(uint8_t));
+	assert(compressed_buff != 0);
+	compressed_buff[0] = 0;
+	uint8_t *buff_compressed = malloc(1024*1024 * sizeof(uint8_t));
+	assert(buff_compressed != 0);
+	buff_compressed[0] = 0;
+	uint8_t *compressed_header = malloc(1024* sizeof(uint8_t));
+	assert(compressed_header != 0);
+	compressed_header[0] = 0;
+
+
+	size_t *all_reads_offset_source_index = malloc(1024*1024*sizeof(size_t));
+	assert(all_reads_offset_source_index != 0);
 
 	//MPI_Info finfo;
 	//first we are going to read in the source file
@@ -2501,7 +2529,16 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	if (split_rank == master_job){
 		all_offset_source_file = (size_t *) malloc (total_num_read * sizeof(size_t));
+		assert(all_offset_source_file != 0);
+
 		all_read_size = (int *) malloc (total_num_read * sizeof(int));
+		assert(all_read_size != 0);
+
+		all_offset_source_to_send = realloc(all_offset_source_to_send, total_num_read * sizeof(size_t));
+		assert(all_offset_source_to_send !=0);
+
+		all_read_size_to_send = realloc(all_read_size_to_send, total_num_read * sizeof(int));
+		assert(all_read_size_to_send !=0);
 	}
 
 
@@ -2624,9 +2661,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	free(new_offset_dest);
 	free(new_offset_source);
 	free(new_rank);
-
-
-	size_t *all_reads_offset_source_index = malloc(sizeof(size_t));
 
 	//task: Phase two: Sorting all offset sources with bitonic
 	int chosen_split_rank= 0;
@@ -2785,7 +2819,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		if (split_rank == chosen_split_rank){
 
 			all_reads_offset_source_index = realloc(all_reads_offset_source_index, sizeof(size_t) * total_num_read);
-			all_reads_offset_source_index[total_num_read] = 0;
+			all_reads_offset_source_index[0] = 0;
 
 			pbs_start_num_coordinates_per_jobs[0] = 0;
 
@@ -2801,6 +2835,10 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		}
 		// we gather the offset destination sorted index
 		time_count = MPI_Wtime();
+
+		if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[WRITE] Call chosen split rank gather size \n", split_rank);
+
 		chosen_split_rank_gather_size_t(split_comm,
 				split_rank,
 				dimensions,
@@ -2821,7 +2859,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	} //end if (split_rank < dimensions)
 
-	free(pbs_local_num_read_per_job);
+	if (pbs_local_num_read_per_job) free(pbs_local_num_read_per_job);
+	if (pbs_start_num_coordinates_per_jobs) free(pbs_start_num_coordinates_per_jobs); //ok
 
 	/*
 	 * Bitonic is finished
@@ -2831,31 +2870,19 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	 *
 	 */
 
-	free(pbs_start_num_coordinates_per_jobs); //ok
-
-	// we create a datatype by split_rank
-
-	size_t *all_offset_source_to_send = NULL;
-
-	if (split_rank == chosen_split_rank){
+ 	if (split_rank == chosen_split_rank){
 
 		size_t k;
 		//we reorder all_reads_sizes
-		all_offset_source_to_send = (size_t *)malloc(sizeof(size_t) * total_num_read);
-		all_read_size_to_send = (int *)malloc(sizeof(int) * total_num_read);
+		//all_offset_source_to_send = realloc(all_offset_source_to_send, sizeof(size_t) * total_num_read);
+		//all_read_size_to_send = realloc(all_read_size_to_send, sizeof(int) * total_num_read);
 
 		for (k = 0; k < total_num_read ; k++){
 			all_offset_source_to_send[k] = all_offset_source_file[all_reads_offset_source_index[k]];
 			all_read_size_to_send[k] = all_read_size[all_reads_offset_source_index[k]];
 		}
 
-		free(all_offset_source_file);
-		free(all_read_size);
-
 	} //end if (split_rank == chosen_rank)
-
-	free(all_reads_offset_source_index);
-
 
 	/************************************/
 	// we send pieces of vector sorted
@@ -2871,7 +2898,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 
 	//task: Phase two: Dispatch all offset sources
-	MPI_Barrier(split_comm);
 	/*
 	 * first we send the offsets of the reads in
 	 * the destination file
@@ -2882,10 +2908,10 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	 * the source file
 	 */
 
-	if (split_rank != master_job){
-		//fprintf(stderr, "Rank %d ::::: Phase 2 :::: we recieve offset source \n", rank);
-		MPI_Recv(offset_source, local_readNum, MPI_LONG_LONG_INT, master_job, 0, split_comm, &status);
+	if (split_rank == master_job) fprintf(stderr,	"rank %d :::::[WRITE] We dispatch offsets \n", split_rank);
 
+	if (split_rank != master_job){
+		MPI_Recv(offset_source, local_readNum, MPI_LONG_LONG_INT, master_job, 0, split_comm, &status);
 	}
 	else {
 
@@ -2894,21 +2920,19 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 			offset_source[k] = all_offset_source_to_send[ind];
 			ind++;
 		}
-
 		for(j = 0; j < split_size; j++){
-
 			if (j != master_job){
-				//fprintf(stderr, "Rank %d ::::: Phase 2 :::: we send all_offset_sourceto_send \n", rank);
 				MPI_Send(&all_offset_source_to_send[start_num_reads_per_jobs[j]], num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 0, split_comm);
 			}
 		}
 	}
 
+
 	/*
 	 * three we send the sizes of the reads in
 	 *
 	 */
-
+	if (split_rank == master_job) fprintf(stderr,	"rank %d :::::[WRITE] We dispatch sizes \n", split_rank);
 	if (split_rank != master_job){
 
 		//fprintf(stderr, "Rank %d ::::: Phase 2 :::: we recieve new_read_size \n", rank);
@@ -2930,17 +2954,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 
-	MPI_Barrier(split_comm);
-
-	if (split_rank == master_job){
-		//we free pointers
-
-		free(all_read_size_to_send);
-		free(all_offset_source_to_send);
-	}
-
-	free(start_num_reads_per_jobs);
-	free(num_reads_per_jobs);
 	finish_phase2 = MPI_Wtime();
 	io_time = finish_phase2 - start_phase2;
 
@@ -2955,6 +2968,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 
+	if (split_rank == master_job) fprintf(stderr,	"rank %d :::::[WRITE] We sort sources \n", split_rank);
 	//previous version of local sort with output of permutation
 	base_arr2 = offset_source;
 	//new version of the local sort
@@ -2973,7 +2987,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	size_t new_data_sz = 0;
 
 
-	MPI_Barrier(split_comm);
+	//MPI_Barrier(split_comm);
 
 	/*
 	 * first we pack data in data_pack1
@@ -2981,41 +2995,43 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	 * chromosoms
 	 */
 
+	if (split_rank == master_job) fprintf(stderr,	"rank %d :::::[WRITE] We sort sources \n", split_rank);
 	int m;
 	size_t i;
-
-
-
 	MPI_Datatype dt_data0;
-	char *data_pack;
+
 
 	//we compute the size of data_pack
 	for (k = 0; k < local_readNum; k++){
 		new_data_sz += read_size_sorted[k];
 	}
 
-	data_pack = malloc(new_data_sz +1);
-	data_pack[new_data_sz] = 0;
+	//data_pack = realloc(data_pack, new_data_sz +1);
+	//assert(data_pack != 0);
+	//data_pack[new_data_sz] = 0;
 
 	//we create a new offset vector
 	//wich is the offset in the data
-	size_t offset_in_data[local_readNum];
-	memset(offset_in_data, 0, sizeof(size_t)*local_readNum);
+	//size_t offset_in_data[local_readNum];
+	//offset_in_data = realloc(offset_in_data, new_data_sz +1);
+	//memset(offset_in_data, 0, sizeof(size_t)*local_readNum);
 
 	//we compute the new offset of reads in data buffer
 	//we remove the start offset in the file
 
+	MPI_Datatype oldtypes[local_readNum];
+
 	for (k=0; k < local_readNum;k++){
 		offset_in_data[k] = offset_source[k] - start_offset_in_file;
+		oldtypes[k] = MPI_CHAR;
 	}
 
-	MPI_Type_create_hindexed(local_readNum, &size_source[0], (MPI_Aint*)offset_in_data, MPI_CHAR, &dt_data0);
+	MPI_Type_create_struct(local_readNum, &size_source[0], (MPI_Aint*)offset_in_data, oldtypes, &dt_data0);
 	MPI_Type_commit(&dt_data0);
 
-	int position=0;
+	//int position=0;
+	//MPI_Pack(data, 1, dt_data0, data_pack, (int)new_data_sz, &position, split_comm);
 
-	fprintf(stderr, "Rank %d ::::: Phase 2 :::: we pack data \n", split_rank);
-	MPI_Pack(data, 1, dt_data0, data_pack, new_data_sz, &position, split_comm);
 
 	//Here we are going to send the data to a buffer in the next rank job
 	//The next job will compress data and send it back to the prvious job
@@ -3030,10 +3046,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	y_message_sz[split_rank * blocksize] = new_data_sz;
 	y_read_num[split_rank * blocksize] = local_readNum;
 
-
 	int successor = ( split_rank + 1 ) % split_size;
 	int predecessor = ( split_rank - 1 + split_size ) % split_size;
-
 
 	size_t send_offset;
 	size_t recv_offset;
@@ -3050,13 +3064,23 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 	//we create a buffer for recieved data
-	char *char_buff_uncompressed = malloc((y_message_sz[predecessor] + 1) * sizeof(char));
+	char_buff_uncompressed = realloc(char_buff_uncompressed, (y_message_sz[predecessor] + 1) * sizeof(char));
 	char_buff_uncompressed[y_message_sz[predecessor]] = 0;
 
 	//now we send data
+	MPI_Sendrecv(data, 1, dt_data0, successor, 0,
+						 char_buff_uncompressed, y_message_sz[predecessor],
+						 MPI_CHAR, predecessor, 0, split_comm,  &status);
+
+
+	/*
 	MPI_Sendrecv(data_pack, new_data_sz, MPI_CHAR, successor, 0,
 				 char_buff_uncompressed, y_message_sz[predecessor],
 				 MPI_CHAR, predecessor, 0, split_comm,  &status);
+	*/
+
+	//if (split_rank == 1)
+	//	fprintf(stderr, "rank %d :::::[WRITE] buffer = %s \n", split_rank, char_buff_uncompressed);
 
 	BGZF *fp;
 	fp = calloc(1, sizeof(BGZF));
@@ -3067,9 +3091,9 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	fp->open_mode = 'w';
 	fp->uncompressed_block_size = MAX_BLOCK_SIZE;
-    fp->uncompressed_block = malloc(MAX_BLOCK_SIZE);
-    fp->compressed_block_size = MAX_BLOCK_SIZE;
-    fp->compressed_block = malloc(MAX_BLOCK_SIZE);
+	fp->uncompressed_block = malloc(MAX_BLOCK_SIZE);
+	fp->compressed_block_size = MAX_BLOCK_SIZE;
+	fp->compressed_block = malloc(MAX_BLOCK_SIZE);
 	fp->cache_size = 0;
 	fp->cache = kh_init(cache);
 	fp->block_address = 0;
@@ -3088,8 +3112,12 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	input = (void *)char_buff_uncompressed;
 	block_length = fp->uncompressed_block_size;
 	bytes_written = 0;
-	uint8_t *compressed_buff =  malloc((strlen(char_buff_uncompressed)+1) * sizeof(uint8_t));
+	//uint8_t *compressed_buff =  malloc((strlen(char_buff_uncompressed)+1) * sizeof(uint8_t));
+
+	compressed_buff =  realloc(compressed_buff, (strlen(char_buff_uncompressed)+1) * sizeof(uint8_t));
+	assert(compressed_buff != 0);
 	compressed_buff[strlen(char_buff_uncompressed)]=0;
+
 	time_count = MPI_Wtime();
 	while (bytes_written < length) {
 		int copy_length = bgzf_min(block_length - fp->block_offset, length - bytes_written);
@@ -3103,27 +3131,23 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 			while (fp->block_offset > 0) {
 				int block_length;
 				block_length = deflate_block(fp, fp->block_offset);
-
-				//is it necessary?
+					//is it necessary?
 				//if (block_length < 0) break;
-
-				// count = fwrite(fp->compressed_block, 1, block_length, fp->file);
+					// count = fwrite(fp->compressed_block, 1, block_length, fp->file);
 				// we replace the fwrite with a memcopy
 				memcpy(compressed_buff + compressed_size, fp->compressed_block, block_length);
-	        	compressed_size +=block_length;
-	        	fp->block_address += block_length;
+				compressed_size +=block_length;
+				fp->block_address += block_length;
 			}
-	    //}
+		//}
 	}
 
 	free(y_message_sz);
 
 	//we compress the neader
-
-
 	BGZF *fp_header;
 	fp_header = calloc(1, sizeof(BGZF));
-	uint8_t *compressed_header = NULL;
+	//uint8_t *compressed_header = NULL;
 	int compressed_size_header = 0;
 
 	if (split_rank == 0) {
@@ -3146,9 +3170,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 		if (fp_header->compress_level > 9) fp_header->compress_level = Z_DEFAULT_COMPRESSION;
 
-
 		const bgzf_byte_t *input = (void *)header;
-
 
 		if (fp_header->uncompressed_block == NULL)
 			fp_header->uncompressed_block = malloc(fp_header->uncompressed_block_size);
@@ -3156,7 +3178,7 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		input = (void *)header;
 		block_length = fp_header->uncompressed_block_size;
 		bytes_written = 0;
-		compressed_header =  malloc((strlen(char_buff_uncompressed) + 1) * sizeof(uint8_t));
+		compressed_header =  realloc(compressed_header, (strlen(char_buff_uncompressed) + 1) * sizeof(uint8_t));
 		compressed_header[strlen(char_buff_uncompressed)] = 0;
 
 		while (bytes_written < length) {
@@ -3171,10 +3193,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 			while (fp_header->block_offset > 0) {
 				int block_length;
 				block_length = deflate_block(fp_header, fp_header->block_offset);
-
 				//is it necessary?
 				//if (block_length < 0) break;
-
 				// count = fwrite(fp->compressed_block, 1, block_length, fp->file);
 				// we replace the fwrite with a memcopy
 				memcpy(compressed_header + compressed_size_header, fp_header->compressed_block, block_length);
@@ -3189,129 +3209,133 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	//we trade the blocks
 	//in this phase the predeccor become the succesor
-	size_t compressed_sz_to_send = compressed_size;
-	size_t compressed_sz_to_recv = 0;
+		size_t compressed_sz_to_send = compressed_size;
+		size_t compressed_sz_to_recv = 0;
 
-	// copy x into the correct location in y
-	int predecessor_back = ( split_rank + 1 ) % split_size;
-	int successor_back = ( split_rank - 1 + split_size ) % split_size;
+		// copy x into the correct location in y
+		int predecessor_back = ( split_rank + 1 ) % split_size;
+		int successor_back = ( split_rank - 1 + split_size ) % split_size;
 
-	// first we size the size of the buffer to send
-	MPI_Send( &compressed_sz_to_send, blocksize , MPI_LONG_LONG_INT, successor_back, 0, split_comm);
-	MPI_Recv( &compressed_sz_to_recv, blocksize , MPI_LONG_LONG_INT, predecessor_back, 0, split_comm, &status);
+		// first we size the size of the buffer to send
+		MPI_Send( &compressed_sz_to_send, blocksize , MPI_LONG_LONG_INT, successor_back, 0, split_comm);
+		MPI_Recv( &compressed_sz_to_recv, blocksize , MPI_LONG_LONG_INT, predecessor_back, 0, split_comm, &status);
 
-	//we create a buffer for recieved data
-	uint8_t *buff_compressed = malloc(compressed_sz_to_recv * sizeof(uint8_t));
-	//char *buff_compressed = malloc(compressed_sz_to_recv * sizeof(char));
-	//now we send data
-	MPI_Sendrecv(compressed_buff, compressed_sz_to_send, MPI_UNSIGNED_CHAR, successor_back, 0,
-			buff_compressed, compressed_sz_to_recv, MPI_UNSIGNED_CHAR, predecessor_back, 0, split_comm,  &status);
+		//we create a buffer for recieved data
+		//uint8_t *buff_compressed = malloc(compressed_sz_to_recv * sizeof(uint8_t));
+		//char *buff_compressed = malloc(compressed_sz_to_recv * sizeof(char));
 
-	//fprintf(stderr, "rank %d :::: we recieve from %d a compressed buffer of size %zu \n", rank,
-	//		successor, compressed_sz_to_recv );
+		buff_compressed = realloc(buff_compressed, compressed_sz_to_recv * sizeof(uint8_t));
 
-	free(compressed_buff);
+		//now we send data
+		MPI_Sendrecv(compressed_buff, compressed_sz_to_send, MPI_UNSIGNED_CHAR, successor_back, 0,
+				buff_compressed, compressed_sz_to_recv, MPI_UNSIGNED_CHAR, predecessor_back, 0, split_comm,  &status);
+
+		//fprintf(stderr, "rank %d :::: we recieve from %d a compressed buffer of size %zu \n", rank,
+		//		successor, compressed_sz_to_recv );
+
+		free(compressed_buff);
 
 
-	MPI_Barrier(split_comm);
-	size_t compSize = compressed_sz_to_recv;
-	/*
-	 * Now we write results of compression
-	 */
+		MPI_Barrier(split_comm);
+		size_t compSize = compressed_sz_to_recv;
+		/*
+		 * Now we write results of compression
+		 */
 
-	MPI_Barrier(split_comm);
-	size_t write_offset = 0;
+		MPI_Barrier(split_comm);
+		size_t write_offset = 0;
 
-	MPI_Offset * y = (MPI_Offset *) calloc(split_size, sizeof(MPI_Offset));
-	MPI_Offset * y2 = (MPI_Offset *) calloc(split_size+1, sizeof(MPI_Offset));
+		MPI_Offset * y = (MPI_Offset *) calloc(split_size, sizeof(MPI_Offset));
+		MPI_Offset * y2 = (MPI_Offset *) calloc(split_size+1, sizeof(MPI_Offset));
 
-	MPI_Gather(&compSize, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, split_comm);
+		MPI_Gather(&compSize, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-	//now we make a cumulative sum
-	int i1 = 0;
+		//we make a cumulative sum
+		int i1 = 0;
 
-	if (split_rank ==0){
-		for (i1 = 1; i1 < (split_size + 1); i1++) {
-			y2[i1] = y[i1-1];
+		if (split_rank ==0){
+			for (i1 = 1; i1 < (split_size + 1); i1++) {
+				y2[i1] = y[i1-1];
+				}
+
+			for (i1 = 1; i1 < (split_size +1); i1++) {
+				y2[i1] = y2[i1-1] + y2[i1];
 			}
 
-		for (i1 = 1; i1 < (split_size +1); i1++) {
-			y2[i1] = y2[i1-1] + y2[i1];
+			for (i1 = 0; i1 < (split_size +1); i1++) {
+				y2[i1] = y2[i1] + write_offset + compressed_size_header;
+			}
+
 		}
 
-		for (i1 = 0; i1 < (split_size +1); i1++) {
-			y2[i1] = y2[i1] + write_offset + compressed_size_header;
+		//do a gather in replacement of the the ring pass
+		MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, split_comm);
+
+
+		// we create the path where to write for collective write
+		path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
+		sprintf(path, "%s/%s.gz", output_dir, chrName);
+
+
+		ierr = MPI_File_open(split_comm, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+
+		if (ierr) {
+			fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", split_rank, path);
+			MPI_Abort(split_comm, ierr);
+			exit(2);
 		}
 
-	}
+		time_count = MPI_Wtime();
 
-	//we do a gather in replacement of the the ring pass
-	//fprintf(stderr, "Proc %d:::: we call MPI_Scatter \n", rank);
+		if (split_rank == 0 ) {
+			MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
+			//we update write _header
+		}
 
-	MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, split_comm);
-
-	//fprintf(stderr, "Proc %d:::: we recieve offset %zu\n", rank, (size_t)write_offset);
-
-	/*
-	 * now we compute offset where to write
-	 */
-
-	// we create the path where to write for collective write
-	path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-	sprintf(path, "%s/%s.gz", output_dir, chrName);
+		MPI_Barrier(split_comm);
+		//task WRITING OPERATIONS FOR UNMAPPED READS
+		MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
+		MPI_File_write(out, buff_compressed, (size_t)compSize, MPI_BYTE, &status);
+		if (split_rank == master_job)
+			fprintf(stderr, "Rank %d :::::[WRITE] Time for chromosome %s writing %f seconds\n", split_rank, chrName, MPI_Wtime()-time_count);
 
 
-	ierr = MPI_File_open(split_comm, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+		free(compressed_header);
+		free(fp->uncompressed_block);
+		free(fp->compressed_block);
+		free_cache(fp);
+		free(fp);
 
-	if (ierr) {
-		fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", split_rank, path);
-		MPI_Abort(split_comm, ierr);
-		exit(2);
-	}
+		if (split_rank == 0){
+			free(fp_header->uncompressed_block);
+			free(fp_header->compressed_block);
+			free_cache(fp_header);
+		}
 
-	time_count = MPI_Wtime();
-
-	if (split_rank == 0 ) {
-		MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
-		//we update write _header
-	}
-
-	free(compressed_header);
-	MPI_Barrier(split_comm);
-
-	//task WRITING OPERATIONS FOR UNMAPPED READS
-	MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-	MPI_File_write(out, buff_compressed, (size_t)compSize, MPI_BYTE, &status);
-	if (split_rank == master_job)
-		fprintf(stderr, "Rank %d :::::[WRITE] Time for chromosome %s writing %f seconds\n", split_rank, chrName, MPI_Wtime()-time_count);
-
-	free(fp->uncompressed_block);
-	free(fp->compressed_block);
-	free_cache(fp);
-	free(fp);
-
-	if (split_rank == 0){
-		free(fp_header->uncompressed_block);
-		free(fp_header->compressed_block);
-		free_cache(fp_header);
-	}
-	free(fp_header);
+		free(fp_header);
+		free(offset_in_data);
+		if (all_read_size_to_send) free(all_read_size_to_send);
+		free(all_offset_source_to_send);
+		free(all_reads_offset_source_index);
+		free(all_offset_source_file);
+		free(all_read_size);
+		MPI_File_close(&out);
+		free(buff_compressed);
+		free(char_buff_uncompressed);
+		free(read_size);
+		free(read_size_sorted);
+		free(offset_source_index);
+		free(offset_source_sorted);
+		free(y);
+		free(y2);
+		free(path);
+		//free(data_pack);
+		MPI_Type_free(&dt_data0);
+		free(y_read_num);
+		free(num_reads_per_jobs);
+		free(start_num_reads_per_jobs);
 
 
-	MPI_Barrier(split_comm);
-	MPI_File_close(&out);
-	free(buff_compressed);
-	free(char_buff_uncompressed);
-	free(read_size);
-	free(read_size_sorted);
-	free(offset_source_index);
-	free(offset_source_sorted);
-	free(y);
-	free(y2);
-	free(path);
-	free(data_pack);
-	MPI_Type_free(&dt_data0);
-	free(y_read_num);
 }
 
 

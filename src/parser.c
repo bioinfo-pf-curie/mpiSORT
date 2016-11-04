@@ -242,7 +242,7 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 		for(i=0;i<nbchr;i++){
 			preadNumberByChr[0][i] += readNumberByChr[i];
 		}
-		//free(readNumberByChr);
+		free(readNumberByChr);
 }
 
 void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,
