@@ -29,6 +29,13 @@ Sections:
 1) Release notes 
 -------------
 
+Release 1.0 from 04/11/2016
+
+1) Due to Packing overhead we replace with a local copy (write.c). See in future if MPI_Unpack is stable. 
+2) Change the extension of files now it's  ChrN.gz
+3) Discordant and unmapped are computed first.
+4) Cleaning of memory. 
+
 Release 1.0 from 11/10/2016
 
 1) In this release we use the local data buffer for re-reading instead of the linux client cache. <br />
@@ -112,7 +119,8 @@ Contact us if you need information.
 5) Memory
 ---------
 
-The total memory used during the sorting is around three times the size of the SAM file. <br />
+The total memory used during the sorting is around one and a half the size of the SAM file. <br />
+For instance to sort 100Gb sam file (10X WGS 100pb, paired) memory usage is around 150 gb.  <br /> 
 
 6) Input Data:
 -----------
