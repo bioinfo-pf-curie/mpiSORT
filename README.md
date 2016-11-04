@@ -31,10 +31,10 @@ Sections:
 
 Release 1.0 from 04/11/2016
 
-1) Due to Packing overhead we replace with a local copy (write.c). See in future if MPI_Unpack is stable. 
-2) Change the extension of files now it's  ChrN.gz
-3) Discordant and unmapped are computed first.
-4) Cleaning of memory. 
+1) Due to Packing overhead we replace with a local copy (write.c). See in future if MPI_Unpack is stable.  <br />
+2) File extension becomes  .gz (not bam) <br />
+3) Discordant and unmapped are computed first.  <br />
+4) Cleaning of memory.  <br />
 
 Release 1.0 from 11/10/2016
 
