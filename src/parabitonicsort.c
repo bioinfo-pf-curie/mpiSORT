@@ -62,29 +62,15 @@
 #include "parabitonicsort.h"
 
 // we limit to 1gb per proc
-//#define MAX 1024*1024
 
 #define LOW 0
 #define HIGH 1
 
 // the number of key max is 1gb
-//#define KEY_MAX 1024*1024
 #define key_mpi_t MPI_LONG_LONG_INT
 #define index_mpi_t MPI_LONG_LONG_INT
 
 static MPI_Comm COMM_WORLD;
-
-//KEY_T temp_key_list[MAX]; /* buffer for keys received */
-                            /* in Merge_split           */
-
-//KEY_T temp_index_list[MAX]; /* buffer for index received */
-                      	  	  /* in Merge_split            */
-
-//KEY_T scratch_list_key[MAX]; /* temporary storage for */
-                               /* merges                */
-
-//KEY_T scratch_list_index[MAX];
-
 
 /********************************************************************/
 
@@ -122,56 +108,13 @@ void ParallelBitonicSort(MPI_Comm split_comm, int my_rank, int dimension,
     unsigned  and_bit;
     int k = 0;
     COMM_WORLD = split_comm;
-    //we add zero at the end of the local_list
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT] list_size  = %zu \n", my_rank, list_size);
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT] zero_padding  = %zu \n", my_rank, zero_padding);
-
-    if ( my_rank == 3 || my_rank == 2 ){
-		for (k = 0; k < (zero_padding + 5); k++){
-			// fprintf(stderr, "Rank %d :::::[BITONIC SORT] first elements at %zu in local_list = %zu \n", my_rank, k, local_list[k]);
-		 }
-
-		for (k = 0; k < (zero_padding + 5); k++){
-			// fprintf(stderr, "Rank %d :::::[BITONIC SORT] last elements at %zu in local_list = %zu \n", my_rank, (list_size - k),local_list[list_size - k]);
-		}
-    }
 
     if (my_rank < (dimension - 1)){
     	for (k = 0; k < zero_padding; k++){
     		local_list[list_size - k - 1] = 0;
     	}
     }
-
-    /*
-    if (my_rank == 1) {
-    	for (k = 0; k < 10; k++){
-    		fprintf(stderr, "Rank %d :::::[BITONIC SORT] first elements before local_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-    		fprintf(stderr, "Rank %d :::::[BITONIC SORT] first indexes before local_sort at %d  local_index = %zu \n", my_rank, k, local_index[k]);
-    	}
-   		for (k = list_size - 1; k > (list_size - 10); k--){
-   			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last elements before local_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-   			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last indexes before local_sort at %d local_index = %zu \n", my_rank, k, local_index[k]);
-   		}
-    }
-	*/
     Local_sort(list_size, local_list, local_index);
-    /*
-    if (my_rank == 1) {
-
-		for (k = 0; k < 10; k++){
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] first elements after local_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] first indexes after local_sort at %d  local_index = %zu \n", my_rank, k, local_index[k]);
-		}
-
-
-		for (k = list_size - 1; k > (list_size - 10); k--){
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last elements after local_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last indexes after local_sort at %d local_index = %zu \n", my_rank, k, local_index[k]);
-		}
-    }
-	*/
-
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT] after local sort  \n", my_rank);
     /* and_bit is a bitmask that, when "anded" with  */
     /* my_rank, tells us whether we're working on an */
     /* increasing or decreasing list                 */
@@ -179,34 +122,12 @@ void ParallelBitonicSort(MPI_Comm split_comm, int my_rank, int dimension,
     		proc_set_size = proc_set_size*2, and_bit = and_bit << 1){
 
         if ((my_rank & and_bit) == 0){
-
-            Par_bitonic_sort_incr(list_size, local_list, local_index, proc_set_size);
-            //fprintf(stderr, "Rank %d :::::[BITONIC SORT] after Par_bitonic_sort_incr  \n", my_rank);
+            Par_bitonic_sort_incr(list_size, local_list, local_index, proc_set_size, my_rank);
         }
         else{
-
-            Par_bitonic_sort_decr(list_size, local_list, local_index, proc_set_size);
-            //fprintf(stderr, "Rank %d :::::[BITONIC SORT] after Par_bitonic_sort_decr  \n", my_rank);
+            Par_bitonic_sort_decr(list_size, local_list, local_index, proc_set_size, my_rank);
         }
     }
-
-
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT] FINISH BITONIC SORT  \n", my_rank);
-    /*
-    if (my_rank == 1) {
-
-		for (k = 0; k < 10; k++){
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] first elements after bitonic_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] first indexes after bitonic_sort at %d  local_index = %zu \n", my_rank, k, local_index[k]);
-		}
-
-		for (k = list_size - 1; k > (list_size - 10); k--){
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last elements after bitonic_sort at %d local_list = %zu \n", my_rank, k, local_list[k]);
-			fprintf(stderr, "Rank %d :::::[BITONIC SORT] last indexes after bitonic_sort at %d local_index = %zu \n", my_rank, k, local_index[k]);
-		}
-    }
-    */
-
 }
 
 
@@ -243,6 +164,7 @@ void Local_sort(
 	free(index_vector);
 	free(local_keys_temp);
 	free(local_index_temp);
+	malloc_trim(0);
 }
 
 
@@ -278,13 +200,14 @@ void Par_bitonic_sort_incr(
         int       list_size      /* in     */,
         size_t*    local_list    /* in/out */,
         size_t*	  local_index    /* in/out */,
-        int       proc_set_size  /* in     */) {
+        int       proc_set_size  /* in     */,
+        int 	  my_rank) {
 
     unsigned  eor_bit;
     int       proc_set_dim;
     int       stage;
     int       partner;
-    int       my_rank;
+    //int       my_rank;
 
     MPI_Comm_rank(COMM_WORLD, &my_rank);
 
@@ -294,9 +217,11 @@ void Par_bitonic_sort_incr(
     for (stage = 0; stage < proc_set_dim; stage++) {
         partner = my_rank ^ eor_bit;
         if (my_rank < partner){
+
             Merge_split(list_size, local_list, local_index, LOW, partner, my_rank);
         }
         else{
+
             Merge_split(list_size, local_list, local_index, HIGH, partner, my_rank);
         }
         eor_bit = eor_bit >> 1;
@@ -309,13 +234,14 @@ void Par_bitonic_sort_decr(
         int       list_size      /* in     */,
         size_t*    local_list     /* in/out */,
         size_t*	  local_index    /* in/out */,
-        int       proc_set_size  /* in     */) {
+        int       proc_set_size  /* in     */,
+        int 	  my_rank) {
 
     unsigned  eor_bit;
     int       proc_set_dim;
     int       stage;
     int       partner;
-    int       my_rank;
+    //int       my_rank;
 
     MPI_Comm_rank(COMM_WORLD, &my_rank);
 
@@ -347,14 +273,17 @@ void Merge_split(
 	int number_amount;
     MPI_Status status;
 
-    /* key_mpi_t is an MPI (derived) type */
+
     /* send recieve on local_list*/
 
-    //size_t *temp_key_list = (size_t *)malloc(list_size*sizeof(size_t));
-    //size_t *temp_index_list = (size_t *)malloc(list_size*sizeof(size_t));
+    size_t *temp_key_list = (size_t *)malloc(list_size*sizeof(size_t));
+    size_t *temp_index_list = (size_t *)malloc(list_size*sizeof(size_t));
 
-    size_t temp_key_list[list_size];
-    size_t temp_index_list[list_size];
+    //size_t temp_key_list[list_size];
+    //size_t temp_index_list[list_size];
+
+    assert(temp_key_list != 0);
+    assert(temp_index_list != 0);
 
     //inititalization
     memset(temp_key_list, 0, sizeof(size_t)*list_size);
@@ -376,23 +305,32 @@ void Merge_split(
 
     memset(temp_index_list, 0, sizeof(size_t)*list_size);
 
-    MPI_Sendrecv(local_index, list_size, MPI_LONG_LONG_INT,
-                     partner, 0, temp_index_list, list_size,
-                     MPI_LONG_LONG_INT, partner, 0, COMM_WORLD, &status);
+    MPI_Sendrecv(local_index,
+    			 list_size,
+    			 MPI_LONG_LONG_INT,
+                 partner,
+                 0,
+                 temp_index_list,
+                 list_size,
+                 MPI_LONG_LONG_INT,
+                 partner,
+                 0,
+                 COMM_WORLD,
+                 &status);
 
     MPI_Get_count(&status, MPI_INT, &number_amount);
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] After SENDRECV 2 amount = %d \n", partner, number_amount);
+
 
     if (which_keys == HIGH){
-    	 //fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] Before Merge list high \n", rank);
     	 Merge_list_high(list_size, local_list, local_index, temp_key_list, temp_index_list);
-    	 //fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] After Merge list high \n", rank);
     }
     else{
-    	//fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] Before Merge list low \n", rank);
         Merge_list_low(list_size, local_list, local_index, temp_key_list, temp_index_list);
-        // fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE SPLIT] After Merge list low \n", rank);
     }
+
+    free(temp_index_list);
+    free(temp_key_list);
+    malloc_trim(0);
 
 } /* Merge_split */
 
@@ -439,6 +377,7 @@ void Merge_list_low(
 
     free(scratch_list_key);
     free(scratch_list_index);
+    malloc_trim(0);
 }  /* Merge_list_low */
 
 
@@ -464,14 +403,6 @@ void Merge_list_high(
     size_t counter =0;
     int  rank;
     MPI_Comm_rank(COMM_WORLD, &rank);
-
-    /*
-    fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] In Merge list high \n", rank);
-    fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] In Merge list high  list_size = %zu \n", rank, list_size);
-    fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] In Merge list high loop 1 \n", rank);
-	*/
-    //assert(list_size <= 47756);
-
     for (i = list_size - 1; i >= 0; i--){
 
         if (list_key[index1] >= list_tmp_key[index2]) {
@@ -479,15 +410,6 @@ void Merge_list_high(
         	scratch_list_key[i] = list_key[index1];
         	scratch_list_index[i] = list_index[index1];
         	index1--;
-
-        	//assert(index1 >= 0);
-        	/*
-        	if (index1 >= list_size){
-        	     fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] PROBLEM In Merge list high index1 = %zu \n", rank, index1);
-        	     fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] PROBLEM In Merge list high counter = %zu \n", rank, counter);
-        	}
-        	*/
-        	//assert(index1 < list_size);
         	counter++;
 
         } else {
@@ -495,12 +417,6 @@ void Merge_list_high(
         	scratch_list_key[i] = list_tmp_key[index2];
         	scratch_list_index[i] = list_tmp_index[index2];
             index2--;
-            /*
-            if (index2 >= list_size){
-                  fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] PROBLEM In Merge list high index2 = %zu \n", rank, index1);
-                  fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] PROBLEM In Merge list high counter = %zu \n", rank, counter);
-             }
-			*/
             counter++;
         }
 
@@ -508,7 +424,6 @@ void Merge_list_high(
             break;
     }
 
-    //fprintf(stderr, "Rank %d :::::[BITONIC SORT][MERGE LIST HIGH] In Merge list high loop 2 \n", rank);
     for (i = 0; i < list_size; i++){
 
         	list_key[i] = scratch_list_key[i];

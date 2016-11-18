@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <stdlib.h>
 #include <mpi.h>
 
 #include "mergeSort.h"
@@ -61,7 +61,10 @@
  *
  * STRIPING UNIT is the size of the stripes
  *
- * if you change those values
+ * no need to change the values if you don't use
+ * Lustre.
+ *
+ * Those parameters are harmless for other FS
  *
  */
 #define STRIPING_FACTOR "4"
@@ -88,8 +91,6 @@
 #define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
 #define DATA_SIEVING_READ "enable"
 
-
-
 /*
  * Capacity constant no need to change it
  */
@@ -100,8 +101,6 @@
 #define MAXNBCHR 256
 
 static void usage(const char *);
-
-
 
 void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
 		size_t* number_of_reads_by_procs, size_t ** data_offsets,
@@ -160,8 +159,6 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
    		srank = (rank - k + num_proc) % num_proc;	//Rank to send to
    		rrank = (rank + k) % num_proc;	//Rank to recv from
 
-   		//fprintf(stderr, "Rank %d ::::: recv from = %d ::: send to  = %d \n", rank, srank, rrank);
-
    		int count = badCount(k, num_proc);
    		recv_index = (int*)malloc(sizeof(int) * count);
 
@@ -178,11 +175,6 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
    				&send_size_by_proc, count, k);
 
    		MPI_Pack_size(1, dt_send, comm, &packsize);
-   		/*
-   		fprintf(stderr, "Rank %d ::::: IN BRUCK OFFSET ::: packsize = %d ::: send_total = %zu :::: count = %d \n", rank,
-   				packsize, send_total, count);
-   		 */
-
    		assert(packsize == (8 * send_total));
 
    		MPI_Sendrecv(send_size_by_proc, count, MPI_LONG_LONG_INT, srank, 0,
@@ -196,60 +188,17 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
    			total += recv_size_by_proc[m];
    		}
 
-   		//fprintf(stderr, "Rank %d ::::: IN BRUCK OFFSET AFTER SEND RECV ::: total = %zu\n", rank, total);
-
    		size_t *interbuff_offset = calloc(total, sizeof(size_t));
-   		//interbuff_offset = realloc(interbuff_offset, total);
    		MPI_Sendrecv(MPI_BOTTOM, 1, dt_send, srank, 0,
    				interbuff_offset, total, MPI_LONG_LONG_INT, rrank, 0, comm, &status);
-   		/*
-   		for ( m = 0; m < total; m++){
-   			fprintf(stderr, "Rank %d ::::: interbuff_offset[%d] = %zu\n", rank, m, interbuff_offset[m]);
-   		}
-
-   		int count_ptr = 0;
-   		MPI_Get_count(&status, MPI_INT, &count_ptr);
-
-   		fprintf(stderr, "Rank %d ::::: IN BRUCK OFFSET ::: statuc count = %d\n", rank, count_ptr);
-
-   		if (rank == 2){
-   			for ( m = 0; m < count; m++){
-   				fprintf(stderr, "Rank %d ::::: IN BRUCK OFFSET ::: recv_index[%d] = %d\n", rank, m, recv_index[m]);
-   			}
-   		}
-   		 */
    		for ( m = 0; m < count; m++){
    			// we free and allocate data_offsets
    			// according to the recieve size
    			if (data_offsets[recv_index[m]]){
-
-   				//free(data_offsets[recv_index[m]]);
-   				//data_offsets[recv_index[m]] = NULL;
-   				//data_offsets[recv_index[m]] = (size_t *)malloc(sizeof(size_t)*(recv_size_by_proc[m]));
    				data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
    				data_offsets[recv_index[m]][0] = 0;
    			}
    		}
-   		/*
-   		MPI_Aint indices_offset[count];
-   		int blocklens_offset[count];
-   		MPI_Datatype oldtypes_offset[count];
-
-   		for (m = 0; m < count; m++){
-   			blocklens_offset[m] = (int)(recv_size_by_proc[m]);
-   			MPI_Get_address(data_offsets[recv_index[m]], &indices_offset[m]);
-   			oldtypes_offset[m] = MPI_LONG_LONG_INT;
-   			number_of_reads_by_procs[recv_index[m]] = recv_size_by_proc[m];
-   		}
-
-   		//Create structure of recieve type
-   		MPI_Type_create_struct(1, blocklens_offset, indices_offset, oldtypes_offset, &dt_recv);
-   		MPI_Type_commit(&dt_recv);
-
-   		int pos=0;
-   		MPI_Unpack(interbuff_offset, total, &pos, MPI_BOTTOM, 1, dt_recv, comm);
-   		 */
-
    		size_t *tmp_var = interbuff_offset;
 
    		for (m = 0; m < count; m++){
@@ -259,48 +208,24 @@ void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
    			number_of_reads_by_procs[recv_index[m]] = recv_size_by_proc[m];
 
    		}
-   		/*
-   		fprintf(stderr, "Rank %d ::::: Rank 2 recieve from %d \n", rank, rrank);
-   		fprintf(stderr, "Rank %d ::::: Rank 2 send to %d \n", rank, srank);
-   		for (m = 0; m < count; m++){
-   			for (j = 0; j< number_of_reads_by_procs[recv_index[m]]; j++){
-   				if (data_offsets[recv_index[m]][j] == 0){
-   					fprintf(stderr, "Rank %d ::::: data_offsets[recv_index[%d]][%d] = 0 \n", rank, m, j);
-   				}
-   			}
-   		}
-   		 */
-
    		for (m = 0; m < count; m++){
    			for (j = 0; j< number_of_reads_by_procs[recv_index[m]]; j++){
    				assert(data_offsets[recv_index[m]][j] != 0);
    			}
    		}
 
-
-   		//MPI_Type_free(&dt_recv);
    		MPI_Type_free(&dt_send);
-
    		count = 0;
-
-   		// problem with the interbuff free !!!
    		free(interbuff_offset);
    		free(recv_index);
    		free(recv_size_by_proc);
    		free(send_size_by_proc);
 
    	}
-   	//free(interbuff_offset);
-   	free(data_offsets2);
+  	free(data_offsets2);
    }
 
-
-
 int main (int argc, char *argv[]){
-
-
-
-
 
 	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
 	int fd;
@@ -433,11 +358,16 @@ int main (int argc, char *argv[]){
 	}
 	chrNames[nbchr++] = strdup(UNMAPPED);
 	chrNames[nbchr++] = strdup(DISCORDANT);
-	hsiz = x - xbuf; hbuf = strndup(xbuf, hsiz);
+
+	hsiz = x - xbuf;
+	hbuf = strndup(xbuf, hsiz);
+
 	if (rank == 0) {
 		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
-		fprintf(stderr, "Header has %d+2 references\n", nbchr - 2); }
+		fprintf(stderr, "Header has %d+2 references\n", nbchr - 2);
+	}
 	asprintf(&header, "@HD\tVN:1.0\tSO:%s\n%s", sort_name, hbuf);
+
 	free(hbuf);
 
 	assert(munmap(xbuf, (size_t)st.st_size) != -1);
@@ -447,7 +377,10 @@ int main (int argc, char *argv[]){
 
 	/*
 	 * In this part you shall adjust the striping factor and unit according
-	 * to the underlying filesystem
+	 * to the underlying filesystem.
+	 *
+	 * Harmless for other file system.
+	 *
 	 */
 	MPI_Info_create(&finfo);
 	MPI_Info_set(finfo,"striping_factor", STRIPING_FACTOR);
@@ -458,6 +391,9 @@ int main (int argc, char *argv[]){
 	/*
 	 * for collective reading and writing
 	 * should be adapted too and tested according to the file system
+	 *
+	 * Harmless for other file system.
+	 *
 	 */
 	MPI_Info_set(finfo,"nb_proc", NB_PROC);
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
@@ -532,79 +468,11 @@ int main (int argc, char *argv[]){
 		/*
 		 * TODO: Issue with MPI_BOTTOM on certain infrastructure problem
 		 * 		 of randomization with (void *)0
-		 * 		 We comme back to the previous mpi_file_read_at line 311
-		 *
 		 */
 
 		// Original reading part is before 18/09/2015
 		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
 		size_t local_offset=0;
-
-
-		// modification 18/09/2015
-		// we create a Datatype for the block
-		// creation of datatype
-		// Variable for datatype classic struct
-		// The idea is to decompose the block to read
-		// in small chunks (of integer size)
-		// for 1gb there's 1.5 millions read
-		// creation of datatype
-
-		/*
-		MPI_Datatype dt_view;
-		MPI_Datatype dt_data;
-
-		size_t num_data_type_block =150;
-	 	int k=0;
-	 	int blocklens[num_data_type_block];
-	 	MPI_Aint indices[num_data_type_block];
-	 	MPI_Datatype oldtypes[num_data_type_block];
-
-	 	size_t *vector_offset = (size_t*)malloc(num_data_type_block*sizeof(size_t));
-
-	 	//We divide the size_to_read in readNum small size
-	 	int chunck_size = size_to_read/num_data_type_block;
-	 	int rest = size_to_read - (num_data_type_block* chunck_size);
-
-	 	//Allocate data
-	 	for(k = 0; k < size_to_read; k++){
-	 		local_data[k] = 0;
-	 	}
-	 	char *u = local_data;
-	 	for ( k = 0; k < num_data_type_block; k++){
-	 		blocklens[k] = chunck_size;
-
-	 		//MPI_Get_address((u + k*chunck_size), &indices[k]);
-	 		indices[k] = (MPI_Aint)(u + k*chunck_size);
-	 		vector_offset[k] = poffset + k*chunck_size;
-	 		oldtypes[k] = MPI_CHAR;
-	 	}
-	 	blocklens[num_data_type_block -1]+=rest;
-
-	 	size_t res=0;
-	 	for ( k = 0; k < num_data_type_block; k++){
-	 		res+=blocklens[k];
-	 	}
-	 	assert(res==size_to_read);
-
-	 	MPI_Type_create_struct(num_data_type_block, blocklens, indices, oldtypes, &dt_data);
-	 	MPI_Type_commit(&dt_data);
-
-		MPI_Type_create_hindexed(1, blocklens, (MPI_Aint *)vector_offset, MPI_CHAR, &dt_view);
-		MPI_Type_commit(&dt_view);
-		//TODO: see if initialization is needed
-		MPI_File_set_view(mpi_filed, 0, MPI_CHAR, dt_view, "native", finfo);
-		//MPI_File_read(mpi_filed, local_data, 1, MPI_CHAR, MPI_STATUS_IGNORE);
-		MPI_File_read(mpi_filed, MPI_BOTTOM, 1, dt_data, MPI_STATUS_IGNORE);
-
-		MPI_Type_free(&dt_data);
-		MPI_Type_free(&dt_view);
-		 */
-
-		////////////////////////////////////
-		///// fin modification 18/09/2015
-		////////////////////////////////////
-
 
 		//we look where is the last line read for updating next poffset
 		size_t offset_last_line = size_to_read-1;
@@ -622,18 +490,10 @@ int main (int argc, char *argv[]){
 		//we go to the next line
 		poffset+=(offset_last_line+1);
 		local_offset+=(offset_last_line+1);
-
-		/*
-		 * Here is the novelty
-		 * we don't free local_data
-		 */
-
-		//free(local_data); //modification 10/10/2016
 	}
 
-	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE chr1:%zu ***\n", rank, MPI_Wtime()-toc, readNumberByChr[0]);
+	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
 
-	//free(goff); //modification 10/10/2016
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -653,15 +513,8 @@ int main (int argc, char *argv[]){
 	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 	/*
-	 *
 	 * We care for unmapped and discordants reads
-	 *
 	 */
-
-
-	// first we test if the there's reads to sort
-	// rank 0 recieve the sum of all the reads count
-
 
 	int s=0;
 	nbchr=27;
@@ -803,8 +656,6 @@ int main (int argc, char *argv[]){
 				MPI_Comm_split( MPI_COMM_WORLD, MPI_UNDEFINED, local_key, &split_comm);
 				mpi_file_split_comm2 = mpi_filed;
 			}
-			//we broadcast to_free at the end of the loop
-			//MPI_Bcast(&to_free, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 			//now we change the rank in the reads structure
 			if (local_color == 0){
@@ -890,7 +741,6 @@ int main (int argc, char *argv[]){
 				while( reads[nbchr-s]->next != NULL){
 						Read *tmp_chr = reads[nbchr-s];
 						reads[nbchr-s] = reads[nbchr-s]->next;
-						//free(tmp_chr->next);
 				}
 				free(localReadsNum_rank0);
 			}
@@ -1004,7 +854,6 @@ int main (int argc, char *argv[]){
 		}
 		else {
 			//we do nothing here
-			//fprintf(stderr, "rank %d :::: nothing here \n", rank );
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -1052,16 +901,13 @@ int main (int argc, char *argv[]){
 			}// end if
 		}// end if (rank == plit_rank)
 		MPI_Barrier(MPI_COMM_WORLD);
-
 		//we create key and color variable for each job
 		int local_color = 0;
 		int local_key = 0;
-
 		// rank 0 scatter the color and the key vector
 		MPI_Scatter( color_vec_to_send, 1, MPI_INT, &local_color, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
 		MPI_Scatter( key_vec_to_send, 1, MPI_INT, &local_key, 1, MPI_INT, chosen_rank, MPI_COMM_WORLD);
 		MPI_Barrier(MPI_COMM_WORLD);
-
 		// now we create a communicator
 		// we group all communicator
 		// with color of zero
@@ -1093,13 +939,10 @@ int main (int argc, char *argv[]){
 			g_size = split_size = num_proc;
 		}
 
-
 		localReadNumberByChr[i] = readNumberByChr[i];
-
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		if ((local_color == 0) && (i < (nbchr - 2))) {
-
 
 			/*
 			 * Second part of the algorithm
@@ -1118,8 +961,6 @@ int main (int argc, char *argv[]){
 			 * Finally we dispatch the information to all ranks
 			 * in the communicator for the next step.
 			 */
-
-
 
 			//we do a local merge sort
 			if(reads[i] && reads[i]->next && reads[i]->next->next){
@@ -1226,7 +1067,7 @@ int main (int argc, char *argv[]){
 					fprintf(stderr,	"rank %d :::::[MPISORT] total_num_read = %zu \n", split_rank, total_num_read);
 
 
-			MPI_Barrier(split_comm); //maybe not necessary
+			MPI_Barrier(split_comm); //necessary ?
 
 			if (split_rank == chosen_split_rank){
 				all_reads_coordinates = (size_t *) malloc (total_num_read * sizeof(size_t));
@@ -1244,16 +1085,7 @@ int main (int argc, char *argv[]){
 				}
 			}
 
-
-			/*
-			 *
-			 *
-			 * But each jobs has vector of diffrent length to sort.
-			 *
-			 */
-
-
-			MPI_Barrier(split_comm); //maybe not necessary
+			MPI_Barrier(split_comm); //necessary ?
 
 			// we broadcast the total number of reads to each rank
 			MPI_Bcast(&total_num_read, 1, MPI_LONG_LONG_INT, chosen_split_rank, split_comm );
@@ -1311,9 +1143,16 @@ int main (int argc, char *argv[]){
 
 						// first we care for ranks
 						int *temp_buf =(int *) malloc(num_reads_per_jobs[j]* sizeof(int));
+						memset(temp_buf, 0, sizeof(int)*num_reads_per_jobs[j]);
+
 						int *temp_buf1 =(int *) malloc(num_reads_per_jobs[j]* sizeof(int));
+						memset(temp_buf1, 0, sizeof(int)*num_reads_per_jobs[j]);
+
 						size_t *temp_buf2 =(size_t *) malloc(num_reads_per_jobs[j]* sizeof(size_t));
+						memset(temp_buf2, 0, sizeof(size_t)*num_reads_per_jobs[j]);
+
 						size_t *temp_buf3 =(size_t *) malloc(num_reads_per_jobs[j]* sizeof(size_t));
+						memset(temp_buf3, 0, sizeof(int)*num_reads_per_jobs[j]);
 
 						MPI_Recv(temp_buf, num_reads_per_jobs[j], MPI_INT, j, 0, split_comm, &status);
 						MPI_Recv(temp_buf1, num_reads_per_jobs[j], MPI_INT, j, 1, split_comm, &status);
@@ -1501,7 +1340,7 @@ int main (int argc, char *argv[]){
 
 				// now each rank from [0, dimension[
 				// is going to bitonic sort
-				// input are:
+				// inputs are:
 				// pbs_local_reads_coordinates
 				// pbs_local_reads_coordinates_index
 				time_count = MPI_Wtime();
@@ -1603,13 +1442,10 @@ int main (int argc, char *argv[]){
 			 * Now we re-order and dispatch
 			 * the ranks, source offset and sizes
 			 *
-			 * Improvement.
-			 *
-			 * This step is not necessary. The rordering of the offset sources, rank
-			 * and read sizes could be done during the bitonic.
+			 * TODO: Improvement.This step is not necessary.
+			 * The rordering of the offset sources, rank and read sizes could be done during the bitonic.
 			 *
 			 */
-
 
 			// we create a datatype by split_rank
 			size_t *all_offset_dest_sorted=NULL;
@@ -1684,8 +1520,7 @@ int main (int argc, char *argv[]){
 				for(j = 0; j < split_size; j++){
 
 					if (j != chosen_split_rank){
-						//fprintf(stderr, "%d ::::: [send_size_t_master_to_all] rank %d send %zu to %d from %zu\n",
-						//	rank, rank, size_per_jobs[j], j, start_size_per_job[j]);
+
 						MPI_Send(&all_offset_dest_sorted[start_num_reads_per_jobs[j]],
 								num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 0, split_comm);
 
@@ -1714,6 +1549,7 @@ int main (int argc, char *argv[]){
 				free(all_offsets_sources_sorted);
 				free(all_offset_dest_sorted);
 				free(all_reads_size_sorted);
+				malloc_trim(0);
 			}
 
 
@@ -1750,6 +1586,7 @@ int main (int argc, char *argv[]){
 
 			if (split_rank == chosen_split_rank){
 				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
+				malloc_stats();
 			}
 		} //if ((local_color == 0) && (i < (nbchr - 2))) //in the splitted dimension
 		else{
@@ -1787,6 +1624,7 @@ int main (int argc, char *argv[]){
 	free(reads); //ok
 	free(readNumberByChr); //ok
 
+	malloc_trim(0);
 	res = MPI_Finalize();
 	assert(res == MPI_SUCCESS);
 

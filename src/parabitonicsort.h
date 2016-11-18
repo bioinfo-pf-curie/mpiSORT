@@ -37,9 +37,9 @@ void Local_sort(size_t list_size, size_t local_keys[], size_t local_index[]);
 int Key_compare(const size_t* p, const size_t* q);
 int log_base2(int x);
 void Par_bitonic_sort_incr(int list_size, size_t local_list[], size_t index_list[],
-        int proc_set_size);
+        int proc_set_size, int rank);
 void Par_bitonic_sort_decr(int list_size, size_t local_list[], size_t index_list[],
-        int proc_set_size);
+        int proc_set_size, int rank);
 void Merge_split(size_t list_size, size_t local_list[], size_t local_index[],int which_keys, int partner, int my_rank);
 void Merge_list_low(size_t list_size, size_t  list_key[], size_t  list_index[], size_t list_tmp_key[], size_t  list_tmp_index[]);
 void Merge_list_high(size_t list_size, size_t  list_key[], size_t  list_index[], size_t list_tmp_key[], size_t  list_tmp_index[]);
