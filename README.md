@@ -29,9 +29,15 @@ Sections:
 1) Release notes 
 -------------
 
+Release 1.0 from 18/11/2016
+1) Trimming of the memory after big or multiple free() with malloc_trim(). 
+Efficient with Linux but not tested on BSD of IOX. 
+2) Remove memory leaks.
+3) Add/remove  comments.
+
 Release 1.0 from 04/11/2016
 
-1) Due to Packing overhead we replace with a local copy (write.c). See in future if MPI_Unpack is stable.  <br />
+1) Due to MPI packing overhead we replace with a local copy (write.c). See in future if MPI_Unpack is stable.  <br />
 2) File extension becomes  .gz (not bam) <br />
 3) Discordant and unmapped are computed first.  <br />
 4) Cleaning of memory.  <br />
@@ -237,12 +243,13 @@ the -n for sorting by name <br />
 16) Improvements
 ---------------
 
-1) Generate index with the bam 
-2) Optimize memory pressure on job rank 0 (do the indexing in the bitonic sort)<br />
+1) Generate index with the gz  <br />
+2) Optimize memory pressure on job rank 0 (do the indexing in the bitonic sort) <br />
 3) Manage single reads <br />
 4) Mark or remove duplicates <br />
 5) Make a pile up of the reads <br /> 
 6) Write SAM files per chromosom<br />
-7) Propose an option to write a big SAM/BAM file <br />
+7) Propose an option to write a big SAM file <br />
+8) Test malloc_trim on BSD or OSX  <br />
 
 
