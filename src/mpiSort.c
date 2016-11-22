@@ -101,130 +101,6 @@
 #define MAXNBCHR 256
 
 static void usage(const char *);
-
-void bruck_offsets_dest(int rank, int num_proc, int local_readNum,
-		size_t* number_of_reads_by_procs, size_t ** data_offsets,
-			int *new_rank, size_t* new_offset, MPI_Comm split_comm)
-   {
-   	MPI_Comm comm = split_comm;
-
-   	int k, m, j, srank, rrank;
-   	MPI_Datatype dt_send;
-
-   	size_t *recv_size_by_proc=NULL, *send_size_by_proc=NULL;
-   	int *recv_index=NULL;
-   	size_t total, send_total;
-   	int packsize;
-   	double time;
-
-   	int count;
-
-   	time = MPI_Wtime();
-
-   	for (m = 0; m < num_proc; m++){
-   		number_of_reads_by_procs[m] = 0;
-
-   	}
-
-   	for(m = 0; m < local_readNum; m++){
-   		number_of_reads_by_procs[new_rank[m]]++;
-   	}
-
-   	size_t **data_offsets2 = (size_t **)malloc(sizeof(size_t *)*num_proc);
-   	//we initialize data_offsets
-   	for(m = 0; m < num_proc; m++){
-   		data_offsets[m] = NULL;
-   		data_offsets2[m] = calloc( number_of_reads_by_procs[m], sizeof(size_t));
-   	}
-
-   	size_t *read_by_proc_offset = (size_t *)calloc(num_proc, sizeof(size_t));
-
-   	//we give values data_offsets
-   	for(m = 0; m < local_readNum; m++){
-
-   		// Phase one of bruck shift of the (rank+i)%size and (rank-i+size)%size
-   		data_offsets2[new_rank[m]][read_by_proc_offset[new_rank[m]]] = new_offset[m];
-   		read_by_proc_offset[new_rank[m]]++;
-   	}
-
-   	for (j = 0; j < num_proc; j++){
-   		data_offsets[(rank+j)%num_proc] = data_offsets2[(rank-j+num_proc)%num_proc];
-   		number_of_reads_by_procs[(rank+j)%num_proc] =  read_by_proc_offset[(rank-j+num_proc)%num_proc];
-   	}
-
-   	free(read_by_proc_offset);
-
-   	for(k=1; k<num_proc; k<<=1)
-   	{
-   		srank = (rank - k + num_proc) % num_proc;	//Rank to send to
-   		rrank = (rank + k) % num_proc;	//Rank to recv from
-
-   		int count = badCount(k, num_proc);
-   		recv_index = (int*)malloc(sizeof(int) * count);
-
-
-   		count = create_send_datatype_for_offsets(rank, num_proc, number_of_reads_by_procs,
-   				data_offsets, k, &dt_send, &recv_index);
-
-   		MPI_Type_commit(&dt_send);
-
-   		send_size_by_proc = (size_t*)malloc(count*sizeof(size_t));
-   		recv_size_by_proc = (size_t*)malloc(count*sizeof(size_t));
-
-   		send_total = get_send_size(rank, num_proc, number_of_reads_by_procs,
-   				&send_size_by_proc, count, k);
-
-   		MPI_Pack_size(1, dt_send, comm, &packsize);
-   		assert(packsize == (8 * send_total));
-
-   		MPI_Sendrecv(send_size_by_proc, count, MPI_LONG_LONG_INT, srank, 0,
-   				recv_size_by_proc, count, MPI_LONG_LONG_INT,
-   				rrank, 0, comm, MPI_STATUS_IGNORE);
-
-   		total = 0;
-
-   		for(m = 0; m < count; m++)
-   		{
-   			total += recv_size_by_proc[m];
-   		}
-
-   		size_t *interbuff_offset = calloc(total, sizeof(size_t));
-   		MPI_Sendrecv(MPI_BOTTOM, 1, dt_send, srank, 0,
-   				interbuff_offset, total, MPI_LONG_LONG_INT, rrank, 0, comm, &status);
-   		for ( m = 0; m < count; m++){
-   			// we free and allocate data_offsets
-   			// according to the recieve size
-   			if (data_offsets[recv_index[m]]){
-   				data_offsets[recv_index[m]] = realloc(data_offsets[recv_index[m]], sizeof(size_t)*(recv_size_by_proc[m]));
-   				data_offsets[recv_index[m]][0] = 0;
-   			}
-   		}
-   		size_t *tmp_var = interbuff_offset;
-
-   		for (m = 0; m < count; m++){
-
-   			memcpy(data_offsets[recv_index[m]], tmp_var, recv_size_by_proc[m] * sizeof(size_t));
-   			tmp_var += recv_size_by_proc[m];
-   			number_of_reads_by_procs[recv_index[m]] = recv_size_by_proc[m];
-
-   		}
-   		for (m = 0; m < count; m++){
-   			for (j = 0; j< number_of_reads_by_procs[recv_index[m]]; j++){
-   				assert(data_offsets[recv_index[m]][j] != 0);
-   			}
-   		}
-
-   		MPI_Type_free(&dt_send);
-   		count = 0;
-   		free(interbuff_offset);
-   		free(recv_index);
-   		free(recv_size_by_proc);
-   		free(send_size_by_proc);
-
-   	}
-  	free(data_offsets2);
-   }
-
 int main (int argc, char *argv[]){
 
 	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
@@ -378,7 +254,6 @@ int main (int argc, char *argv[]){
 	/*
 	 * In this part you shall adjust the striping factor and unit according
 	 * to the underlying filesystem.
-	 *
 	 * Harmless for other file system.
 	 *
 	 */
@@ -391,7 +266,6 @@ int main (int argc, char *argv[]){
 	/*
 	 * for collective reading and writing
 	 * should be adapted too and tested according to the file system
-	 *
 	 * Harmless for other file system.
 	 *
 	 */
@@ -465,11 +339,6 @@ int main (int argc, char *argv[]){
 		// we load the buffer
 		local_data=(char*)calloc(size_to_read+1,sizeof(char));
 
-		/*
-		 * TODO: Issue with MPI_BOTTOM on certain infrastructure problem
-		 * 		 of randomization with (void *)0
-		 */
-
 		// Original reading part is before 18/09/2015
 		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
 		size_t local_offset=0;
@@ -517,7 +386,6 @@ int main (int argc, char *argv[]){
 	 */
 
 	int s=0;
-	nbchr=27;
 	for (s=1; s < 3; s++){
 
 		MPI_File mpi_file_split_comm2;
@@ -774,7 +642,6 @@ int main (int argc, char *argv[]){
 	 *
 	 */
 	MPI_Barrier(MPI_COMM_WORLD);
-	nbchr=27;
 	for(i = 0; i < (nbchr-2); i++){
 
 
@@ -793,8 +660,6 @@ int main (int argc, char *argv[]){
 		 * COMM_WORLD = MPI_COMM_WORLD
 		 *
 		 */
-
-
 
 		int i1,i2;
 		size_t localReadsNum_rank0[num_proc];
@@ -1586,7 +1451,7 @@ int main (int argc, char *argv[]){
 
 			if (split_rank == chosen_split_rank){
 				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
-				malloc_stats();
+				//malloc_stats();
 			}
 		} //if ((local_color == 0) && (i < (nbchr - 2))) //in the splitted dimension
 		else{
@@ -1635,22 +1500,22 @@ int main (int argc, char *argv[]){
 
 static void usage(const char *prg) {
 
-	fprintf(stderr, "Program: MPI version for sorting FASTQ data\n"
+	fprintf(stderr, "Program: MPI version for sorting aligned FASTQ data\n"
 		"Version: v%s\n"
 		"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
 		"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
-		"output : a bam files per chromosome, a bam file of unmapped reads \n"
-		"                 a bam files of discordants reads. \n"
+		"output : a gz files per chromosome, a gz file of unmapped reads \n"
+		"                 a gz files of discordants reads. \n"
 		"Discordants reads are reads where one pairs align on a chromosome \n"
 		"and the other pair align on another chromosome \n"
 		"Unmapped reads are reads without coordinates on any genome \n"
-		"Requirements :  For perfomances matters the file you want to sort has to be \n"
-		"       stripped on parallel file system. \n"
+		"Requirements : automake 1.15, autoconf 2.69 and a MPI compiler"
+		""
+		""
+		"For perfomances matters the file you want to sort could be \n"
+		"stripped on parallel file system. \n"
 		"With Lustre you mention it with lfs setstripe command like this \n"
 		"lfs set stripe -c stripe_number -s stripe_size folder           \n"
-		"In mpiSort you mention the number of stripes with -c options \n"
-		"and mention the sripe size with with -s options. Example of command     \n"
-		"If you file is striped with 16 servers and chunk size of 1Gb the lfs options will be -c 16 -s 1 \n",
-		VERSION, prg);
+		,VERSION, prg);
 
 	return; }
