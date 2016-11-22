@@ -29,6 +29,12 @@ Sections:
 1) Release notes 
 -------------
 
+Release 1.0 from 22/11/2016
+
+We have a bug when the total size buffer to read per job is above 1 Gb, please keep the buffer below this size.
+For instance to sort a 100Gb sam file use more than 100 jobs.
+We are working on this issue. 
+
 Release 1.0 from 18/11/2016
 1) Trimming of the memory after big or multiple free() with malloc_trim(). 
 Efficient with Linux but not tested on BSD of IOX. 
