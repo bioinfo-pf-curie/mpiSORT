@@ -2111,7 +2111,7 @@ void writeSam(
 	free(y);
 	free(y2);
 	malloc_trim(0);
-	malloc_stats();
+	//malloc_stats();
 
 }
 
