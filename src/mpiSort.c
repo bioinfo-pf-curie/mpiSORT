@@ -130,18 +130,13 @@ int main (int argc, char *argv[]){
 
 	double time_count;
 	double time_count1;
-
 	int g_rank, g_size;
-
 	MPI_Comm split_comm; //used to split communication when jobs have no reads to sort
 	int split_rank, split_size; //after split communication we update the rank
-
 	double tic, toc;
 	int compression_level;
-
 	size_t fsiz, lsiz, loff;
 	const char *sort_name;
-
 	MPI_Info finfo;
 
 	/* Set default values */
@@ -321,14 +316,17 @@ int main (int argc, char *argv[]){
 	}
 
 	toc = MPI_Wtime();
-	char *local_data = NULL; //Where we load file sam
+
+	//local_data hold all the SAM buffer
+	char *local_data =(char*)calloc((goff[rank+1]-poffset)+1,sizeof(char));
+	local_data[goff[rank+1]-poffset] = 0;
+	char *q=local_data;
 
 	//We read the file sam and parse
 	while(poffset < goff[rank+1]){
 
 		size_t size_to_read = 0;
 
-		//Reading in multiple times because of MPI_File_read limits
 		if( (goff[rank+1]-poffset) < DEFAULT_INBUF_SIZE ){
 			size_to_read = goff[rank+1]-poffset;
 		}
@@ -337,32 +335,40 @@ int main (int argc, char *argv[]){
 		}
 
 		// we load the buffer
-		local_data=(char*)calloc(size_to_read+1,sizeof(char));
+		//hold temporary size of SAM
+		//due to limitation in MPI_File_read_at
+		char *local_data_tmp=(char*)calloc(size_to_read+1,sizeof(char));
+		local_data_tmp[size_to_read]=0;
 
 		// Original reading part is before 18/09/2015
-		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
+		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data_tmp, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
 		size_t local_offset=0;
+		assert(strlen(local_data_tmp) == size_to_read);
 
 		//we look where is the last line read for updating next poffset
 		size_t offset_last_line = size_to_read-1;
-		while(local_data[offset_last_line] != '\n'){
+		while(local_data_tmp[offset_last_line] != '\n'){
 			offset_last_line -- ;
 		}
 		//If it s the last line of file, we place a last '\n' for the function tokenizer
 		if(rank == num_proc-1 && ((poffset+size_to_read) == goff[num_proc])){
-			local_data[offset_last_line]='\n';
+			local_data_tmp[offset_last_line]='\n';
 		}
 
 		//Now we parse Read in local_data
-		parser_paired(local_data, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+
+		//now we copy local_data_tmp in local_data
+		char *p = local_data_tmp;
+		while (*p) {*q=*p;p++;q++;}
 
 		//we go to the next line
 		poffset+=(offset_last_line+1);
 		local_offset+=(offset_last_line+1);
+		free(local_data_tmp);
 	}
 
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
-
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -404,7 +410,6 @@ int main (int argc, char *argv[]){
 		if (total_reads == 0){
 			// nothing to sort for unmapped
 			// maybe write an empty bam file
-			// we go directly to discordant reads
 		}
 		else{
 			int i1,i2;

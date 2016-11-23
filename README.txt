@@ -29,17 +29,20 @@ Sections:
 1) Release notes 
 -------------
 
-Release 1.0 from 22/11/2016
+Release 1.0 from 23/11/2016
 
-We have a bug when the total size buffer to read per job is above 1 Gb, please keep the buffer below this size.
-For instance to sort a 100Gb sam file use more than 100 jobs.
-We are working on this issue. 
+1) Remove the limit in  MPI_file_read_at  of 1 Gb per read buffer.<br />
+SAM data are first stored in intermediate buffer and copy to the main SAM buffer see in mpiSORT.c (line 344)<br />
+2) Replace MPI_Create_struct with a local copy (in write.c line 2712) <br />
+3) Cleaning of the code and add comments <br />
+4) Tested with a beegfs scratch (4 MDS) and 10gb ethernet, it scales to 200Gb sam file and 80 cpu and takes 10mn for reading and 10mn sorting). <br />
 
 Release 1.0 from 18/11/2016
-1) Trimming of the memory after big or multiple free() with malloc_trim(). 
-Efficient with Linux but not tested on BSD of IOX. 
-2) Remove memory leaks.
-3) Add/remove  comments.
+
+1) Trimming of the memory after big or multiple free() with malloc_trim().<br /> 
+Efficient with Linux but not tested on BSD of IOX. <br />
+2) Remove memory leaks.<br />
+3) Add/remove  comments.<br />
 
 Release 1.0 from 04/11/2016
 

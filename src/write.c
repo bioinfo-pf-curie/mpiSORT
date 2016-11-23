@@ -2134,8 +2134,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	size_t *offset_source_index = (size_t*)malloc(local_readNum*sizeof(size_t));
 	size_t *offset_source_sorted = (size_t*)malloc(local_readNum*sizeof(size_t));
 
-	int *read_size = (int *) malloc(local_readNum * sizeof(int));
-	int *read_size_sorted = (int *)malloc(local_readNum * sizeof(int));
+	size_t *read_size = (size_t *) malloc(local_readNum * sizeof(size_t));
+	size_t *read_size_sorted = (size_t *)malloc(local_readNum * sizeof(size_t));
 	offset_source_index[0] = 0;
 
 
@@ -2145,12 +2145,12 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	char* path;
 	double start, finish, io_time, time_count;
 
-	size_t offset_source[local_readNum];
-	//offset_source = (size_t*)malloc(local_readNum*sizeof(size_t));
+	//size_t offset_source[local_readNum];
+	size_t *offset_source = (size_t*)malloc(local_readNum*sizeof(size_t));
 	offset_source[0] = 0;
 
-	int size_source[local_readNum];
-	//size_source = (int*)malloc(local_readNum*sizeof(int));
+	//int size_source[local_readNum];
+	int *size_source = (int*)malloc(local_readNum*sizeof(int));
 	size_source[0] = 0;
 	dataSize = 0;
 
@@ -2186,20 +2186,20 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	size_t *new_offset_source = (size_t *) malloc(local_readNum* sizeof(size_t));
 	int *new_read_size = (int *) malloc(local_readNum* sizeof(int));
 
-	//char *data_pack = malloc(1024*1024);
-	//assert(data_pack != 0);
+	char *data_pack = malloc(1024);
+	assert(data_pack != 0);
 	size_t *offset_in_data = malloc(local_readNum*sizeof(size_t));
 	assert(offset_in_data != 0);
-	char *char_buff_uncompressed = malloc(1024*1024*sizeof(char));
+	char *char_buff_uncompressed = malloc(1024*sizeof(char));
 	assert(char_buff_uncompressed != 0);
 	char_buff_uncompressed[0]=0;
-	uint8_t *compressed_buff = malloc(1024*1024 * sizeof(uint8_t));
+	uint8_t *compressed_buff = malloc(1024*sizeof(uint8_t));
 	assert(compressed_buff != 0);
 	compressed_buff[0] = 0;
-	uint8_t *buff_compressed = malloc(1024*1024 * sizeof(uint8_t));
+	uint8_t *buff_compressed = malloc(1024*sizeof(uint8_t));
 	assert(buff_compressed != 0);
 	buff_compressed[0] = 0;
-	uint8_t *compressed_header = malloc(1024* sizeof(uint8_t));
+	uint8_t *compressed_header = malloc(1024*sizeof(uint8_t));
 	assert(compressed_header != 0);
 	compressed_header[0] = 0;
 
@@ -2314,7 +2314,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	else{
 		MPI_Send(new_offset_source, local_readNum, MPI_LONG_LONG_INT, master_job,  0, split_comm);
 	}
-
 
 	//we create vector with all the reads sizes
 	//attached to the offset in dest file
@@ -2617,7 +2616,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		}
 	}
 
-
 	/*
 	 * three we send the sizes of the reads in
 	 *
@@ -2674,9 +2672,12 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		read_size_sorted[j] = size_source[offset_source_index[j]];
 	}
 
-	size_t new_data_sz = 0;
+	for(j = 1; j < local_readNum; j++){
+		assert(offset_source_sorted[j-1] <= offset_source_sorted[j]);
+		assert(read_size_sorted[j] !=0 );
+	}
 
-
+	MPI_Barrier(split_comm);
 	//MPI_Barrier(split_comm);
 
 	/*
@@ -2687,32 +2688,44 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	int m;
 	size_t i;
-	MPI_Datatype dt_data0;
-
-
+	size_t new_data_sz = 0;
 	//we compute the size of data_pack
+	//and offset in data
+
 	for (k = 0; k < local_readNum; k++){
 		new_data_sz += read_size_sorted[k];
+		offset_in_data[k] = offset_source_sorted[k] - start_offset_in_file;
 	}
 
-	//we create a new offset vector
-	//wich is the offset in the data
-	//size_t offset_in_data[local_readNum];
-	//offset_in_data = realloc(offset_in_data, new_data_sz +1);
-	//memset(offset_in_data, 0, sizeof(size_t)*local_readNum);
+	/*
+	 * We replace the create struct with a
+	 * local copy
+	 *
+	MPI_Type_create_struct(local_readNum, &size_source[0], (MPI_Aint*)offset_in_data, oldtypes, &dt_data0);
+	MPI_Type_commit(&dt_data0);
 
+	MPI_Type_create_struct(local_readNum, read_size_sorted, (MPI_Aint*)offset_in_data, oldtypes, &dt_data0);
+	MPI_Type_commit(&dt_data0);
+
+	*/
+
+	data_pack = realloc(data_pack, new_data_sz +1);
+	assert(data_pack != 0);
+	data_pack[new_data_sz] = 0;
+
+	char *q = data;
+	char *p = data_pack;
+	int pos = 0;
 	//we compute the new offset of reads in data buffer
 	//we remove the start offset in the file
 
-	MPI_Datatype oldtypes[local_readNum];
-
-	for (k=0; k < local_readNum;k++){
-		offset_in_data[k] = offset_source[k] - start_offset_in_file;
-		oldtypes[k] = MPI_CHAR;
+	size_t total_copy=0;
+	//we copy elements from data in data_pack
+	for (k=0; k < local_readNum; k++){
+		pos = 0;
+		q = data + offset_in_data[k];
+		while (*q && (pos < read_size_sorted[k])) {*p=*q;q++;p++;pos++;}
 	}
-
-	MPI_Type_create_struct(local_readNum, &size_source[0], (MPI_Aint*)offset_in_data, oldtypes, &dt_data0);
-	MPI_Type_commit(&dt_data0);
 
 	//Here we are going to send the data to a buffer in the next rank job
 	//The next job will compress data and send it back to the prvious job
@@ -2749,9 +2762,10 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	char_buff_uncompressed[y_message_sz[predecessor]] = 0;
 
 	//now we send data
-	MPI_Sendrecv(data, 1, dt_data0, successor, 0,
+	MPI_Sendrecv(data_pack, new_data_sz, MPI_CHAR, successor, 0,
 						 char_buff_uncompressed, y_message_sz[predecessor],
 						 MPI_CHAR, predecessor, 0, split_comm,  &status);
+
 
 	BGZF *fp;
 	fp = calloc(1, sizeof(BGZF));
@@ -2995,8 +3009,8 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 		free(y);
 		free(y2);
 		free(path);
-		//free(data_pack);
-		MPI_Type_free(&dt_data0);
+		free(data_pack);
+		//MPI_Type_free(&dt_data0);
 		free(y_read_num);
 		free(num_reads_per_jobs);
 		free(start_num_reads_per_jobs);

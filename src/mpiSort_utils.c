@@ -12,7 +12,7 @@
 void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *local_read_rank, size_t *coordinates,
 		size_t* offset, int* size, Read* data_chr, int local_readNum){
 
-   	int j;
+   	size_t j;
    	Read* chr = data_chr;
    	Read* to_free = chr;
 
@@ -44,7 +44,7 @@ size_t init_coordinates_and_size(int rank, int *local_reads_rank, size_t *local_
 		size_t* coordinates, int* size, Read* data_chr, int local_readNum)
 {
 	size_t dataSize = 0;
-	int j;
+	size_t j;
 	Read* chr = data_chr;
 
 	//we initialize offset source and size_source
@@ -72,7 +72,7 @@ size_t init_coordinates_and_size2(int rank, int *local_reads_rank,
 		size_t* coordinates, int* size, Read* data_chr, int local_readNum)
 {
 	size_t dataSize = 0;
-	int j;
+	size_t j;
 	Read* chr = data_chr;
 
 	//we initialize offset source and size_source
@@ -100,7 +100,7 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 		size_t *start_size_per_job, size_t *all_data, size_t *data, size_t start_index)
 {
 	MPI_Status status;
-	int j, k;
+	size_t j, k;
 	//size_t *temp_buf = malloc(sizeof(size_t));
 
 

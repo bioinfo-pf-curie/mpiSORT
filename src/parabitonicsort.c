@@ -106,7 +106,7 @@ void ParallelBitonicSort(MPI_Comm split_comm, int my_rank, int dimension,
 
     int       proc_set_size;
     unsigned  and_bit;
-    int k = 0;
+    size_t k = 0;
     COMM_WORLD = split_comm;
 
     if (my_rank < (dimension - 1)){
@@ -197,7 +197,7 @@ int log_base2(int x) {
 
 /********************************************************************/
 void Par_bitonic_sort_incr(
-        int       list_size      /* in     */,
+        size_t       list_size      /* in     */,
         size_t*    local_list    /* in/out */,
         size_t*	  local_index    /* in/out */,
         int       proc_set_size  /* in     */,
@@ -231,7 +231,7 @@ void Par_bitonic_sort_incr(
 
 /********************************************************************/
 void Par_bitonic_sort_decr(
-        int       list_size      /* in     */,
+        size_t       list_size      /* in     */,
         size_t*    local_list     /* in/out */,
         size_t*	  local_index    /* in/out */,
         int       proc_set_size  /* in     */,
