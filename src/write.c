@@ -1638,10 +1638,10 @@ void writeSam(
 	 }
 
 	//Create struct
-	MPI_Type_create_struct((int)local_readNum, blocklens, indices, oldtypes, &dt_data);
+	MPI_Type_create_struct(local_readNum, blocklens, indices, oldtypes, &dt_data);
 	MPI_Type_commit(&dt_data);
 	pos=0;
-	res = MPI_Unpack(data_pack, (int)new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
+	res = MPI_Unpack(data_pack, new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
     assert(res == MPI_SUCCESS);
 	MPI_Type_free(&dt_data);
 
