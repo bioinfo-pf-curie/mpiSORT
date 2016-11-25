@@ -29,6 +29,11 @@ Sections:
 1) Release notes 
 -------------
 
+Release 1.0 from 25/11/2016
+
+1) Bug fix at the beginning of the programm during the parsing of the SAM.<br />
+2) Need to test if the MPI sctructures scale very large buffer (above 5Gb per job).<br />
+
 Release 1.0 from 23/11/2016
 
 1) Remove the limit in  MPI_file_read_at  of 1 Gb per read buffer.<br />

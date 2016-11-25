@@ -1400,14 +1400,10 @@ void writeSam(
 				all_offset_dest_file_phase2_to_send[j] = all_offset_dest_file_phase2[all_offset_source_sorted_index_phase2[j]];
 				all_read_size_phase2_to_send[j] = all_read_size_phase2[all_offset_source_sorted_index_phase2[j]];
 				all_rank_phase2_to_send[j] = all_rank_phase2[all_offset_source_sorted_index_phase2[j]];
-			}
 
-			if (rank == master_job_phase_2){
-				for(j = 0; j < total_num_read_phase2; j++){
-					assert ( all_offset_dest_file_phase2_to_send[j] != 0 );
-					assert ( all_read_size_phase2_to_send[j] != 0 );
-					assert ( all_rank_phase2_to_send[j] <= total_num_proc );
-				}
+				assert ( all_offset_dest_file_phase2_to_send[j] != 0 );
+				assert ( all_read_size_phase2_to_send[j] != 0 );
+				assert ( all_rank_phase2_to_send[j] <= total_num_proc );
 			}
 
 			size_t total = 0;
@@ -1517,6 +1513,35 @@ void writeSam(
 	int num_proc = total_num_proc;
 	time_count = MPI_Wtime();
 
+	//test the input offset
+	/*
+	char *tmp_test=malloc(3);
+	tmp_test[3]=0;
+
+	for (k=0; k < local_readNum; k++){
+
+		MPI_File_read_at(in, (MPI_Offset)new_offset_source_sorted_phase2[k], tmp_test, 3, MPI_CHAR, MPI_STATUS_IGNORE);
+
+		if (*tmp_test!='H'){
+			int i1=0;
+			fprintf(stderr, "Rank %d :::::[WRITE][PHASE 3] problem with reads %zu first char are\n", rank, k);
+				for (i1=0; i1< 100; i1++){
+					fprintf(stderr, "%c", *tmp_test);
+					tmp_test++;
+				}
+			fprintf(stderr, "\n\n\n");
+		}
+		assert(*tmp_test=='H');
+
+
+	}
+
+	fprintf(stderr, "Rank %d :::::[WRITE][PHASE 3] Offsets checked \n", rank);
+
+	if (rank == 49)
+		fprintf(stderr, "Rank %d :::::[WRITE][PHASE 3] data =  %s\n", rank, data);
+	*/
+	MPI_Barrier(COMM_WORLD);
 
 	/*
 	 * first we pack data in data_pack
@@ -1546,6 +1571,7 @@ void writeSam(
 	//we compute the new offset of reads in data buffer
 	//we remove the start offset in the file
 
+	fprintf(stderr, "Rank %d :::::[WRITE][PHASE 3] local read num = %zu \n", rank, local_readNum);
 	//we copy elements from data in data_pack
 	for (k=0; k < local_readNum; k++){
 		pos = 0;
@@ -1596,25 +1622,26 @@ void writeSam(
 	int *blocklens = (int *)malloc(local_readNum*sizeof(int));
 
 	MPI_Datatype *oldtypes = (MPI_Datatype *)malloc(local_readNum*sizeof(MPI_Datatype));
+
 	MPI_Aint adress_to_write_in_data_by_element[num_proc];
 	for(i = 0; i < num_proc; i++){
 		MPI_Get_address(data2[(rank-i+num_proc)%num_proc], &adress_to_write_in_data_by_element[(rank+i)%num_proc]);
 	}
+
+
 	for(i = 0; i < local_readNum; i++){
  		indices[i] = adress_to_write_in_data_by_element[new_rank_phase2[i]];
+ 		assert (indices[i] != (MPI_Aint)NULL);
  		adress_to_write_in_data_by_element[new_rank_phase2[i]] += new_read_size_phase2[i];
  		blocklens[i] = new_read_size_phase2[i];
  		oldtypes[i] = MPI_CHAR;
 	 }
 
-	 for(i = 0; i < local_readNum; i++){
-	 	assert (indices[i] != (MPI_Aint)NULL);
-	 }
 	//Create struct
-	MPI_Type_create_struct(local_readNum, blocklens, indices, oldtypes, &dt_data);
+	MPI_Type_create_struct((int)local_readNum, blocklens, indices, oldtypes, &dt_data);
 	MPI_Type_commit(&dt_data);
 	pos=0;
-	res = MPI_Unpack(data_pack, new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
+	res = MPI_Unpack(data_pack, (int)new_data_sz, &pos, MPI_BOTTOM, 1, dt_data, COMM_WORLD);
     assert(res == MPI_SUCCESS);
 	MPI_Type_free(&dt_data);
 
@@ -1784,7 +1811,7 @@ void writeSam(
 	free(new_offset_dest_index_phase3);
 
 	MPI_Barrier(COMM_WORLD);
-	MPI_Type_create_struct(local_readNum, new_read_size_sorted_phase3, (MPI_Aint*)reads_address_sorted,
+	MPI_Type_create_struct((int)local_readNum, new_read_size_sorted_phase3, (MPI_Aint*)reads_address_sorted,
 			data_table, &Datatype_Read_to_write);
 
 	MPI_Type_commit(&Datatype_Read_to_write);
@@ -1985,7 +2012,6 @@ void writeSam(
 
 	//we create a buffer for recieved data
 	uint8_t *buff_compressed = malloc(compressed_sz_to_recv * sizeof(uint8_t));
-	//char *buff_compressed = malloc(compressed_sz_to_recv * sizeof(char));
 	//now we send data
 	MPI_Sendrecv(compressed_buff, compressed_sz_to_send, MPI_UNSIGNED_CHAR, successor_back, 0,
 			buff_compressed, compressed_sz_to_recv, MPI_UNSIGNED_CHAR, predecessor_back, 0, COMM_WORLD,  &status);
@@ -2101,7 +2127,6 @@ void writeSam(
 		if (data2[m]) free(data2[m]);
 	}
 	if (data2) free(data2);
-	//MPI_Type_free(data_table);
 	MPI_Type_free(&Datatype_Read_to_write);
 	free(data_reads_to_sort);
 	free(reads_address_sorted);
@@ -2644,9 +2669,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 
 	finish_phase2 = MPI_Wtime();
 	io_time = finish_phase2 - start_phase2;
-
-
-
 	//step 1 :: we sort the vector of input offset
 	//we sort the offset_sources
 	start = MPI_Wtime();
@@ -2678,7 +2700,6 @@ void writeSam_discordant_and_unmapped(int split_rank, char* output_dir, char* he
 	}
 
 	MPI_Barrier(split_comm);
-	//MPI_Barrier(split_comm);
 
 	/*
 	 * first we pack data in data_pack1

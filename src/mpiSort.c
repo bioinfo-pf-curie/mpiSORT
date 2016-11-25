@@ -317,8 +317,9 @@ int main (int argc, char *argv[]){
 
 	toc = MPI_Wtime();
 
-	//local_data hold all the SAM buffer
-	char *local_data =(char*)calloc((goff[rank+1]-poffset)+1,sizeof(char));
+	char *local_data_tmp = malloc(1024*1024);
+	char *local_data =(char*)malloc(((goff[rank+1]-poffset)+1)*sizeof(char));
+	size_t size_tmp= goff[rank+1]-poffset;
 	local_data[goff[rank+1]-poffset] = 0;
 	char *q=local_data;
 
@@ -337,7 +338,7 @@ int main (int argc, char *argv[]){
 		// we load the buffer
 		//hold temporary size of SAM
 		//due to limitation in MPI_File_read_at
-		char *local_data_tmp=(char*)calloc(size_to_read+1,sizeof(char));
+		local_data_tmp =(char*)realloc(local_data_tmp, (size_to_read+1)*sizeof(char));
 		local_data_tmp[size_to_read]=0;
 
 		// Original reading part is before 18/09/2015
@@ -347,9 +348,16 @@ int main (int argc, char *argv[]){
 
 		//we look where is the last line read for updating next poffset
 		size_t offset_last_line = size_to_read-1;
+
+		size_t extra_char=0;
 		while(local_data_tmp[offset_last_line] != '\n'){
 			offset_last_line -- ;
+			extra_char++;
 		}
+
+		local_data_tmp[size_to_read - extra_char]=0;
+		size_t local_data_tmp_sz = strlen(local_data_tmp);
+
 		//If it s the last line of file, we place a last '\n' for the function tokenizer
 		if(rank == num_proc-1 && ((poffset+size_to_read) == goff[num_proc])){
 			local_data_tmp[offset_last_line]='\n';
@@ -360,15 +368,21 @@ int main (int argc, char *argv[]){
 
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
-		while (*p) {*q=*p;p++;q++;}
+		int pos =0;
+		while (*p && (pos < local_data_tmp_sz)) {*q=*p;p++;q++;pos++;}
 
 		//we go to the next line
 		poffset+=(offset_last_line+1);
 		local_offset+=(offset_last_line+1);
-		free(local_data_tmp);
+
 	}
 
+	assert(size_tmp == strlen(local_data));
+
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
+
+	//if (local_data_tmp) free(local_data_tmp);
+	//malloc_trim(0);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -646,6 +660,24 @@ int main (int argc, char *argv[]){
 	 *  We write the mapped reads in a file named chrX.bam
 	 *
 	 */
+	//if (rank == 49)
+		//fprintf(stderr, "rank %d ::::: localdata= %s\n", rank, local_data);
+	/*
+	tmp5=0;
+	char *r1 = local_data;
+	while (*r1){
+		if (*r1 == '\n' && tmp5<strlen(local_data)) {
+			r1++;
+			tmp5++;
+			//if (rank == 0)
+			if (*r1 != 'H')
+				fprintf(stderr, "%d :::::[MPISORT2]next char is %c \n", rank, *r1);
+			//assert(*r0 == 'H');
+			}
+		tmp5++;
+		r1++;
+	}
+	*/
 	MPI_Barrier(MPI_COMM_WORLD);
 	for(i = 0; i < (nbchr-2); i++){
 
@@ -1432,6 +1464,7 @@ int main (int argc, char *argv[]){
 
 			if (split_rank == chosen_split_rank)
 				fprintf(stderr,	"rank %d :::::[MPISORT] CALL WRITE SAM\n", split_rank);
+
 
 			writeSam(split_rank,
 					output_dir,
