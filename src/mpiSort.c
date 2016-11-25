@@ -381,7 +381,7 @@ int main (int argc, char *argv[]){
 
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
 
-	//if (local_data_tmp) free(local_data_tmp);
+	if (local_data_tmp) free(local_data_tmp);
 	//malloc_trim(0);
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -660,24 +660,6 @@ int main (int argc, char *argv[]){
 	 *  We write the mapped reads in a file named chrX.bam
 	 *
 	 */
-	//if (rank == 49)
-		//fprintf(stderr, "rank %d ::::: localdata= %s\n", rank, local_data);
-	/*
-	tmp5=0;
-	char *r1 = local_data;
-	while (*r1){
-		if (*r1 == '\n' && tmp5<strlen(local_data)) {
-			r1++;
-			tmp5++;
-			//if (rank == 0)
-			if (*r1 != 'H')
-				fprintf(stderr, "%d :::::[MPISORT2]next char is %c \n", rank, *r1);
-			//assert(*r0 == 'H');
-			}
-		tmp5++;
-		r1++;
-	}
-	*/
 	MPI_Barrier(MPI_COMM_WORLD);
 	for(i = 0; i < (nbchr-2); i++){
 
