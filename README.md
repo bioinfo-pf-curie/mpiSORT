@@ -22,7 +22,8 @@ Sections:
 14) Example of code <br />
 15) Options <br />
 16) Improvements and future work <br />
-17) Authors and contacts
+17) Authors and contacts  <br />
+
 ==============================================================================
 
 

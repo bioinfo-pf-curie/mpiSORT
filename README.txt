@@ -22,7 +22,7 @@ Sections:
 14) Example of code <br />
 15) Options <br />
 16) Improvements and future work <br />
-17) Authors and contacts
+17) Authors and contacts  <br />
 
 ==============================================================================
 
@@ -131,6 +131,8 @@ http://hunoldscience.net/paper/classical_sahu_2014.pdf<br />
 
 Description of Bitonic sorting:<br />
 https://en.wikipedia.org/wiki/Bitonic_sorter<br />
+
+
 
 4) Architectures:
 -------------
