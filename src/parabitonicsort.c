@@ -1,6 +1,6 @@
 /*
    mpiSORT
-   Copyright (C) 2016 Institut Curie, 26 rue d'Ulm, Paris, France
+   Copyright (C) 2016-2017 Institut Curie, 26 rue d'Ulm, Paris, France
 
    mpiSORT is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -18,10 +18,11 @@
 
 /*
    Module:
-     parabitonicsort.c
+     diffuse.c
 
    Authors:
-    Frederic Jarlier from Institut Curie
+        Frederic Jarlier from Institut Curie
+	Nicolas Joly from Institut Pasteur
 	Nicolas Fedy from Institut Curie
 	Leonor Sirotti from Institut Curie
 	Thomas Magalhaes from Institut Curie
