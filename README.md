@@ -22,7 +22,7 @@ Sections:
 14) Example of code <br />
 15) Options <br />
 16) Improvements and future work <br />
-
+17) Authors and contacts
 ==============================================================================
 
 
@@ -79,9 +79,11 @@ Release 0.9 from 29/07/2016
 2) Installation
 -----------
 
+You need to install zlib librairies <br />
 You need automake 1.15 for the installation. <br />
 You can install automake and autoconf in differents directories and export the path like this: <br />
-export PATH=../automake-1.15/bin:../autoconf-2.69/bin:$PATH <br />
+export PATH=path_to_automake/automake-1.15/bin:path_to_autoconf/autoconf-2.69/bin:$PATH <br />
+(The best is to add it in your .bashrc and to source it).
 
 Download from git. In the folder mpiSORT type: <br />
 ./configure && make install && make <br />
@@ -96,6 +98,12 @@ for passing mpi path: <br />
 ./configure CC=mpi_bin_path  <br />
 add --prefix in configure if you need  <br />
 
+example of command line in a terminal:  <br />
+
+mpirun -n 5 psort INPUT_FILE OUTPUT_DIR -q 0  <br />
+
+-q is for quality filtering of the reads.
+
 3) Algorithm
 ----------
 
@@ -105,7 +113,7 @@ We have developed a real parallel and distributed file system aware program to o
 
 There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache. <br />
 
-The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitive. <br />
+The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm and work on parallel architectures. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of Peter S. Pacheco "Parallel programming with MPI". <br />
 
 The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
 
@@ -265,5 +273,25 @@ the -n for sorting by name <br />
 6) Write SAM files per chromosom<br />
 7) Propose an option to write a big SAM file <br />
 8) Test malloc_trim on BSD or OSX  <br />
+
+17) Authors and contacts
+--------------------
+
+This program has been developed by<br />
+
+Frederic Jarlier from Institut Curie and Nicolas Joly from Institut Pasteur<br />
+
+With the help of students from Paris Descartes University <br /> 
+
+and supervised by <br />
+
+Philippe Hupe from Institut Curie <br />
+
+Contacts:
+
+frederic.jarlier@curie.fr <br />
+njoly@pasteur.fr <br />
+philippe.hupe@curie.fr <br />
+
 
 
