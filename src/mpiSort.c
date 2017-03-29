@@ -49,9 +49,12 @@
 #include "parser.h"
 #include "preWrite.h"
 #include "write.h"
+#include "sort_any_dim.h"
 #include "mpiSort_utils.h"
 #include "write_utils.h"
 #include "qksort.h"
+#include "parabitonicsort2.h"
+#include "parabitonicsort3.h"
 
 
 /*
@@ -102,6 +105,7 @@
 #define MAXNBCHR 256
 
 static void usage(const char *);
+
 int main (int argc, char *argv[]){
 
 	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
@@ -133,7 +137,7 @@ int main (int argc, char *argv[]){
 	double time_count1;
 	int g_rank, g_size;
 	MPI_Comm split_comm; //used to split communication when jobs have no reads to sort
-	int split_rank, split_size; //after split communication we update the rank
+	int split_rank, split_size; //after split communication we update the rank and the size
 	double tic, toc;
 	int compression_level;
 	size_t fsiz, lsiz, loff;
@@ -263,13 +267,11 @@ int main (int argc, char *argv[]){
 	 * for collective reading and writing
 	 * should be adapted too and tested according to the file system
 	 * Harmless for other file system.
-	 *
 	 */
 	MPI_Info_set(finfo,"nb_proc", NB_PROC);
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
-
 
 	//we open the input file
 	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
@@ -406,14 +408,15 @@ int main (int argc, char *argv[]){
 	 * We care for unmapped and discordants reads
 	 */
 
-	int s=0;
-	for (s=1; s < 3; s++){
+	int s = 0;
+	for (s = 1; s < 3; s++){
 
 		MPI_File mpi_file_split_comm2;
 		double time_count;
 
 		size_t total_reads = 0;
 		MPI_Allreduce(&readNumberByChr[nbchr-s], &total_reads , 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
+
 		if ((rank == 0) && (s == 1))
 			fprintf(stderr, "rank %d :::: total read to sort for unmapped = %zu \n", rank, total_reads);
 
@@ -492,7 +495,7 @@ int main (int argc, char *argv[]){
 					split_comm = MPI_COMM_WORLD;
 					for (i2 = 0; i2 < num_proc; i2++) {
 
-						if (localReadsNum_rank0[i] == 0) {
+						if (localReadsNum_rank0[i2] == 0) {
 							color_vec_to_send[i2] = 1;
 							key_vec_to_send[i2] = val_tmp2;
 							val_tmp2++;
@@ -556,9 +559,14 @@ int main (int argc, char *argv[]){
 				reads[nbchr-s] = reads[nbchr-s]->next;
 				localReadNumberByChr[nbchr-s] = readNumberByChr[nbchr-s];
 				if (s == 2){
-					unmapped_start = startOffset(g_rank, g_size,
-										unmappedSize, headerSize,
-											nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
+					unmapped_start = startOffset(g_rank,
+												 g_size,
+												 unmappedSize,
+												 headerSize,
+												 nbchr-s,
+												 localReadNumberByChr[nbchr-s],
+												 split_comm
+												 );
 
 					if(!unmapped_start){
 						fprintf(stderr, "No header was defined for unmapped. \n Shutting down.\n");
@@ -584,17 +592,20 @@ int main (int argc, char *argv[]){
 							goff[rank],
 							write_sam);
 
-
 					if (split_rank == chosen_rank){
-							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
+							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds \n\n\n", split_rank,
 									chrNames[nbchr-s], MPI_Wtime() - time_count);
 					}
-
 				}
 				else{
-					discordant_start = startOffset(g_rank, g_size,
-													discordantSize, headerSize,
-														nbchr-s, localReadNumberByChr[nbchr-s], split_comm);
+					discordant_start = startOffset(g_rank,
+												   g_size,
+												   discordantSize,
+												   headerSize,
+												   nbchr-s,
+												   localReadNumberByChr[nbchr-s],
+												   split_comm);
+
 					if(!discordant_start){
 						fprintf(stderr, "No header was defined for discordant.\n Shutting down.\n");
 						MPI_Finalize();
@@ -621,7 +632,7 @@ int main (int argc, char *argv[]){
 
 
 					if (split_rank == chosen_rank){
-							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds\n", split_rank,
+							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds \n\n\n", split_rank,
 								chrNames[nbchr-s], MPI_Wtime() - time_count);
 					}
 
@@ -629,6 +640,7 @@ int main (int argc, char *argv[]){
 				while( reads[nbchr-s]->next != NULL){
 						Read *tmp_chr = reads[nbchr-s];
 						reads[nbchr-s] = reads[nbchr-s]->next;
+						free(tmp_chr);
 				}
 				free(localReadsNum_rank0);
 			}
@@ -647,7 +659,6 @@ int main (int argc, char *argv[]){
 			if (split_comm_to_free)
 				MPI_Comm_free(&split_comm);
 
-
 			split_comm_to_free = 0;
 			file_pointer_to_free = 0;
 
@@ -659,11 +670,11 @@ int main (int argc, char *argv[]){
 
 	/*
 	 *  We write the mapped reads in a file named chrX.bam
-	 *
+	 *	We loop by chromosoms.
 	 */
+
 	MPI_Barrier(MPI_COMM_WORLD);
 	for(i = 0; i < (nbchr-2); i++){
-
 
 		/*
 		 * First Part of the algorithm
@@ -757,7 +768,7 @@ int main (int argc, char *argv[]){
 				fprintf(stderr, "rank %d ::::[MPISORT] we don't split the rank \n", rank);
 				split_comm = MPI_COMM_WORLD;
 				for (i2 = 0; i2 < num_proc; i2++) {
-					if (localReadsNum_rank0[i] == 0) {
+					if (localReadsNum_rank0[i2] == 0) {
 						color_vec_to_send[i2] = 1;
 						key_vec_to_send[i2] = val_tmp2;
 						val_tmp2++;
@@ -785,6 +796,7 @@ int main (int argc, char *argv[]){
 				} // end for loop
 			}// end if
 		}// end if (rank == plit_rank)
+
 		MPI_Barrier(MPI_COMM_WORLD);
 		//we create key and color variable for each job
 		int local_color = 0;
@@ -814,6 +826,8 @@ int main (int argc, char *argv[]){
 
 			MPI_Comm_rank(split_comm, &split_rank);
 			MPI_Comm_size(split_comm, &split_size);
+
+
 
 			//we update g_rank
 			g_rank = split_rank;
@@ -856,600 +870,553 @@ int main (int argc, char *argv[]){
 
 			reads[i] = reads[i]->next;
 
-			/*
-			 * Vector creation and allocation
-			 */
-
-			size_t *local_reads_coordinates_unsorted;
-			local_reads_coordinates_unsorted = (size_t*)malloc(local_readNum*sizeof(size_t));
-			local_reads_coordinates_unsorted[0] = 0;
-
-			size_t *local_reads_coordinates_sorted;
-			local_reads_coordinates_sorted = (size_t*)malloc(local_readNum*sizeof(size_t));
-			local_reads_coordinates_sorted[0] = 0;
-
-			int *local_reads_sizes_unsorted; //vector of reads length
-			local_reads_sizes_unsorted = (int*)malloc(local_readNum*sizeof(int));
-			local_reads_sizes_unsorted[0] = 0;
-
-			int *local_reads_sizes_sorted; //vector of reads length
-			local_reads_sizes_sorted = (int*)malloc(local_readNum*sizeof(int));
-			local_reads_sizes_sorted[0] = 0;
-
-			int *local_reads_rank_unsorted; //vector of read order in the split_rank
-			local_reads_rank_unsorted = (int*)malloc(local_readNum*sizeof(int));
-			local_reads_rank_unsorted[0] = 0;
-
-			int *local_reads_rank_sorted; //vector of read order in the split_rank
-			local_reads_rank_sorted = (int*)malloc(local_readNum*sizeof(int));
-			local_reads_rank_sorted[0] = 0;
-
-			size_t *local_offset_source_unsorted; //vector of read order in the split_rank
-			local_offset_source_unsorted = (size_t*)malloc(local_readNum*sizeof(size_t));
-			local_offset_source_unsorted[0] = 0;
-
-			size_t *local_offset_source_sorted; //vector of read order in the split_rank
-			local_offset_source_sorted = (size_t*)malloc(local_readNum*sizeof(size_t));
-			local_offset_source_sorted[0] = 0;
-
-			// the vectors we are going to sort
-			// and indexed pbs stands for parallel bitonic sort
-			// pbs_vector hold the coordinates and index of the coordinates
-			size_t *pbs_local_reads_coordinates;
-			size_t *pbs_global_reads_coordinates_index;
-
-			//task Init offset and size for source - free chr
-			// from mpiSort_utils.c
-			get_coordinates_and_offset_source_and_size_and_free_reads(split_rank, local_reads_rank_unsorted,
-					local_reads_coordinates_unsorted, local_offset_source_unsorted, local_reads_sizes_unsorted,
-					reads[i], local_readNum);
-
-			//init indices for qksort
-			size_t *coord_index = (size_t*)malloc(local_readNum*sizeof(size_t));
-
-			for(j = 0; j < local_readNum; j++){
-				coord_index[j] = j;
-			}
-
-			//To start we sort locally the reads coordinates.
-			//this is to facilitate the bitonic sorting
-			//if the local coordinates to sort are to big we could get rid of
-			//this step.
-			base_arr2 = local_reads_coordinates_unsorted;
-			qksort(coord_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
-
-			//We index data
-			for(j = 0; j < local_readNum; j++){
-				local_reads_coordinates_sorted[j] = local_reads_coordinates_unsorted[coord_index[j]];
-				local_reads_rank_sorted[j] = local_reads_rank_unsorted[coord_index[j]];
-				local_reads_sizes_sorted[j] = local_reads_sizes_unsorted[coord_index[j]];
-				local_offset_source_sorted[j] = local_offset_source_unsorted[coord_index[j]];
-			}
-
-			free(coord_index); //ok
-			free(local_reads_rank_unsorted); //ok
-			free(local_reads_coordinates_unsorted); //ok
-			free(local_reads_sizes_unsorted); //ok
-			free(local_offset_source_unsorted); //ok
-
-			MPI_Barrier(split_comm); //maybe not necessary
-
-			//first we get the vector of all offset in destination file
-			size_t *all_reads_coordinates = NULL;
-			size_t *all_reads_coordinates_sorted =NULL;
-			size_t *all_offsets_sources = NULL;
-			int *all_reads_sizes = NULL;
-			int *all_reads_rank = NULL;
-			size_t *all_reads_coordinates_index = NULL;
-
-			//we get the total number of reads.
-			//because the elected is going to collect them
-			//and dispatch to ranks belonging to the bitonic dimension
-			size_t total_num_read = 0;
-			MPI_Reduce(&localReadNumberByChr[i], &total_num_read, 1, MPI_LONG_LONG_INT, MPI_SUM, chosen_split_rank, split_comm);
-
-			if (split_rank == chosen_split_rank)
-					fprintf(stderr,	"rank %d :::::[MPISORT] total_num_read = %zu \n", split_rank, total_num_read);
-
-
-			MPI_Barrier(split_comm); //necessary ?
-
-			if (split_rank == chosen_split_rank){
-				all_reads_coordinates = (size_t *) malloc (total_num_read * sizeof(size_t));
-				all_offsets_sources = (size_t *) malloc (total_num_read * sizeof(size_t));
-				all_reads_sizes = (int *) malloc (total_num_read * sizeof(int));
-				all_reads_rank = (int *) malloc (total_num_read * sizeof(int));
-
-				size_t k =0;
-
-				for (k = 0; k < total_num_read; k++){
-					all_reads_sizes[k] = 0;
-					all_reads_coordinates[k] = 0;
-					all_offsets_sources[k] = 0;
-					all_reads_rank[k] = 0;
-				}
-			}
-
-			MPI_Barrier(split_comm); //necessary ?
-
-			// we broadcast the total number of reads to each rank
-			MPI_Bcast(&total_num_read, 1, MPI_LONG_LONG_INT, chosen_split_rank, split_comm );
-
-
-			// vector of number of read per jobs
-			size_t *num_reads_per_jobs = (size_t *) malloc(split_size * sizeof(size_t));
-			// start_num_reads_per_jobs is the start index when dispatching the total
-			size_t *start_num_reads_per_jobs = (size_t *) malloc((split_size + 1) * sizeof(size_t));
-
-			// Preparation of recieving the coordinates, offset, and reads size.
-			// chosen_rank recieves the number of reads of each rank and put it in a vector
-			MPI_Gather(&local_readNum, 1, MPI_LONG_LONG_INT, &num_reads_per_jobs[split_rank - chosen_split_rank], 1,
-					MPI_LONG_LONG_INT, chosen_split_rank , split_comm);
-
-			MPI_Barrier(split_comm);
-
-			// we initialyze start_num_reads_per_jobs
-			if (split_rank == chosen_split_rank){
-
-				start_num_reads_per_jobs[0] = 0;
-				int k = 0;
-				for (k = 1; k < (split_size + 1); k++){
-					start_num_reads_per_jobs[k] = num_reads_per_jobs[k-1];
-				}
-
-				for (k = 1; k < split_size; k++){
-					size_t tmp = start_num_reads_per_jobs[k - 1];
-					size_t tmp2 = start_num_reads_per_jobs[k];
-					start_num_reads_per_jobs[k] = tmp + tmp2;
-				}
-			}
-
-			/*
-			 * split_chosen_rank collects sizes, coordinates and offsets
-			 * in all_vector_
-			 */
-			time_count = time_count1 = MPI_Wtime();
-			if (split_rank ==chosen_split_rank){
-
-				MPI_Status status;
-				//we copy the first elements in
-				int k=0;
-				size_t st = start_num_reads_per_jobs[chosen_split_rank];
-				for (k = 0; k < num_reads_per_jobs[chosen_split_rank]; k++){
-					all_reads_rank[st] = local_reads_rank_sorted[k];
-					all_reads_sizes[st] = local_reads_sizes_sorted[k];
-					all_offsets_sources[st] = local_offset_source_sorted[k];
-					all_reads_coordinates[st] = local_reads_coordinates_sorted[k];
-					st++;
-				}
-
-				for(j = 0; j < split_size; j++){
-					if(j != chosen_split_rank){
-
-						// first we care for ranks
-						int *temp_buf =(int *) malloc(num_reads_per_jobs[j]* sizeof(int));
-						memset(temp_buf, 0, sizeof(int)*num_reads_per_jobs[j]);
-
-						int *temp_buf1 =(int *) malloc(num_reads_per_jobs[j]* sizeof(int));
-						memset(temp_buf1, 0, sizeof(int)*num_reads_per_jobs[j]);
-
-						size_t *temp_buf2 =(size_t *) malloc(num_reads_per_jobs[j]* sizeof(size_t));
-						memset(temp_buf2, 0, sizeof(size_t)*num_reads_per_jobs[j]);
-
-						size_t *temp_buf3 =(size_t *) malloc(num_reads_per_jobs[j]* sizeof(size_t));
-						memset(temp_buf3, 0, sizeof(int)*num_reads_per_jobs[j]);
-
-						MPI_Recv(temp_buf, num_reads_per_jobs[j], MPI_INT, j, 0, split_comm, &status);
-						MPI_Recv(temp_buf1, num_reads_per_jobs[j], MPI_INT, j, 1, split_comm, &status);
-						MPI_Recv(temp_buf2, num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 2, split_comm, &status);
-						MPI_Recv(temp_buf3, num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 3, split_comm, &status);
-
-						st=0;
-						size_t st = start_num_reads_per_jobs[j];
-
-						for (k = 0; k < num_reads_per_jobs[j]; k++){
-							all_reads_rank[st] = temp_buf[k];
-							all_reads_sizes[st] = temp_buf1[k];
-							all_offsets_sources[st] = temp_buf2[k];
-							all_reads_coordinates[st] = temp_buf3[k];
-							st++;
-						}
-
-						free(temp_buf);
-						free(temp_buf1);
-						free(temp_buf2);
-						free(temp_buf3);
-					}
-				}
-			}
-			else{
-				MPI_Send(local_reads_rank_sorted, local_readNum, MPI_INT, chosen_split_rank,  0, split_comm);
-				MPI_Send(local_reads_sizes_sorted, local_readNum, MPI_INT, chosen_split_rank,  1, split_comm);
-				MPI_Send(local_offset_source_sorted, local_readNum, MPI_LONG_LONG_INT, chosen_split_rank,  2, split_comm);
-				MPI_Send(local_reads_coordinates_sorted, local_readNum, MPI_LONG_LONG_INT, chosen_split_rank,  3, split_comm);
-
-			}
-
-			if (split_rank == chosen_split_rank)
-				fprintf(stderr,	"rank %d :::::[MPISORT] Time to collect before bitonic part  %f seconds\n", split_rank, MPI_Wtime() - time_count);
-
-			free(local_reads_sizes_sorted); //ok
-			free(local_reads_rank_sorted); //ok
-			free(local_offset_source_sorted); //ok
-			free(local_reads_coordinates_sorted); //ok
-
-			/*
-			 * ENTER BITONIC PART
-			 *
-			 * The reads are sorted according to their coordinates.
-			 *
-			 * Now rank 0 hold all the coordinates, offset and size.
-			 *
-			 * The bitonic works with a power of 2 number ranks and works with vectors of equal lentgh.
-			 *
-			 * First we compute a dimensions (2^n) and a length of vectors before dispaching them
-			 * to the bitonic rank.
-			 *
-			 * Improvement:
-			 *
-			 * This part is not optimal because a rank is going to recieve
-			 * all the offset.
-			 *
-			 * What we should do is to equilibrate the vector by trading
-			 * data between ranks in a ring fashion. This should eliminate the pressure
-			 * on elected rank.
-			 *
-			 */
-
-
-			// the master rank compute the number of
+			//first we compute the dimension of the parabitonic sort
 			// dimension is the number of processors where we
 			// perform the bitonic sort
 			// int dimensions = (int)(log2(num_processes));
 			// find next ( must be greater) power, and go one back
-			// we compute dimension for the parallele
-			// bitonic sort
 			int dimensions = 1;
 			while (dimensions <= split_size)
 				dimensions <<= 1;
 
 			dimensions >>= 1;
 
-			// we compute the length of the vector to recieve
-			// the we split all_offset_dest_index_phase1 among the dimension processors
-			size_t pbs_num_coordinates_to_recieve = total_num_read/dimensions;
-			// for the last processor will recieve the rest of the division
-			size_t pbs_num_coordinates_to_recieve_left  =  total_num_read - pbs_num_coordinates_to_recieve * dimensions;
+			// we get the maximum number of reads among
+			// all the workers
 
-			while((pbs_num_coordinates_to_recieve_left * dimensions) > pbs_num_coordinates_to_recieve){
-				dimensions >>= 1;
-				pbs_num_coordinates_to_recieve = total_num_read/dimensions;
-				pbs_num_coordinates_to_recieve_left = total_num_read - pbs_num_coordinates_to_recieve * dimensions;
-			}
+			/*
+			 * Here we split the programm in 2 cases
+			 *
+			 * 1) The first case de split_size is a power of 2 (the best case)
+			 * 		this case is the simpliest we don't have extra communication to dispatch the read
+			 * 		envenly between the jobs
+			 *
+			 * 2) The split_size is not a power of 2 (the worst case)
+			 * 		well in this case we shall dispatch the jobs between jobs evenly.
+			 *
+			 */
 
-			// we compute a vector of size dimensions which contain the number
-			// of reads to send
-			size_t *pbs_local_num_read_per_job = (size_t *)malloc(dimensions * sizeof(size_t));
-
-			// each job create a vector with with the length
-			// of the offset vector for each job in [0, dimension[
-			for (j = 0; j < dimensions ; j++){
-				// we add pbs_num_coordinates_to_recieve_left
-				// because we want the vector to have the size size
-				pbs_local_num_read_per_job[j] = pbs_num_coordinates_to_recieve + pbs_num_coordinates_to_recieve_left;
-			}
-
-			// the lastest rank get the reads that left
-			size_t *pbs_start_num_coordinates_per_jobs = (size_t *) malloc((dimensions + 1) * sizeof(size_t));
-
-			// the master job compute the start index of the element
-			// to dispatch
 			if (split_rank == chosen_split_rank){
 
-				pbs_start_num_coordinates_per_jobs[0] = 0;
-				int k = 0;
-				for (k = 1; k < (dimensions +1); k++){
-					pbs_start_num_coordinates_per_jobs[k] = pbs_local_num_read_per_job[k-1];
-				}
-				for (k = 1; k < dimensions; k++){
-					size_t tmp = pbs_start_num_coordinates_per_jobs[k - 1];
-					size_t tmp2 = pbs_start_num_coordinates_per_jobs[k];
-					// we remove the left over reads
-					pbs_start_num_coordinates_per_jobs[k] = tmp + tmp2 - pbs_num_coordinates_to_recieve_left;
-				}
+				fprintf(stderr,	"Rank %d :::::[MPISORT] Dimensions for bitonic = %d \n", split_rank, dimensions);
+				fprintf(stderr,	"Rank %d :::::[MPISORT] Split size 			   = %d \n", split_rank, split_size);
+
 			}
+			//we test the computed dimension
+			if (dimensions == split_size){
 
-			// the processors chosen rank send the coordinates
-			// and read sizes to all the rank in [0-dimension]
+				size_t max_num_read = 0;
+				MPI_Allreduce(&localReadNumberByChr[i], &max_num_read, 1, MPI_LONG_LONG_INT, MPI_MAX, split_comm);
 
-			MPI_Barrier(split_comm);
+				// if the dimension == split_size
+				MPI_Barrier(split_comm);
 
-			if (split_rank < dimensions){
+				size_t first_local_readNum = local_readNum;
 
-				// pbs_local_reads_coordinates is a table containing the unsorted
-				// reference coordinates
-				pbs_local_reads_coordinates = (size_t *)malloc(sizeof(size_t) * pbs_local_num_read_per_job[split_rank]);
-				pbs_local_reads_coordinates[0] = 0;
+				/*
+				 * Vector creation and allocation
+				 */
+				local_readNum = max_num_read;
 
-				//now the master send
-				time_count = MPI_Wtime();
-				if ( split_rank != chosen_split_rank ){
+				size_t *local_reads_coordinates_unsorted;
+				local_reads_coordinates_unsorted = (size_t*)calloc(local_readNum, sizeof(size_t));
+				local_reads_coordinates_unsorted[0] = 0;
 
-						MPI_Status status;
-						//fprintf(stderr, "Rank %d :::::[WRITE] MPI_Recv from %d\n", rank, master_job_phase_1);
-						MPI_Recv(pbs_local_reads_coordinates, pbs_local_num_read_per_job[split_rank],
-									MPI_LONG_LONG_INT, chosen_split_rank, 0, split_comm, &status);
+				size_t *local_reads_coordinates_sorted;
+				local_reads_coordinates_sorted = (size_t*)calloc(local_readNum, sizeof(size_t));
+				local_reads_coordinates_sorted[0] = 0;
 
+				int *local_dest_rank_sorted;
+				local_dest_rank_sorted = (int*)calloc(local_readNum, sizeof(int));
+				local_dest_rank_sorted[0] = 0;
+
+				int *local_reads_sizes_unsorted; //vector of reads length
+				local_reads_sizes_unsorted = (int*)calloc(local_readNum, sizeof(int));
+				local_reads_sizes_unsorted[0] = 0;
+
+				int *local_reads_sizes_sorted; //vector of reads length
+				local_reads_sizes_sorted = (int*)calloc(local_readNum, sizeof(int));
+				local_reads_sizes_sorted[0] = 0;
+
+				int *local_source_rank_unsorted; //vector of read order in the split_rank
+				local_source_rank_unsorted = (int*)calloc(local_readNum, sizeof(int));
+				local_source_rank_unsorted[0] = 0;
+
+				int *local_source_rank_sorted; //vector of read order in the split_rank
+				local_source_rank_sorted = (int*)calloc(local_readNum, sizeof(int));
+				local_source_rank_sorted[0] = 0;
+
+				size_t *local_offset_source_unsorted; //vector of read order in the split_rank
+				local_offset_source_unsorted = (size_t*)calloc(local_readNum, sizeof(size_t));
+				local_offset_source_unsorted[0] = 0;
+
+				size_t *local_offset_source_sorted; //vector of read order in the split_rank
+				local_offset_source_sorted = (size_t*)calloc(local_readNum, sizeof(size_t));
+				local_offset_source_sorted[0] = 0;
+
+				//those vectors are the same that  local_..._sorted but without zero padding
+				size_t *local_reads_coordinates_sorted_trimmed = NULL;
+				int *local_dest_rank_sorted_trimmed = NULL;
+				int *local_reads_sizes_sorted_trimmed = NULL;
+				size_t *local_offset_source_sorted_trimmed = NULL;
+				size_t *local_offset_dest_sorted_trimmed = NULL;
+				int *local_source_rank_sorted_trimmed = NULL;
+
+				//vectors used in the bruck just after the parabitonic sort
+				size_t *local_reads_coordinates_sorted_trimmed_for_bruck = NULL;
+				int *local_dest_rank_sorted_trimmed_for_bruck = NULL;
+				int *local_reads_sizes_sorted_trimmed_for_bruck = NULL;
+				size_t *local_offset_source_sorted_trimmed_for_bruck = NULL;
+				size_t *local_offset_dest_sorted_trimmed_for_bruck = NULL;
+				int *local_source_rank_sorted_trimmed_for_bruck = NULL;
+
+
+				//task Init offset and size for source - free chr
+				// from mpiSort_utils.c
+				get_coordinates_and_offset_source_and_size_and_free_reads(
+						split_rank,
+						local_source_rank_unsorted,
+						local_reads_coordinates_unsorted,
+						local_offset_source_unsorted,
+						local_reads_sizes_unsorted,
+						reads[i],
+						first_local_readNum
+				);
+
+				//init indices for qksort
+				size_t *coord_index = (size_t*)malloc(local_readNum*sizeof(size_t));
+
+				for(j = 0; j < local_readNum; j++){
+					coord_index[j] = j;
 				}
-				else {
-					//first we copy the data from the master job
-					size_t ind = pbs_start_num_coordinates_per_jobs[chosen_split_rank];
-					int k = 0;
 
-					for (k = 0; k < pbs_local_num_read_per_job[chosen_split_rank]; k++){
-						pbs_local_reads_coordinates[k] = all_reads_coordinates[ind];
+				//To start we sort locally the reads coordinates.
+				//this is to facilitate the bitonic sorting
+				//if the local coordinates to sort are to big we could get rid of
+				//this step.
+				base_arr2 = local_reads_coordinates_unsorted;
+				qksort(coord_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
 
-						ind++;
+				//We index data
+				for(j = 0; j < local_readNum; j++){
+					local_reads_coordinates_sorted[j] 			= local_reads_coordinates_unsorted[coord_index[j]];
+					local_source_rank_sorted[j] 				= local_source_rank_unsorted[coord_index[j]];
+					local_reads_sizes_sorted[j] 				= local_reads_sizes_unsorted[coord_index[j]];
+					local_offset_source_sorted[j] 				= local_offset_source_unsorted[coord_index[j]];
+					local_dest_rank_sorted[j] 					= rank; //will be updated after sorting the coordinates
+				}
+
+				free(coord_index); 				 		//ok
+				free(local_source_rank_unsorted); 	    //ok
+				free(local_reads_coordinates_unsorted); //ok
+				free(local_reads_sizes_unsorted); 		//ok
+				free(local_offset_source_unsorted); 	//ok
+
+				// we need the total number of reads.
+				size_t total_num_read = 0;
+				MPI_Allreduce(&localReadNumberByChr[i], &total_num_read, 1, MPI_LONG_LONG_INT, MPI_SUM, split_comm);
+
+				/*
+				 *
+				 * In this section the number of bitonic dimension
+				 * is equal to the split size.
+				 *
+				 * In this case there are less communication in preparation
+				 * of the sorting.
+				 *
+				 * We use the parabitonic version 2.
+				 */
+
+				//we calll the bitonic
+				ParallelBitonicSort2(
+					split_comm,
+					split_rank,
+					dimensions,
+					local_reads_coordinates_sorted,
+					local_reads_sizes_sorted,
+					local_source_rank_sorted,
+					local_offset_source_sorted,
+					local_dest_rank_sorted,
+					max_num_read
+					);
+
+				size_t k1;
+				size_t tmp2 = 0;
+				for (k1 = 1; k1 < max_num_read; k1++){
+					assert(local_reads_coordinates_sorted[k1-1] <= local_reads_coordinates_sorted[k1]);
+					local_dest_rank_sorted[k1]= split_rank;
+				}
+
+				size_t *local_offset_dest_sorted = malloc(max_num_read*sizeof(size_t));
+				size_t last_local_offset = 0;
+
+
+				// We compute the local_dest_offsets_sorted
+				size_t local_total_offset = 0;
+
+				//size_t k1 = 0;
+				for (k1 = 0; k1 <  max_num_read; k1++){
+					local_offset_dest_sorted[k1] = local_reads_sizes_sorted[k1];
+					local_total_offset += local_reads_sizes_sorted[k1];
+				}
+
+				//we make the cumulative sum of all offsets
+				for (k1 = 1; k1 < max_num_read; k1++){
+					local_offset_dest_sorted[k1] = local_offset_dest_sorted[k1 - 1] + local_offset_dest_sorted[k1];
+				}
+
+				//we exchange the last destination offset
+				last_local_offset = local_offset_dest_sorted[max_num_read-1];
+
+
+				//number of block to send
+				int blocksize = 1;
+
+				MPI_Offset *y  = calloc(split_size, sizeof(MPI_Offset));
+				MPI_Offset *y2 = calloc(split_size + 1, sizeof(MPI_Offset));
+
+				//we wait all processors
+
+				MPI_Gather(&last_local_offset, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, split_comm);
+
+				int i1 = 0;
+				if (rank ==0){
+					for (i1 = 1; i1 < (split_size + 1); i1++) {
+						y2[i1] = y[i1-1];
 					}
+				}
+				i1 = 0;
+				if (rank ==0){
+					for (i1 = 1; i1 < (split_size +1); i1++) {
+						y2[i1] = y2[i1-1] + y2[i1];
+					}
+				}
 
-					for(j = 0; j < dimensions; j++){
+				size_t offset_to_add = 0;
+				MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &offset_to_add, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-						if (j != chosen_split_rank){
+				free(y);
+				free(y2);
 
-							MPI_Send(&all_reads_coordinates[pbs_start_num_coordinates_per_jobs[j]],
-									pbs_local_num_read_per_job[j], MPI_LONG_LONG_INT, j, chosen_split_rank, split_comm);
+				//we add offset of the previous rank
+				size_t k2=0;
+				for (k2 = 0; k2 < max_num_read; k2++){
+					if (local_reads_sizes_sorted[k2] != 0)
+						local_offset_dest_sorted[k2] += offset_to_add;
+					else
+						local_offset_dest_sorted[k2] = 0;
+				}
+
+				/*
+				 * we update destination rank according to
+				 * original number of reads read.
+				 *
+				 */
+
+				//we compute the new rank dest according to max_num_read
+				size_t previous_num_reads_per_job[dimensions];
+				//we create a vector of size split_size with previous reads per job
+				MPI_Allgather(&first_local_readNum , 1, MPI_LONG_LONG_INT, previous_num_reads_per_job , 1, MPI_LONG_LONG_INT, split_comm);
+
+				// we compute the position of of the read in the first
+				// reference without the zero padding of bitonic
+				size_t pos_ref0 = 0;
+
+				//we need the number of zeros we add for the padding
+				size_t N0 = max_num_read*dimensions - total_num_read;
+
+				int new_rank = 0;
+				// we compute the new rank for
+				// the reads sorted by offset destination
+				size_t h = 0;
+
+
+				pos_ref0 = max_num_read*split_rank - N0;
+				for(j = 0; j < max_num_read; j++) {
+					if ( local_reads_sizes_sorted[j] != 0){
+						int new_rank = 0;
+						pos_ref0 = (max_num_read*split_rank +j) - N0;
+						if (pos_ref0 >= 0) {
+							size_t tmp2 = 0;
+							for (h = 0; h < dimensions; h++){
+								tmp2 += previous_num_reads_per_job[h];
+								if ( pos_ref0 < tmp2)  {
+									new_rank = h;
+									break;
+									}
+								}
+							local_dest_rank_sorted[j] = new_rank;
 						}
 					}
 				}
 
-				if (split_rank == chosen_split_rank){
-					free(all_reads_coordinates);
+				MPI_Barrier(split_comm);
+
+				size_t offset  = 0;
+				size_t numItems = 0;
+				size_t num_read_for_bruck = 0;
+				int *p = local_reads_sizes_sorted;
+				if (p[0] != 0) {offset = 0;};
+
+				if (p[max_num_read -1] == 0){
+
+					offset = max_num_read;
+				}
+				else {
+
+					while ((*p == 0) && (offset < max_num_read )){ offset++; p++;}
 				}
 
+				/*
+				 * REMOVE ZERO PADDING BEFORE BRUCK
+				 *
+				 */
 
-				// we build pbs_local_reads_coordinates_index
-				// the index we be used to reoder offset and read size
-				// to comput the offset destination
-				pbs_global_reads_coordinates_index = (size_t *)malloc(pbs_local_num_read_per_job[split_rank]*sizeof(size_t));
-				pbs_global_reads_coordinates_index[0] = 0;
-				for (j = 0; j < pbs_local_num_read_per_job[split_rank]; j++){
+				if (offset > 0){
 
-					if (split_rank == chosen_split_rank){
-						pbs_global_reads_coordinates_index[j] = j + pbs_local_num_read_per_job[split_rank] * split_rank;
+					// we remove zeros in the vector we have 2 cases
+					// the first offset <  max_num_read
+					// and the entire vector is null
+					if ( offset < max_num_read ){
+
+						numItems = max_num_read - offset;
+
+						local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(numItems*sizeof(size_t));
+						local_offset_source_sorted_trimmed_for_bruck        = malloc(numItems*sizeof(size_t));
+						local_offset_dest_sorted_trimmed_for_bruck			= malloc(numItems*sizeof(size_t));
+						local_reads_sizes_sorted_trimmed_for_bruck          = malloc(numItems*sizeof(int));
+						local_dest_rank_sorted_trimmed_for_bruck            = malloc(numItems*sizeof(int));
+						local_source_rank_sorted_trimmed_for_bruck 		    = malloc(numItems*sizeof(int));
+						size_t y=0;
+
+						for (y = 0; y < numItems; y++){
+
+							local_reads_coordinates_sorted_trimmed_for_bruck[y]    = local_reads_coordinates_sorted[y+offset];
+							local_offset_source_sorted_trimmed_for_bruck[y]        = local_offset_source_sorted[y+offset];
+							local_offset_dest_sorted_trimmed_for_bruck[y]		   = local_offset_dest_sorted[y+offset];
+							local_reads_sizes_sorted_trimmed_for_bruck[y]          = local_reads_sizes_sorted[y+offset];
+							local_dest_rank_sorted_trimmed_for_bruck[y]            = local_dest_rank_sorted[y+offset];
+							local_source_rank_sorted_trimmed_for_bruck[y] 		   = local_source_rank_sorted[y+offset];
+						}
+
+						num_read_for_bruck = numItems;
+
+						for(y = 0; y < num_read_for_bruck; y++){
+							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
+							assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
+							assert( local_dest_rank_sorted_trimmed_for_bruck[y]   		< dimensions);
+							assert( local_offset_source_sorted_trimmed_for_bruck[y] 	!= 0);
+							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
+							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
+						}
 					}
 					else{
-						pbs_global_reads_coordinates_index[j] = j + pbs_local_num_read_per_job[split_rank] * split_rank -
-								(split_rank * pbs_num_coordinates_to_recieve_left);
+
+						numItems = 0;
+						local_reads_coordinates_sorted_trimmed_for_bruck    = calloc(numItems, sizeof(size_t));
+						local_offset_source_sorted_trimmed_for_bruck        = calloc(numItems, sizeof(size_t));
+						local_offset_dest_sorted_trimmed_for_bruck          = calloc(numItems, sizeof(size_t));
+						local_reads_sizes_sorted_trimmed_for_bruck          = calloc(numItems, sizeof(int));
+						local_dest_rank_sorted_trimmed_for_bruck            = calloc(numItems, sizeof(int));
+						local_source_rank_sorted_trimmed_for_bruck 		    = calloc(numItems, sizeof(int));
+						num_read_for_bruck = 0;
+					}
+				}
+				else {
+
+					numItems = local_readNum;
+					local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(local_readNum*sizeof(size_t));
+					local_offset_source_sorted_trimmed_for_bruck        = malloc(local_readNum*sizeof(size_t));
+					local_offset_dest_sorted_trimmed_for_bruck          = malloc(local_readNum*sizeof(size_t));
+					local_reads_sizes_sorted_trimmed_for_bruck          = malloc(local_readNum*sizeof(int));
+					local_dest_rank_sorted_trimmed_for_bruck            = malloc(local_readNum*sizeof(int));
+					local_source_rank_sorted_trimmed_for_bruck 		    = malloc(local_readNum*sizeof(int));
+
+					size_t y=0;
+					for (y = 0; y < local_readNum; y++){
+
+						local_reads_coordinates_sorted_trimmed_for_bruck[y]    = local_reads_coordinates_sorted[y];
+						local_offset_source_sorted_trimmed_for_bruck[y]        = local_offset_source_sorted[y];
+						local_offset_dest_sorted_trimmed_for_bruck[y]          = local_offset_dest_sorted[y];
+						local_reads_sizes_sorted_trimmed_for_bruck[y]          = local_reads_sizes_sorted[y];
+						local_dest_rank_sorted_trimmed_for_bruck[y]            = local_dest_rank_sorted[y];
+						local_source_rank_sorted_trimmed_for_bruck[y] 		   = local_source_rank_sorted[y];
+					}
+
+					num_read_for_bruck = numItems;
+					for(y = 0; y < num_read_for_bruck; y++){
+						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
+						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
+						assert( local_dest_rank_sorted_trimmed_for_bruck[y]   		< dimensions);
+						assert( local_offset_source_sorted_trimmed_for_bruck[y] 	!= 0);
+						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
+						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
 				}
 
-				// now each rank from [0, dimension[
-				// is going to bitonic sort
-				// inputs are:
-				// pbs_local_reads_coordinates
-				// pbs_local_reads_coordinates_index
+				free(local_reads_coordinates_sorted);
+				free(local_offset_source_sorted);
+				free(local_offset_dest_sorted);
+				free(local_reads_sizes_sorted);
+				free(local_dest_rank_sorted);
+				free(local_source_rank_sorted);
+
+
+				/*
+				 * We do a Bruck on rank of origin reading
+				 */
+
+				size_t m=0;
+				int num_proc = dimensions;
+				size_t *number_of_reads_by_procs = (size_t*)calloc( dimensions, sizeof(size_t));
+
+				//fprintf(stderr,	"rank %d :::::[MPISORT] num_read_for_bruck = %zu \n", split_rank, num_read_for_bruck);
+
+				for(m = 0; m < num_read_for_bruck; m++){
+					 //assert(new_pbs_orig_rank_off_phase1[m] < dimensions);
+					 //assert(new_pbs_dest_rank_phase1[m] < dimensions);
+					 number_of_reads_by_procs[local_source_rank_sorted_trimmed_for_bruck[m]]++;
+				}
+
+				int *local_source_rank_sorted_trimmed_for_bruckv2 = malloc( num_read_for_bruck * sizeof(int));
+
+				for(m = 0; m < num_read_for_bruck; m++){
+					local_source_rank_sorted_trimmed_for_bruckv2[m] = local_source_rank_sorted_trimmed_for_bruck[m];
+				}
+
+				size_t count6 = 0;
+				for(m = 0; m < dimensions; m++){
+					count6 += number_of_reads_by_procs[m];
+				}
+				assert( count6 == num_read_for_bruck );
+				MPI_Barrier(split_comm);
+
+				size_t **reads_coordinates 		= (size_t **)malloc(sizeof(size_t *)*dimensions);
+				size_t **local_source_offsets 	= (size_t **)malloc(sizeof(size_t *)*dimensions);
+				size_t **dest_offsets 			= (size_t **)malloc(sizeof(size_t *)*dimensions);
+				int **read_size 				= (int **)   malloc(sizeof(int *)*dimensions);
+				int **dest_rank 				= (int **)   malloc(sizeof(int *)*dimensions);
+				int **source_rank				= (int **)   malloc(sizeof(int *)*dimensions);
+
+				/*
+				 * We send in order
+				 *
+				 * local_offset_source_sorted_trimmed_for_bruck
+				 * local_dest_rank_sorted_trimmed_for_bruck
+				 * local_reads_coordinates_sorted_trimmed_for_bruck
+				 * local_reads_sizes_sorted_trimmed_for_bruck
+				 *
+				 */
+
+				MPI_Barrier(split_comm);
+				COMM_WORLD = split_comm;
 				time_count = MPI_Wtime();
 
-				if (split_rank == chosen_split_rank)
-					fprintf(stderr,	"rank %d :::::[MPISORT] Call bitonic with dimensions = %d \n", split_rank, dimensions);
-
-				ParallelBitonicSort(split_comm, split_rank, dimensions, pbs_local_reads_coordinates,
-						pbs_global_reads_coordinates_index, pbs_local_num_read_per_job[split_rank],
-							pbs_num_coordinates_to_recieve_left);
-
-				if (split_rank == chosen_split_rank)
-					fprintf(stderr,	"rank %d :::::[MPISORT] Time in parallel bitonic sort  %f seconds\n", split_rank, MPI_Wtime() - time_count);
-
-				//we compute a new total number of reads
-				size_t total_num_read_after_bitonic_sort = 0;
-				int k=0;
-				for (k = 0; k < dimensions; k++){
-					total_num_read_after_bitonic_sort += pbs_local_num_read_per_job[k];
-				}
-
-				// now we gather all the pbs_local_dest_offset_index
-				// and pbs_local_dest_offset in 2 vectors
-				// all_offset_dest_sorted_phase1
-				// all_offset_index_phase_1
-
-				//we allocate vector to send
-				// we remove zero
-				size_t start_index=0;
-
-				while (pbs_local_reads_coordinates[start_index] == 0){
-					start_index++;
-				}
-
-				pbs_local_num_read_per_job[split_rank] -=  start_index;
-				all_reads_coordinates_index = (size_t *)malloc(sizeof(size_t) * total_num_read);
-				all_reads_coordinates_sorted = (size_t *) malloc (total_num_read * sizeof(size_t));
-
-				if (split_rank == chosen_split_rank){
-
-					pbs_start_num_coordinates_per_jobs[0] = 0;
-
-					for (k = 1; k < (dimensions +1); k++){
-						pbs_start_num_coordinates_per_jobs[k] = pbs_local_num_read_per_job[k-1];
-					}
-					for (k = 1; k < dimensions; k++){
-						size_t tmp = pbs_start_num_coordinates_per_jobs[k - 1];
-						size_t tmp2 = pbs_start_num_coordinates_per_jobs[k];
-						// we remove the left over reads
-						pbs_start_num_coordinates_per_jobs[k] = tmp + tmp2;
-					}
-				}
-
-
-				chosen_split_rank_gather_size_t(split_comm,
-							split_rank, dimensions, chosen_split_rank,
-							pbs_local_num_read_per_job[split_rank],
-							pbs_local_num_read_per_job,
-							pbs_start_num_coordinates_per_jobs,
-							all_reads_coordinates_index,
-							pbs_global_reads_coordinates_index,
-							start_index);
-
-				chosen_split_rank_gather_size_t(split_comm,
-							split_rank,
+				bruckWrite3(rank,
 							dimensions,
-							chosen_split_rank,
-							pbs_local_num_read_per_job[split_rank],
-							pbs_local_num_read_per_job,
-							pbs_start_num_coordinates_per_jobs,
-							all_reads_coordinates_sorted,
-							pbs_local_reads_coordinates,
-							start_index);
+							count6,
+							number_of_reads_by_procs,
+							local_source_rank_sorted_trimmed_for_bruckv2,
+							local_offset_source_sorted_trimmed_for_bruck,     //offset sources
+							&local_source_offsets,
+							local_dest_rank_sorted_trimmed_for_bruck,     	  //destination rank
+							&dest_rank,
+							local_reads_coordinates_sorted_trimmed_for_bruck, //reads coordinates
+							&reads_coordinates,
+							local_reads_sizes_sorted_trimmed_for_bruck,       //read size
+							&read_size,
+							local_source_rank_sorted_trimmed_for_bruck,		  //source rank
+							&source_rank,
+							local_offset_dest_sorted_trimmed_for_bruck,
+							&dest_offsets
+				);
 
-
-				free(pbs_local_reads_coordinates); //ok
-
-
-				//now we verify that all_reads_coordinates_sorted is sorted
-				if (split_rank == chosen_split_rank){
-					for (k = 1; k < total_num_read ; k++){
-						assert(all_reads_coordinates_sorted[k-1] <= all_reads_coordinates_sorted[k]);
-					}
-				}
 				if (split_rank == chosen_split_rank)
-					fprintf(stderr,	"rank %d :::::[MPISORT] Time to gather all_reads_coordinates_index %f seconds\n", split_rank, MPI_Wtime() - time_count);
+					fprintf(stderr,	"rank %d :::::[MPISORT] After Bruck write 3 time spent = %f s\n",
+							split_rank, MPI_Wtime() - time_count);
 
-				free(pbs_global_reads_coordinates_index); //ok
+				MPI_Barrier(split_comm);
 
+				free(local_reads_coordinates_sorted_trimmed_for_bruck);
+				free(local_dest_rank_sorted_trimmed_for_bruck);
+				free(local_reads_sizes_sorted_trimmed_for_bruck);
+				free(local_offset_source_sorted_trimmed_for_bruck);
+				free(local_offset_dest_sorted_trimmed_for_bruck);
+				free(local_source_rank_sorted_trimmed_for_bruck);
+				free(local_source_rank_sorted_trimmed_for_bruckv2);
 
-			} //end if (split_rank < dimensions)
+				local_reads_coordinates_sorted_trimmed 	  = malloc(first_local_readNum * sizeof(size_t));
+				local_offset_source_sorted_trimmed   	  = malloc(first_local_readNum * sizeof(size_t));
+				local_offset_dest_sorted_trimmed   	  	  = malloc(first_local_readNum * sizeof(size_t));
+				local_dest_rank_sorted_trimmed   		  = malloc(first_local_readNum * sizeof(int));
+				local_source_rank_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
+				local_reads_sizes_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
 
-			free(pbs_local_num_read_per_job);
-			free(pbs_start_num_coordinates_per_jobs); //ok
+				/*
+				 * GET DATA AFTER BRUCK
+				 *
+				 */
 
-			/*
-			 * Bitonic is finished
-			 *
-			 * Now we re-order and dispatch
-			 * the ranks, source offset and sizes
-			 *
-			 * TODO: Improvement.This step is not necessary.
-			 * The rordering of the offset sources, rank and read sizes could be done during the bitonic.
-			 *
-			 */
-
-			// we create a datatype by split_rank
-			size_t *all_offset_dest_sorted=NULL;
-			int *all_reads_size_sorted = NULL;
-			int *all_reads_rank_sorted = NULL;
-			size_t *all_offsets_sources_sorted = NULL;
-
-			if (split_rank == chosen_split_rank){
-
-				size_t k;
-				//we reorder all_reads_sizes
-				all_reads_size_sorted = (int *)malloc(sizeof(int) * total_num_read);
-				all_reads_rank_sorted= (int *)malloc(sizeof(int) * total_num_read);
-				all_offsets_sources_sorted = (size_t *)malloc(sizeof(size_t) * total_num_read);
-
-				for (k = 0; k < total_num_read ; k++){
-					all_reads_size_sorted[k] = all_reads_sizes[all_reads_coordinates_index[k]];
-					all_offsets_sources_sorted[k] = all_offsets_sources[all_reads_coordinates_index[k]];
-					all_reads_rank_sorted[k] = all_reads_rank[all_reads_coordinates_index[k]];
-
-				}
-
-				free(all_reads_sizes); //ok
-				free(all_offsets_sources); //ok
-				free(all_reads_rank); //ok
-
-				// all_offset_dest holds the output offset of sorted reads
-				all_offset_dest_sorted = (size_t *)malloc(sizeof(size_t) * total_num_read);
-				all_offset_dest_sorted[0] = all_reads_size_sorted[0];
-				all_offset_dest_sorted[0] += headerSize;
-
-				for (k = 1; k < total_num_read ; k++){
-					all_offset_dest_sorted[k] = all_offset_dest_sorted[k - 1] + all_reads_size_sorted[k];
-				}
-
-
-			} //end if (split_rank == chosen_rank)
-
-			size_t *local_dest_offsets_sorted = (size_t*)malloc(sizeof(size_t)*local_readNum);
-			size_t *local_source_offsets_sorted = (size_t*)malloc(sizeof(size_t)*local_readNum);
-			int *local_read_size_sorted = (int*)malloc(sizeof(size_t)*local_readNum);
-			int *local_rank_sorted = (int*)malloc(sizeof(size_t)*local_readNum);
-
-			/*
-			 * now we dispatch all_offset_dest
-			 * all_offset_source
-			 * all_reads_size
-			 */
-
-			time_count = MPI_Wtime();
-			if (split_rank != chosen_split_rank){
-				//fprintf(stderr, "%d ::::: [send_size_t_master_to_all] rank %d recv %zu from %d \n",rank, rank, size, master);
-				MPI_Recv(local_dest_offsets_sorted, local_readNum, MPI_LONG_LONG_INT, chosen_split_rank, 0, split_comm, MPI_STATUS_IGNORE);
-				MPI_Recv(local_source_offsets_sorted, local_readNum, MPI_LONG_LONG_INT, chosen_split_rank, 1, split_comm, MPI_STATUS_IGNORE);
-				MPI_Recv(local_read_size_sorted, local_readNum, MPI_INT, chosen_split_rank, 2, split_comm, MPI_STATUS_IGNORE);
-				MPI_Recv(local_rank_sorted, local_readNum, MPI_INT, chosen_split_rank, 3, split_comm, MPI_STATUS_IGNORE);
-			}
-			else {
-				size_t k=0;
-				size_t ind = start_num_reads_per_jobs[chosen_split_rank];
-
-				for (k = 0; k < (num_reads_per_jobs[chosen_split_rank]); k++){
-
-					local_dest_offsets_sorted[k] = all_offset_dest_sorted[ind];
-					local_source_offsets_sorted[k] = all_offsets_sources_sorted[ind];
-					local_read_size_sorted[k] = all_reads_size_sorted[ind];
-					local_rank_sorted[k] = all_reads_rank_sorted[ind];
-
-					ind++;
-				}
-
-				for(j = 0; j < split_size; j++){
-
-					if (j != chosen_split_rank){
-
-						MPI_Send(&all_offset_dest_sorted[start_num_reads_per_jobs[j]],
-								num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 0, split_comm);
-
-						MPI_Send(&all_offsets_sources_sorted[start_num_reads_per_jobs[j]],
-								num_reads_per_jobs[j], MPI_LONG_LONG_INT, j, 1, split_comm);
-
-						MPI_Send(&all_reads_size_sorted[start_num_reads_per_jobs[j]],
-								num_reads_per_jobs[j], MPI_INT, j, 2, split_comm);
-
-						MPI_Send(&all_reads_rank_sorted[start_num_reads_per_jobs[j]],
-								num_reads_per_jobs[j], MPI_INT, j, 3, split_comm);
+				j=0;
+				size_t k = 0;
+				for(m = 0; m < num_proc; m++)
+				{
+					for(k = 0; k < number_of_reads_by_procs[m]; k++)
+					{
+						local_offset_dest_sorted_trimmed[k + j] 		= dest_offsets[m][k];
+						local_dest_rank_sorted_trimmed[k + j] 			= dest_rank[m][k];
+						local_reads_sizes_sorted_trimmed[k + j] 		= read_size[m][k];
+						local_offset_source_sorted_trimmed[k + j] 		= local_source_offsets[m][k];
+						local_reads_coordinates_sorted_trimmed[k + j] 	= reads_coordinates[m][k];
+						local_source_rank_sorted_trimmed[k + j] 		= source_rank[m][k];
 
 					}
+					free(dest_offsets[m]);
+					free(dest_rank[m]);
+					free(read_size[m]);
+					free(local_source_offsets[m]);
+					free(reads_coordinates[m]);
+					free(source_rank[m]);
+					j += number_of_reads_by_procs[m];
 				}
-			}
-
-			if (split_rank == chosen_split_rank)
-				fprintf(stderr,	"rank %d :::::[MPISORT] Time dispatch all_offset_dest %f seconds\n", split_rank, MPI_Wtime() - time_count);
-
-			free(start_num_reads_per_jobs); // ok
-			free(num_reads_per_jobs); // ok
 
 
-			if (split_rank == chosen_split_rank){
-				free(all_reads_rank_sorted);
-				free(all_offsets_sources_sorted);
-				free(all_offset_dest_sorted);
-				free(all_reads_size_sorted);
+				free(number_of_reads_by_procs);
+				if (dest_rank != NULL)
+					free(dest_rank);
+				if (read_size != NULL)
+					free(read_size);
+				if (local_source_offsets != NULL)
+					free(local_source_offsets);
+				if (reads_coordinates != NULL)
+					free(reads_coordinates);
+				if (source_rank != NULL)
+					free(source_rank);
+				if (dest_offsets != NULL)
+					free(dest_offsets);
+
+				local_readNum = first_local_readNum;
+
+				MPI_Barrier(split_comm);
+
+				for ( j = 0; j < local_readNum; j++){
+					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
+					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
+					assert ( local_offset_dest_sorted_trimmed[j]   		  != 0 );
+					assert ( local_reads_sizes_sorted_trimmed 			  != 0 );
+					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
+					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
+				}
+
+				free(local_reads_coordinates_sorted_trimmed);
+
+				if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[MPISORT] we call write SAM \n", split_rank);
+
 				malloc_trim(0);
-			}
 
-
-			MPI_Barrier(split_comm);
-
-			if (split_rank < dimensions){
-				free(all_reads_coordinates_index); //ok
-				free(all_reads_coordinates_sorted);
-			}
-
-			if (split_rank == chosen_split_rank)
-				fprintf(stderr,	"rank %d :::::[MPISORT] CALL WRITE SAM\n", split_rank);
-
-
-			writeSam(split_rank,
+				writeSam(
+					split_rank,
 					output_dir,
 					header,
 					local_readNum,
@@ -1463,17 +1430,56 @@ int main (int argc, char *argv[]){
 					mpi_file_split_comm,
 					finfo,
 					compression_level,
-					local_dest_offsets_sorted,
-					local_source_offsets_sorted,
-					local_read_size_sorted,
-					local_rank_sorted,
+					local_offset_dest_sorted_trimmed,
+					local_offset_source_sorted_trimmed,
+					local_reads_sizes_sorted_trimmed,
+					local_dest_rank_sorted_trimmed,
+					local_source_rank_sorted_trimmed,
 					local_data,
-					goff[rank]);
+					goff[rank],
+					first_local_readNum
+				);
 
-			if (split_rank == chosen_split_rank){
-				fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n", split_rank, chrNames[i], MPI_Wtime() - time_count);
-				//malloc_stats();
+				if (split_rank == chosen_split_rank){
+					fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n",
+							split_rank, chrNames[i], MPI_Wtime() - time_count);
+
+				}
 			}
+			else{
+
+				/*
+				 * We are in the case the number of cpu is
+				 * not a power of 2
+				 *
+				 *
+				 */
+
+				parallel_sort_any_dim(
+						dimensions, 				//dimension for parabitonic
+						local_readNum,
+						split_rank,
+						split_size,
+						reads,
+						i, 							//chromosom number
+						chosen_split_rank,
+						split_comm,
+						localReadNumberByChr,
+						local_data,
+						file_name,
+						output_dir,
+						finfo,
+						compression_level,
+						total_reads_by_chr,
+						goff[rank],
+						headerSize,
+						header,
+						chrNames[i],
+						mpi_file_split_comm
+					);
+
+			} //end if dimensions < split_rank
+
 		} //if ((local_color == 0) && (i < (nbchr - 2))) //in the splitted dimension
 		else{
 			//we do nothing here
@@ -1492,7 +1498,7 @@ int main (int argc, char *argv[]){
 		free(color_vec_to_send);
 		free(key_vec_to_send);
 
-	}// end loop upon chromosoms
+	}// end loop upon chromosoms (line 665)
 
 
 	free(goff);

@@ -18,7 +18,7 @@
 
 /*
    Module:
-     parabitonicsort.c
+     parabitonicsort3.c
 
    Authors:
     Frederic Jarlier from Institut Curie
@@ -59,7 +59,7 @@
 #include <string.h>
 #include <mpi.h>
 
-#include "parabitonicsort.h"
+#include "parabitonicsort3.h"
 
 // we limit to 1gb per proc
 
@@ -76,7 +76,6 @@ static MPI_Comm COMM_WORLD;
 
 size_t *base_arr2;
 
-
 static int compare_size_t_V2(const void *a, const void *b){
 
 	if (*(const size_t *)a > *(const size_t *)b)
@@ -88,10 +87,9 @@ static int compare_size_t_V2(const void *a, const void *b){
 
 }
 
-static int compare_size_t(const void *a, const void *b){
+static int compare_size_t3(const void *a, const void *b){
 
 	 size_t aa = *(size_t *)a, bb = *(size_t *)b;
-	 //fprintf(stderr, "rank %d :::::[MPIBITONIC2] we call parallel bitonic sort \n", split_rank);
 
 	 if (base_arr2[aa] > base_arr2[bb])
 		return 1;
@@ -102,20 +100,20 @@ static int compare_size_t(const void *a, const void *b){
 }
 
 
-void ParallelBitonicSort(
-		MPI_Comm split_comm,
-		int my_rank,
-		int dimension,
-		size_t *local_list,		//stand for coordinates
-		size_t *local_index, 	//stand for index
-		size_t list_size,
-		size_t zero_padding
+void ParallelBitonicSort3(MPI_Comm split_comm,
+						  int my_rank,
+						  int dimension,
+						  size_t *local_list,  //stand for coordinates
+						  size_t *local_list1, //stand for read sizes
+						  int  	 *local_list2, //stand for read rank
+						  int	 *local_list3, //stand for read offset source
+						  size_t *local_index,
+						  size_t list_size,
+						  size_t zero_padding
+						  ) {
 
-) {
-
-	// In this version of bitonic there is no more index.
-	// Everything is sorted according
-	// the local_list vector.
+	// in this version everything is sorted according
+	// the local_list vector
 
     int       proc_set_size;
     unsigned  and_bit;
@@ -124,17 +122,13 @@ void ParallelBitonicSort(
 
     if (my_rank < (dimension - 1)){
     	for (k = 0; k < zero_padding; k++){
-    		local_list[list_size - k - 1] = 0;
+    		local_list[list_size - k - 1]  = 0;
+    		local_list1[list_size - k - 1] = 0;
+    		local_list2[list_size - k - 1] = 0;
+    		local_list3[list_size - k - 1] = 0;
     	}
     }
-
-    Local_sort(list_size, local_list, local_index);
-
-    //we check the local_list is sorted
-    for (k = 0; k < (list_size - 1); k++){
-    	assert(local_list[k] <= local_list[k + 1]);
-    }
-
+    Local_sort3(list_size, local_list, local_list1, local_list2, local_list3, local_index);
     /* and_bit is a bitmask that, when "anded" with  */
     /* my_rank, tells us whether we're working on an */
     /* increasing or decreasing list                 */
@@ -142,48 +136,49 @@ void ParallelBitonicSort(
     		proc_set_size = proc_set_size*2, and_bit = and_bit << 1){
 
         if ((my_rank & and_bit) == 0){
-
-            Par_bitonic_sort_incr(
+            Par_bitonic_sort_incr3(
             		list_size,
             		local_list,
+            		local_list1,
+            		local_list2,
+            		local_list3,
             		local_index,
             		proc_set_size,
-            		my_rank
-            );
+            		my_rank);
         }
         else{
-
-            Par_bitonic_sort_decr(
+            Par_bitonic_sort_decr3(
             		list_size,
             		local_list,
+            		local_list1,
+            		local_list2,
+            		local_list3,
             		local_index,
             		proc_set_size,
-            		my_rank
-            );
+            		my_rank);
         }
-    }
-
-    for (k = 0; k < (list_size - 1); k++){
-      	assert(local_list[k] <= local_list[k + 1]);
     }
 }
 
 
 /*********************************************************************/
-void Local_sort(
-         size_t   list_size     /* in     */,
-         size_t  *local_keys    /* in/out */,
-         size_t  *local_keys1   /* in/out */
+void Local_sort3(
+         size_t    list_size     /* in     */,
+         size_t   *local_keys    /* in/out */,
+         size_t   *local_keys1   /* in/out */,
+         int	  *local_keys2   /* in/out */,
+         int	  *local_keys3   /* in/out */,
+         size_t   *local_index   /* in/out */
          ) {
 
 	//we create an index vector
-	size_t *local_keys_temp   	 = malloc(sizeof(size_t)*list_size);
-	size_t *local_keys_temp1     = malloc(sizeof(size_t)*list_size);
+	size_t 	*local_keys_temp     = malloc(sizeof(size_t)*list_size);
+	size_t 	*local_keys_temp1    = malloc(sizeof(size_t)*list_size);
+	int    	*local_keys_temp2    = malloc(sizeof(int)*list_size);
+	int 	*local_keys_temp3    = malloc(sizeof(int)*list_size);
 
-	assert(local_keys_temp);
-	assert(local_keys_temp1);
-
-	size_t *index_vector = (size_t *)malloc(sizeof(size_t)*list_size);
+	size_t *local_index_temp  = (size_t *)malloc(sizeof(size_t)*list_size);
+	size_t *index_vector 	  = (size_t *)malloc(sizeof(size_t)*list_size);;
 
 	size_t j = 0;
 
@@ -192,28 +187,37 @@ void Local_sort(
 	}
 
 	base_arr2 = local_keys;
-	bitonic_qksort(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t);
+	bitonic_qksort3(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t3);
 
 	//then we apply loac index to local_keys
 	for(j = 0; j < list_size; j++){
 		local_keys_temp[j]  = local_keys[index_vector[j]];
 		local_keys_temp1[j] = local_keys1[index_vector[j]];
+		local_keys_temp2[j] = local_keys2[index_vector[j]];
+		local_keys_temp3[j] = local_keys3[index_vector[j]];
+		local_index_temp[j] = local_index[index_vector[j]];
 	}
 
 	for(j = 0; j < list_size; j++){
 		local_keys[j]  = local_keys_temp[j];
 		local_keys1[j] = local_keys_temp1[j];
+		local_keys2[j] = local_keys_temp2[j];
+		local_keys3[j] = local_keys_temp3[j];
+		local_index[j] = local_index_temp[j];
 	}
 
 	free(index_vector);
 	free(local_keys_temp);
 	free(local_keys_temp1);
+	free(local_keys_temp2);
+	free(local_keys_temp3);
+	free(local_index_temp);
 	malloc_trim(0);
 }
 
 
 /*********************************************************************/
-int Key_compare(const size_t* p, const size_t* q) {
+int Key_compare3(const size_t* p, const size_t* q) {
 
     if (*p < *q)
         return -1;
@@ -226,7 +230,7 @@ int Key_compare(const size_t* p, const size_t* q) {
 
 
 /********************************************************************/
-int log_base2(int x) {
+int log_base2_V3(int x) {
     int count = 0;
 
     while (x > 1) {
@@ -240,10 +244,71 @@ int log_base2(int x) {
 
 
 /********************************************************************/
-void Par_bitonic_sort_incr(
+void Par_bitonic_sort_incr3(
         size_t      list_size      /* in     */,
-        size_t*    	local_list     /* in/out */,
-        size_t*    	local_list1    /* in/out */,
+        size_t*    	local_list    /* in/out */,
+        size_t* 	local_list1    /* in/out */,
+        int*    	local_list2    /* in/out */,
+        int*    	local_list3    /* in/out */,
+        size_t*		local_index    /* in/out */,
+        int     	proc_set_size  /* in     */,
+        int 		my_rank
+        ) {
+
+    unsigned  eor_bit;
+    int       proc_set_dim;
+    int       stage;
+    int       partner;
+    //int       my_rank;
+
+    MPI_Comm_rank(COMM_WORLD, &my_rank);
+
+    proc_set_dim = log_base2_V3(proc_set_size);
+    eor_bit = 1 << (proc_set_dim - 1);
+
+    for (stage = 0; stage < proc_set_dim; stage++) {
+        partner = my_rank ^ eor_bit;
+        if (my_rank < partner){
+
+            Merge_split3(
+            		list_size,
+            		local_list,
+            		local_list1,
+            		local_list2,
+            		local_list3,
+            		local_index,
+            		LOW,
+            		partner,
+            		my_rank
+            		);
+        }
+        else{
+
+            Merge_split3(
+            		list_size,
+            		local_list,
+            		local_list1,
+            		local_list2,
+            		local_list3,
+            		local_index,
+            		HIGH,
+            		partner,
+            		my_rank
+            		);
+        }
+        eor_bit = eor_bit >> 1;
+    }
+}  /* Par_bitonic_sort_incr */
+
+
+/********************************************************************/
+void Par_bitonic_sort_decr3(
+        size_t      list_size      /* in     */,
+        size_t*     local_list     /* in/out */,
+        size_t*     local_list1    /* in/out */,
+        int*    	local_list2    /* in/out */,
+        int*     	local_list3    /* in/out */,
+        size_t*	  	local_index    /* in/out */,
         int       	proc_set_size  /* in     */,
         int 	  	my_rank
         ) {
@@ -256,79 +321,33 @@ void Par_bitonic_sort_incr(
 
     MPI_Comm_rank(COMM_WORLD, &my_rank);
 
-    proc_set_dim = log_base2_V1(proc_set_size);
-    eor_bit = 1 << (proc_set_dim - 1);
-
-    for (stage = 0; stage < proc_set_dim; stage++) {
-        partner = my_rank ^ eor_bit;
-        if (my_rank < partner){
-
-            Merge_split(
-            		list_size,
-            		local_list,
-            		local_list1,
-            		LOW,
-            		partner,
-            		my_rank
-            		);
-        }
-        else{
-
-            Merge_split(
-            		list_size,
-            		local_list,
-            		local_list1,
-            		HIGH,
-            		partner,
-            		my_rank
-            		);
-        }
-        eor_bit = eor_bit >> 1;
-    }
-}  /* Par_bitonic_sort_incr */
-
-
-/********************************************************************/
-void Par_bitonic_sort_decr(
-        size_t	list_size      /* in     */,
-        size_t* local_list     /* in/out */,
-        size_t* local_list1    /* in/out */,
-        int     proc_set_size  /* in     */,
-        int 	my_rank
-        ) {
-
-    unsigned  eor_bit;
-    int       proc_set_dim;
-    int       stage;
-    int       partner;
-    //int       my_rank;
-
-    MPI_Comm_rank(COMM_WORLD, &my_rank);
-
-    proc_set_dim = log_base2_V1(proc_set_size);
+    proc_set_dim = log_base2_V3(proc_set_size);
     eor_bit = 1 << (proc_set_dim - 1);
     for (stage = 0; stage < proc_set_dim; stage++) {
         partner = my_rank ^ eor_bit;
-
         if (my_rank > partner){
-            Merge_split(
+            Merge_split3(
             		list_size,
             		local_list,
             		local_list1,
+            		local_list2,
+            		local_list3,
+            		local_index,
             		LOW,
             		partner,
-            		my_rank
-            );
+            		my_rank);
         }
         else{
-            Merge_split(
+            Merge_split3(
             		list_size,
             		local_list,
             		local_list1,
+            		local_list2,
+            		local_list3,
+            		local_index,
             		HIGH,
             		partner,
-            		my_rank
-            );
+            		my_rank);
         }
         eor_bit = eor_bit >> 1;
     }
@@ -337,97 +356,114 @@ void Par_bitonic_sort_decr(
 
 
 /********************************************************************/
-void Merge_split(
-        size_t    list_size     /* in     */,
-        size_t    *local_list1   /* in/out */,
-        size_t	  *local_list2  /* in/out */,
-        int       which_keys    /* in     */,
-        int       partner       /* in     */,
-        int 	  rank			/* in 	  */) {
+void Merge_split3(
+        size_t   list_size     /* in     */,
+        size_t  *local_list   /* in/out */,
+        size_t  *local_list1  /* in/out */,
+        int     *local_list2  /* in/out */,
+        int     *local_list3  /* in/out */,
+        size_t  *local_index  /* in/out */,
+        int     which_keys    /* in     */,
+        int     partner       /* in     */,
+        int 	rank				/* in 	  */) {
 
-	 int number_amount;
-	 size_t k=0;
+	int number_amount;
+    MPI_Status status;
+    size_t k=0;
 
-	 size_t *temp_key_list1 = malloc(list_size*sizeof(size_t));
-	 size_t *temp_key_list2 = malloc(list_size*sizeof(size_t));
+    /* send recieve on local_list*/
 
-	 assert(temp_key_list1 != 0);
-	 assert(temp_key_list2 != 0);
+    size_t 	*temp_key_list  = malloc(list_size*sizeof(size_t));
+    size_t 	*temp_key_list1 = malloc(list_size*sizeof(size_t));
+    int 	*temp_key_list2 = malloc(list_size*sizeof(int));
+    int 	*temp_key_list3 = malloc(list_size*sizeof(int));
 
-	 temp_key_list1 = memset(temp_key_list1, 0, sizeof(size_t)*list_size);
-	 temp_key_list2 = memset(temp_key_list2, 0, sizeof(size_t)*list_size);
+    assert(temp_key_list   != 0);
+    assert(temp_key_list1  != 0);
+    assert(temp_key_list2  != 0);
+    assert(temp_key_list3  != 0);
 
-	 /*
-	  * we pack the data into 1 vector called interbuff
-	  *
-	  */
+    //inititalization
+    memset(temp_key_list,  0, sizeof(size_t)*list_size);
+    memset(temp_key_list1, 0, sizeof(size_t)*list_size);
+    memset(temp_key_list2, 0, sizeof(int)*list_size);
+    memset(temp_key_list3, 0, sizeof(int)*list_size);
 
-	 MPI_Status status;
-	 int res;
-	 size_t *interbuff;
-	 res = MPI_Alloc_mem((2*list_size)*sizeof(size_t), MPI_INFO_NULL, &interbuff);
-	 assert(res == MPI_SUCCESS);
-	 size_t *pos_buff=interbuff;
+    int res;
+   	size_t *interbuff;
+   	res = MPI_Alloc_mem((4*list_size)*sizeof(size_t), MPI_INFO_NULL, &interbuff);
+   	assert(res == MPI_SUCCESS);
+   	size_t *pos_buff=interbuff;
 
-	 for ( k = 0 ; k < list_size; k++ ){
-		 interbuff[k] 				=  local_list1[k];
-		 interbuff[k + list_size] 	=  local_list2[k];
+   	for ( k = 0 ; k < list_size; k++ ){
+   		interbuff[k] 				=  local_list[k];
+   		interbuff[k + list_size] 	=  local_list1[k];
+   		interbuff[k + 2*list_size] =  (size_t)local_list2[k];
+   		interbuff[k + 3*list_size] =  (size_t)local_list3[k];
+   	}
 
-	 }
-
-	 size_t *interbuff2;
-	 res = MPI_Alloc_mem((2*list_size)*sizeof(size_t), MPI_INFO_NULL, &interbuff2);
-	 assert(res == MPI_SUCCESS);
-
-
-	 MPI_Sendrecv(interbuff,
-			 	  2*list_size,
-			 	  MPI_LONG_LONG_INT,
-			 	  partner,
-			 	  0,
-			 	  interbuff2,
-			 	  2*list_size,
-			 	  MPI_LONG_LONG_INT,
-			 	  partner,
-			 	  0,
-			 	  COMM_WORLD,
-			 	  &status);
+   	size_t *interbuff2;
+   	res = MPI_Alloc_mem((4*list_size)*sizeof(size_t), MPI_INFO_NULL, &interbuff2);
+   	assert(res == MPI_SUCCESS);
 
 
-	 MPI_Get_count(&status, MPI_PACKED, &number_amount);
+   	MPI_Sendrecv(interbuff,
+   		 	  4*list_size,
+   		 	  MPI_LONG_LONG_INT,
+   		 	  partner,
+   		 	  0,
+   		 	  interbuff2,
+   		 	  4*list_size,
+   		 	  MPI_LONG_LONG_INT,
+   		 	  partner,
+   		 	  0,
+   		 	  COMM_WORLD,
+   		 	  &status);
 
-	 for ( k = 0 ; k < list_size; k++ ){
-		 temp_key_list1[k] = interbuff2[k];
-		 temp_key_list2[k] = interbuff2[k + list_size];
-
-	 }
-
+   	for ( k = 0 ; k < list_size; k++ ){
+   		temp_key_list[k]  = (size_t)interbuff2[k];
+   		temp_key_list1[k] = (size_t)interbuff2[k + list_size];
+   		temp_key_list2[k] = (int)   interbuff2[k + 2*list_size];
+   		temp_key_list3[k] = (int)	interbuff2[k + 3*list_size];
+   	}
 
     if (which_keys == HIGH){
-    	Merge_list_high(
+    	Merge_list_high3(
     			 list_size,
+    			 local_list,
     			 local_list1,
     			 local_list2,
+    			 local_list3,
+    			 local_index,
+    			 temp_key_list,
     			 temp_key_list1,
-    			 temp_key_list2
+    			 temp_key_list2,
+    			 temp_key_list3
     			 );
     }
     else{
-        Merge_list_low(
+        Merge_list_low3(
         		list_size,
+        		local_list,
         		local_list1,
         		local_list2,
+        		local_list3,
+        		local_index,
+        		temp_key_list,
         		temp_key_list1,
-        		temp_key_list2
+        		temp_key_list2,
+        		temp_key_list3
         		);
-
     }
 
-    if (temp_key_list1) free(temp_key_list1);
-    if (temp_key_list2) free(temp_key_list2);
+    free(temp_key_list);
+    free(temp_key_list1);
+    free(temp_key_list2);
+    free(temp_key_list3);
 
-	MPI_Free_mem(interbuff);
-	MPI_Free_mem(interbuff2);
+    MPI_Free_mem(interbuff);
+    MPI_Free_mem(interbuff2);
+
     //malloc_trim(0);
 
 } /* Merge_split */
@@ -436,88 +472,118 @@ void Merge_split(
 /********************************************************************/
 /* Merges the contents of the two lists. */
 /* Returns the smaller keys in list1     */
-void Merge_list_low(
+void Merge_list_low3(
         size_t   list_size  	/* in     */,
+        size_t  *list_key    	/* in/out */,
         size_t  *list_key1    	/* in/out */,
-        size_t	*list_key2    	/* in/out */,
+        int  	*list_key2    	/* in/out */,
+        int  	*list_key3    	/* in/out */,
+        size_t  *list_index    	/* in/out */,
+        size_t  *list_tmp_key   /* in     */,
         size_t  *list_tmp_key1   /* in     */,
-        size_t  *list_tmp_key2   /* in     */
+        int  	*list_tmp_key2   /* in     */,
+        int  	*list_tmp_key3   /* in     */
         ) {
 
 	size_t  i;
     size_t  index1 = 0;
     size_t  index2 = 0;
 
-    size_t *scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    size_t *scratch_list_key2 = malloc(list_size*sizeof(size_t));
+    size_t 	*scratch_list_key  = malloc(list_size*sizeof(size_t));
+    size_t 	*scratch_list_key1 = malloc(list_size*sizeof(size_t));
+    int 	*scratch_list_key2 = malloc(list_size*sizeof(int));
+    int 	*scratch_list_key3 = malloc(list_size*sizeof(int));
 
+    scratch_list_key[0]  = 0;
     scratch_list_key1[0] = 0;
     scratch_list_key2[0] = 0;
+    scratch_list_key3[0] = 0;
 
     for (i = 0; i < list_size; i++){
-        if (list_key1[index1] <= list_tmp_key1[index2]) {
+        if (list_key[index1] <= list_tmp_key[index2]) {
 
+        	scratch_list_key[i]  = list_key[index1];
         	scratch_list_key1[i] = list_key1[index1];
         	scratch_list_key2[i] = list_key2[index1];
-        	index1++;
+        	scratch_list_key3[i] = list_key3[index1];
+            index1++;
 
         } else {
 
+        	scratch_list_key[i]  = list_tmp_key[index2];
         	scratch_list_key1[i] = list_tmp_key1[index2];
         	scratch_list_key2[i] = list_tmp_key2[index2];
-        	index2++;
+        	scratch_list_key3[i] = list_tmp_key3[index2];
+            index2++;
         }
     }
     for (i = 0; i < list_size; i++){
+    	list_key[i]  = scratch_list_key[i];
     	list_key1[i] = scratch_list_key1[i];
     	list_key2[i] = scratch_list_key2[i];
+    	list_key3[i] = scratch_list_key3[i];
+
     }
 
+    free(scratch_list_key);
     free(scratch_list_key1);
     free(scratch_list_key2);
+    free(scratch_list_key3);
 
-    //malloc_trim(0);
+    malloc_trim(0);
 }  /* Merge_list_low */
 
 
 /********************************************************************/
 /* Returns the larger keys in list 1.    */
-void Merge_list_high(
+void Merge_list_high3(
 		 size_t   list_size  	/* in     */,
+		 size_t  *list_key    	/* in/out */,
 		 size_t  *list_key1    	/* in/out */,
-		 size_t	 *list_key2    	/* in/out */,
+		 int	 *list_key2    	/* in/out */,
+		 int     *list_key3    	/* in/out */,
+		 size_t  *list_index    	/* in/out */,
+		 size_t  *list_tmp_key   /* in     */,
 		 size_t  *list_tmp_key1   /* in     */,
-		 size_t	 *list_tmp_key2   /* in     */
+		 int  	 *list_tmp_key2   /* in     */,
+		 int	 *list_tmp_key3   /* in     */
 		 ) {
+
 
     size_t  i;
     size_t  index1 = list_size - 1;
     size_t  index2 = list_size - 1;
 
-    size_t  *scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    size_t 	*scratch_list_key2 = malloc(list_size*sizeof(size_t));
+    size_t *scratch_list_key  = malloc(list_size*sizeof(size_t));
+    size_t *scratch_list_key1 = malloc(list_size*sizeof(size_t));
+    int *scratch_list_key2 	  = malloc(list_size*sizeof(int));
+    int *scratch_list_key3 	  = malloc(list_size*sizeof(int));
 
-    scratch_list_key1[0] =0;
+    scratch_list_key[0]=0;
+    scratch_list_key1[0]=0;
     scratch_list_key2[0]=0;
+    scratch_list_key3[0]=0;
 
     size_t counter =0;
     int  rank;
     MPI_Comm_rank(COMM_WORLD, &rank);
     for (i = list_size - 1; i >= 0; i--){
 
-        if (list_key1[index1] >= list_tmp_key1[index2]) {
+        if (list_key[index1] >= list_tmp_key[index2]) {
 
+        	scratch_list_key[i] = list_key[index1];
         	scratch_list_key1[i] = list_key1[index1];
         	scratch_list_key2[i] = list_key2[index1];
-
+        	scratch_list_key3[i] = list_key3[index1];
         	index1--;
         	counter++;
 
         } else {
 
+        	scratch_list_key[i] = list_tmp_key[index2];
         	scratch_list_key1[i] = list_tmp_key1[index2];
         	scratch_list_key2[i] = list_tmp_key2[index2];
-
+        	scratch_list_key3[i] = list_tmp_key3[index2];
             index2--;
             counter++;
         }
@@ -528,13 +594,17 @@ void Merge_list_high(
 
     for (i = 0; i < list_size; i++){
 
+        	list_key[i]   = scratch_list_key[i];
         	list_key1[i]  = scratch_list_key1[i];
         	list_key2[i]  = scratch_list_key2[i];
+        	list_key3[i]  = scratch_list_key3[i];
 
     }
 
+    free(scratch_list_key);
     free(scratch_list_key1);
     free(scratch_list_key2);
+    free(scratch_list_key3);
 
 }  /* Merge_list _high */
 
@@ -542,7 +612,7 @@ void Merge_list_high(
  * -------------------------            qksort          ------------------------------
  */
 
-int bitonic_qksort(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2)){
+int bitonic_qksort3(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2)){
 
 	size_t j;
 
@@ -559,14 +629,14 @@ int bitonic_qksort(void *data, size_t size, size_t esize, size_t i, size_t k, in
 		 * find where to partition the elements
 		 */
 
-		if ((j = bitonic_partition(data, esize, i, k, compare)) < 0){
+		if ((j = bitonic_partition3(data, esize, i, k, compare)) < 0){
 			return -1;
 		}
 
 		/*
 		 * recursively sort the left partition
 		 */
-		if (bitonic_qksort(data, size, esize, i, j, compare) < 0)
+		if (bitonic_qksort3(data, size, esize, i, j, compare) < 0)
 			return -1;
 
 		/*
@@ -578,7 +648,7 @@ int bitonic_qksort(void *data, size_t size, size_t esize, size_t i, size_t k, in
 }
 
 
-int bitonic_issort(void *data, size_t size, size_t esize, int (*compare)(const void *key, const void *key2)){
+int bitonic_issort3(void *data, size_t size, size_t esize, int (*compare)(const void *key, const void *key2)){
 
 	size_t *a = data;
 	size_t *key;
@@ -602,7 +672,7 @@ int bitonic_issort(void *data, size_t size, size_t esize, int (*compare)(const v
 
 }
 
-int bitonic_partition(void *data, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2)){
+int bitonic_partition3(void *data, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2)){
 
 	size_t *a = data;
 	size_t *pval, *temp;

@@ -287,7 +287,6 @@ int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** dat
 	i=0;
 	while (i < size){
 		vect[i] = stride[i%(k*2)];
-
 		i++;
 	}
 

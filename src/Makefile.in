@@ -101,9 +101,11 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__objects_1 = mpiSort.$(OBJEXT) mpiSort_utils.$(OBJEXT) \
-	mergeSort.$(OBJEXT) parabitonicsort.$(OBJEXT) qksort.$(OBJEXT) \
-	parser.$(OBJEXT) tokenizer.$(OBJEXT) preWrite.$(OBJEXT) \
-	write.$(OBJEXT) write_utils.$(OBJEXT)
+	mergeSort.$(OBJEXT) parabitonicsort.$(OBJEXT) \
+	parabitonicsort2.$(OBJEXT) parabitonicsort3.$(OBJEXT) \
+	qksort.$(OBJEXT) parser.$(OBJEXT) tokenizer.$(OBJEXT) \
+	preWrite.$(OBJEXT) write.$(OBJEXT) write_utils.$(OBJEXT) \
+	sort_any_dim.$(OBJEXT)
 am_psort_OBJECTS = $(am__objects_1)
 psort_OBJECTS = $(am_psort_OBJECTS)
 psort_LDADD = $(LDADD)
@@ -251,11 +253,13 @@ top_srcdir = @top_srcdir@
 noinst_HEADERS = $(HDR)
 psort_SOURCES = $(SRC)
 SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
-	qksort.c parser.c tokenizer.c preWrite.c write.c write_utils.c
+	parabitonicsort2.c parabitonicsort3.c qksort.c parser.c \
+	tokenizer.c preWrite.c write.c  write_utils.c sort_any_dim.c
 
-HDR = mpiSort_utils.h mergeSort.h parabitonicsort.h qksort.h \
+HDR = mpiSort_utils.h mergeSort.h parabitonicsort.h \
+	parabitonicsort2.h parabitonicsort3.h qksort.h \
 	parser.h tokenizer.h preWrite.h write.h write_utils.h \
-	bgzf.c bgzf.h khash.h
+	bgzf.c bgzf.h khash.h sort_any_dim.h 
 
 all: all-am
 
@@ -347,9 +351,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpiSort.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpiSort_utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parabitonicsort.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parabitonicsort2.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parabitonicsort3.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/preWrite.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/qksort.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sort_any_dim.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tokenizer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write_utils.Po@am__quote@
