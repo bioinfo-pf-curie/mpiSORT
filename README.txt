@@ -285,17 +285,17 @@ the -n for sorting by name <br />
 
 ### 18) Improvements
 
-	1) Make a pile up of the reads to produce VCF. <br /> 
-	2) Merge aligner and sorting to avoid writing and reading part. <br /> 
-	3) Manage Bam file in input, output.  <br />
-	4) Optimize communication for non power of 2 cpu number. <br />
-	     The gather and bradcast should be replace with Bruck. <br />
-	5) Generate index with the gz output as tabix does. <br />
-	6) Manage single reads. <br />
-	7) Mark or remove duplicates. <br />
-	8) Write SAM files per chromosom. <br />
-	9) Propose an option to write a big SAM file. <br />
-	10) Test malloc_trim on BSD or OSX. <br />
+* Make a pile up of the reads to produce VCF.
+* Merge aligner and sorting to avoid writing and reading part. 
+* Manage Bam file in input, output. 
+* Optimize communication for non power of 2 cpu number. 
+	     The gather and bradcast should be replace with Bruck. 
+* Generate index with the gz output as tabix does. 
+* Manage single reads. 
+* Mark or remove duplicates. 
+* Write SAM files per chromosom. 
+* Propose an option to write a big SAM file. 
+* Test malloc_trim on BSD or OSX. 
 	
 ### 19) Authors and contacts
 
