@@ -1,34 +1,43 @@
-Objective
----------
+# Objective
 
 Sorting big NGS data file in the context of distributed cluster and high performance computing, Version 1.0.
 
-Sections:
--------
+## Sections:
 
 1) Release notes <br />
 2) Installation <br />
 3) Algorithm <br />
 4) Architectures <br />
 5) Memory usage <br />
-6) Inputs <br />
-7) Outputs <br />
-8) Compiler <br />
-9) Sample test  <br />
-10) Configuration <br />
-11) Parallel file system configuration <br />
-12) Network file system configuration <br />
-13) Results <br />
-14) Example of code <br />
-15) Options <br />
-16) Improvements and future work <br />
-17) Authors and contacts  <br />
+6) CPU usage <br />
+7) Inputs <br />
+8) Outputs <br />
+9) Compiler <br />
+10) Sample test  <br />
+11) Configuration <br />
+12) Parallel file system configuration <br />
+13) Lustre optimization
+14) Network file system configuration <br />
+15) Results <br />
+16) Example of code <br />
+17) Options <br />
+18) Improvements and future work <br />
+19) Authors and contacts  <br />
 
-==============================================================================
+### 1) Release notes 
 
+Release 1.0 from 28/03/2017
 
-1) Release notes 
--------------
+1) We have redesign the communications during the sorting. <br />
+Communication are optimized for power of 2 in processor number.  <br />
+This has been done to scale gigabit ethernet network and for a better load balancing of the computing and memory pressure. <br />
+With processors in power of 2 we avoid extra communication. <br />
+All Results are the same than previous release. <br />
+
+New tests and benchmarking will follow.
+
+2) Remove memory leaks. <br />
+Comments added. <br />
 
 Release 1.0 from 25/11/2016
 
@@ -77,8 +86,7 @@ Release 0.9 from 29/07/2016
 4) the parallel merge sort has been replaced with bitonic sorting (25% percent gain in speed-up) <br />
 5) Refactoring and cleaning of the code <br />
 
-2) Installation
------------
+### 2) Installation
 
 You need to install zlib librairies <br />
 You need automake 1.15 for the installation. <br />
@@ -105,8 +113,7 @@ mpirun -n 5 psort INPUT_FILE OUTPUT_DIR -q 0  <br />
 
 -q is for quality filtering of the reads.
 
-3) Algorithm
-----------
+### 3) Algorithm
 
 Sorting a file is all about IO's and shuffling (or movements) of data. 
 
@@ -132,10 +139,7 @@ http://hunoldscience.net/paper/classical_sahu_2014.pdf<br />
 Description of Bitonic sorting:<br />
 https://en.wikipedia.org/wiki/Bitonic_sorter<br />
 
-
-
-4) Architectures:
--------------
+### 4) Architectures:
 
 We have tested the programm on different architectures.
 
@@ -145,19 +149,25 @@ Because of the development design the programm is optimized for HPC architecture
 
 Contact us if you need information.
 
-5) Memory
----------
+### 5) Memory:
 
 The total memory used during the sorting is around one and a half the size of the SAM file. <br />
 For instance to sort 100Gb sam file (10X WGS 100pb, paired) memory usage is around 150 gb.  <br /> 
 
-6) Input Data:
------------
+### 6) CPU usage:
+
+Due to the bitonic sorting the algorithm is optimized for power of 2 number of CPU. <br />
+So chose 2,4,8,16,32... for better performances.  <br />
+
+It works also for other number of CPU but the algorithm add extra communications to fit power of 2 in bitonic part. <br />
+For no power 2 extra memory is needed for the rank 0. <br />
+This rank is responsible for collecting and dispatching data before and after bitonic. <br />
+
+### 7) Input Data:
 
 A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired. <br />
 
-7) Outputs: 
---------
+### 8) Outputs: 
 
 Output are bam files per chromosome, a bam file for discordant reads and a bam file for unmapped reads. <br />
 
@@ -171,24 +181,20 @@ samtools view -Sh chrN.bam > chrN.sam <br />
 Or rename the file with suffix .gz and 
 bgzip -d chrN.gz > chrN.sam
 
-8) MPI version:
-------------
+### 9) MPI version:
 
-A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3.
+A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3. <br /> 
 
-9) Compiler: 
----------
+### 10) Compiler: 
 
-A C compiler must be present. We have tested the programm with GCC and Intel Compiler. 
+A C compiler must be present. We have tested the programm with GCC and Intel Compiler. <br /> 
 
-10) Sample test:
-------------
+### 11) Sample test:
 
-We furnish a sample sam to sort for testing your installation.
-We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. 
+We furnish a sample sam to sort for testing your installation. <br /> 
+We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. <br /> 
 
-11) Parallel file system configuration:
------------------------------
+### 12) Parallel file system configuration:
 
 MPI improves IOs by means of parallelization. 
 
@@ -198,23 +204,39 @@ You chose the number of servers with the striping factor and the size of chunks 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 The parallel writing and reading are done via the MPI finfo structure in the first line of mpiSort.c.
 
-!!!We recommand to test different parameters before setting them once for all.
+For reading and set the Lustre buffer size.  <br />
+To do that edit the code of mpiSort.c and change the parameters in the header part.  <br />
+After tuning parameters recompile the application.  <br />
 
-For reading and set the Lustre buffer size.
-To do that edit the code of mpiSort.c and change the parameters in the header part. 
-After tuning parameters recompile the application.
+If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.  <br />
+In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant. <br />
 
-If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
-In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant
+The default parameters of the programm are unharmed for other filesystem. <br />
 
-The default parameters of the programm are unharmed for other filesystem.
+At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is maximum 2.5 GB a SAM file of 1.2TB could be loaded in memory in less than 1 minute. <br /> 
 
-At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is maximum 2.5 GB a SAM file of 1.2TB could be loaded in memory in less than 1 minute.
+### 13) Lustre optimization:
 
-12) Network File system configuration:
--------------------------------
+The section of the code you can modify in MPI info according to your Lustre configuration: <br /> 
+
+For reading part (mpiSORT.c):<br /> 
+line 92 => 96 and 260 => 274 <br /> 
+
+For writing part (in write.c): <br /> 
+line 1382 => 1388 <br /> 
+line 1483 => 1488 <br /> 
+line 1769 => 1776 <br /> 
+line 1801 => 1809 <br /> 
+
+The parameters are harmeless for other filesystem. <br /> 
+
+!!!We recommand to test different parameters before setting them once for all. <br /> 
+
+### 14) Network File system configuration:
 
 We don't recommend to use MPI with NFS (it works but it does not scale very well). <br />
+
+If you run the programm on NFS take a power of 2 number of jobs. <br />
 
 For NFS users there is a bug in openMPI. <br />
 https://www.open-mpi.org/community/lists/users/2016/06/29434.php
@@ -225,8 +247,7 @@ https://trac.mpich.org/projects/mpich/attachment/ticket/2338/ADIOI_NFS_ReadStrid
 To improve TCP communications over openMPI : <br />
 https://www.open-mpi.org/faq/?category=tcp
 
-13) Results:
----------
+### 15) Results:
 
 To see results and speed-ups please check out those links
 
@@ -236,8 +257,8 @@ http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequenc
 2016: OpenSFS conference Lustre LAD 2016 
 http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf
 
-14) Example of code:
------------------
+### 16) Example of code:
+
 How to launch the program with Torque:
 
 !/bin/bash
@@ -257,26 +278,26 @@ OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
 FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
 mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 
-15) Options 
-----------
+### 17) Options 
 
 the -q option is for quality filtering. <br />
 the -n for sorting by name <br />
 
-16) Improvements
----------------
+### 18) Improvements
 
-1) Generate index with the gz  <br />
-2) Optimize memory pressure on job rank 0 (do the indexing in the bitonic sort) <br />
-3) Manage single reads <br />
-4) Mark or remove duplicates <br />
-5) Make a pile up of the reads <br /> 
-6) Write SAM files per chromosom<br />
-7) Propose an option to write a big SAM file <br />
-8) Test malloc_trim on BSD or OSX  <br />
-
-17) Authors and contacts
---------------------
+	1) Make a pile up of the reads to produce VCF. <br /> 
+	2) Merge aligner and sorting to avoid writing and reading part. <br /> 
+	3) Manage Bam file in input, output.  <br />
+	4) Optimize communication for non power of 2 cpu number. <br />
+	     The gather and bradcast should be replace with Bruck. <br />
+	5) Generate index with the gz output as tabix does. <br />
+	6) Manage single reads. <br />
+	7) Mark or remove duplicates. <br />
+	8) Write SAM files per chromosom. <br />
+	9) Propose an option to write a big SAM file. <br />
+	10) Test malloc_trim on BSD or OSX. <br />
+	
+### 19) Authors and contacts
 
 This program has been developed by<br />
 
