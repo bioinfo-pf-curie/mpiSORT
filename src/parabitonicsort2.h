@@ -46,7 +46,6 @@ void Local_sort2(
 		);
 
 int Key_compare2(const size_t* p, const size_t* q);
-int log_base2_V1(int x);
 void Par_bitonic_sort_incr2(
 		size_t list_size,
 		size_t local_list[],

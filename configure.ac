@@ -8,6 +8,7 @@ AM_INIT_AUTOMAKE([1.15 foreign -Wall])
 AC_PROG_CC([mpicc])
 
 # Checks for libraries.
+AC_CHECK_LIB([m], [log2])
 AC_CHECK_LIB([z], [inflate])
 
 # Checks for library functions.

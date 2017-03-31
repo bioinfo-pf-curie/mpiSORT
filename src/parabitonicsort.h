@@ -46,7 +46,6 @@ int Key_compare(
 		const size_t* p,
 		const size_t* q
 		);
-int log_base2(int x);
 void Par_bitonic_sort_incr(
 		size_t list_size,
 		size_t local_list[],

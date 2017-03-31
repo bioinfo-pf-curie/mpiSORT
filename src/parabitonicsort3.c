@@ -56,6 +56,7 @@
  */
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -234,20 +235,6 @@ int Key_compare3(const size_t* p, const size_t* q) {
 
 
 /********************************************************************/
-int log_base2_V3(int x) {
-    int count = 0;
-
-    while (x > 1) {
-        x = x/2;
-        count++;
-    }
-
-    return count;
-
-}  /* log_base2 */
-
-
-/********************************************************************/
 void Par_bitonic_sort_incr3(
         size_t      list_size      /* in     */,
         size_t*    	local_list    /* in/out */,
@@ -267,7 +254,7 @@ void Par_bitonic_sort_incr3(
 
     MPI_Comm_rank(COMM_WORLD, &my_rank);
 
-    proc_set_dim = log_base2_V3(proc_set_size);
+    proc_set_dim = log2(proc_set_size);
     eor_bit = 1 << (proc_set_dim - 1);
 
     for (stage = 0; stage < proc_set_dim; stage++) {
@@ -325,7 +312,7 @@ void Par_bitonic_sort_decr3(
 
     MPI_Comm_rank(COMM_WORLD, &my_rank);
 
-    proc_set_dim = log_base2_V3(proc_set_size);
+    proc_set_dim = log2(proc_set_size);
     eor_bit = 1 << (proc_set_dim - 1);
     for (stage = 0; stage < proc_set_dim; stage++) {
         partner = my_rank ^ eor_bit;
