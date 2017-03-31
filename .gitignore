@@ -1,6 +1,7 @@
 autom4te.cache
 config.log
 config.status
+config.h.in~
 config.h
 Makefile
 stamp-h1
