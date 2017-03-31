@@ -29,7 +29,9 @@
 	Paul Paganiban Paris Descartes University
 */
 
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 /* parallel_bitonic.c -- parallel bitonic sort of randomly generated list
  *     of integers

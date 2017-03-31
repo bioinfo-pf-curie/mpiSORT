@@ -29,6 +29,9 @@
 	Paul Paganiban Paris Descartes University
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 /*
  * function used in mpiSort.c

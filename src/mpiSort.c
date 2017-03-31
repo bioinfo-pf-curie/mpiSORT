@@ -29,6 +29,10 @@
 	Paul Paganiban Paris Descartes University
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #define _GNU_SOURCE
 
 #include <sys/mman.h>
