@@ -49,6 +49,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#include "compat.h"
+
 #include "mergeSort.h"
 #include "parser.h"
 #include "preWrite.h"

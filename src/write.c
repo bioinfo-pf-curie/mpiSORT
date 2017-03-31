@@ -34,6 +34,9 @@
 #endif
 
 #include <malloc.h>
+
+#include "compat.h"
+
 #include "write.h"
 #include "bgzf.h"
 #include "bgzf.c"

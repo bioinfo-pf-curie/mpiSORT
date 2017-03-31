@@ -61,6 +61,8 @@
 #include <string.h>
 #include <mpi.h>
 
+#include "compat.h"
+
 #include "parabitonicsort3.h"
 
 // we limit to 1gb per proc

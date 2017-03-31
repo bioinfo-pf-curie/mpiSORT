@@ -10,5 +10,8 @@ AC_PROG_CC([mpicc])
 # Checks for libraries.
 AC_CHECK_LIB([z], [inflate])
 
+# Checks for library functions.
+AC_CHECK_FUNCS([malloc_trim])
+
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

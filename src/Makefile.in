@@ -262,7 +262,8 @@ SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
 HDR = mpiSort_utils.h mergeSort.h parabitonicsort.h \
 	parabitonicsort2.h parabitonicsort3.h qksort.h \
 	parser.h tokenizer.h preWrite.h write.h write_utils.h \
-	bgzf.c bgzf.h khash.h sort_any_dim.h
+	bgzf.c bgzf.h khash.h sort_any_dim.h \
+	compat.h
 
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
