@@ -64,6 +64,7 @@
 #include "compat.h"
 
 #include "parabitonicsort.h"
+#include "parabitonicsort2.h"
 
 // we limit to 1gb per proc
 
