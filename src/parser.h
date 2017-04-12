@@ -21,12 +21,12 @@
      parser.h
 
    Authors:
-    Frederic Jarlier from Institut Curie
-	Nicolas Joly from Institut Pasteur
-	Nicolas Fedy Paris Descartes University
-	Leonor Sirotti Paris Descartes University
-	Thomas Magalhaes Paris Descartes University
-	Paul Paganiban Paris Descartes University
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
 */
 
 #ifndef PARSER
@@ -109,9 +109,6 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
  * \param preads The reads linked list. Will be set in this function.
  */
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
-
-void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
-
 
 /**
  * \brief Extract integer number of current chromosome given as a string

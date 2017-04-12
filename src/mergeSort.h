@@ -20,13 +20,13 @@
    Module:
      bufferized_read.c
 
-   Authors:
- 	Frederic Jarlier from Institut Curie
-	Nicolas Joly from Institut Pasteur
-	Nicolas Fedy from Institut Curie
-	Leonor Sirotti from Institut Curie
-	Thomas Magalhaes from Institut Curie
-	Paul Paganiban from Institut Curie
+  Authors:
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
 */
 
 

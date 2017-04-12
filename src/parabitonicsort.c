@@ -21,12 +21,12 @@
      parabitonicsort.c
 
    Authors:
-    Frederic Jarlier from Institut Curie
-	Nicolas Joly from Institut Pasteur
-	Nicolas Fedy Paris Descartes University
-	Leonor Sirotti Paris Descartes University
-	Thomas Magalhaes Paris Descartes University
-	Paul Paganiban Paris Descartes University
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
 */
 
 #ifdef HAVE_CONFIG_H

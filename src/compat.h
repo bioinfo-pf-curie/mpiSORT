@@ -16,6 +16,20 @@
    along with mpiSORT.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+   Module:
+     compat.h
+
+   Authors:
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
+*/
+
+
 #ifndef HAVE_MALLOC_TRIM
 #define malloc_trim(x) {}
 #endif /* HAVE_MALLOC_TRIM */

@@ -21,12 +21,12 @@
     write.c
 
    Authors:
-    Frederic Jarlier from Institut Curie
-	Nicolas Joly from Institut Pasteur
-	Nicolas Fedy from Institut Curie
-	Leonor Sirotti from Institut Curie
-	Thomas Magalhaes from Institut Curie
-	Paul Paganiban from Institut Curie
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
 */
 
 #ifdef HAVE_CONFIG_H
@@ -1554,7 +1554,7 @@ void writeSam_discordant_and_unmapped(
 	}
 
 	for(j = 1; j < local_readNum; j++){
-		offset_source_unsorted[j-1] < offset_source_unsorted[j];
+		assert(offset_source_unsorted[j-1] < offset_source_unsorted[j]);
 	}
 
 	finish_phase2 = MPI_Wtime();

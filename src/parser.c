@@ -21,12 +21,12 @@
      parser.c
 
    Authors:
-    Frederic Jarlier from Institut Curie
-	Nicolas Joly from Institut Pasteur
-	Nicolas Fedy from Paris Descartes University
-	Leonor Sirotti from Paris Descartes University
-	Thomas Magalhaes from Paris Descartes University
-	Paul Paganiban from Paris Descartes University
+    Frederic Jarlier, 	Institut Curie
+	Nicolas Joly, 		Institut Pasteur
+	Nicolas Fedy,		Institut Curie
+	Leonor Sirotti,	 	Institut Curie
+	Thomas Magalhaes,	Institut Curie
+	Paul Paganiban,		Institut Curie
 */
 
 #ifdef HAVE_CONFIG_H
@@ -246,154 +246,6 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 		}
 		free(readNumberByChr);
 }
-
-void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,
-		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
-
-		char *currentCarac;
-		char currentLine[MAX_LINE_SIZE];
-		unsigned char quality;
-		unsigned int i, chr, nbchr = 0, mchr;
-		int lastChr = -1;
-		int next;
-		size_t lineSize, offset_read_in_source_file;
-		size_t coord;
-		size_t *readNumberByChr;
-		size_t counter = 0;
-		Read **reads = *preads;
-
-		for(i=0;i<MAX_LINE_SIZE;i++){
-			currentLine[i]=0;
-		}
-
-		//we take the first line *
-		//before calling parsepaired, we know that localdata is at the begining of a read
-		next = tokenizer(localData,'\n', currentLine);
-		offset_read_in_source_file = start_offset;
-
-		nbchr = nbchrom;
-		readNumberByChr = (size_t*)calloc(nbchr, sizeof(size_t));
-
-		while(next){
-
-			lineSize = strlen(currentLine) + 1;
-
-			//we update the offset in the
-			//source file
-			currentLine[lineSize - 1] = '\n';
-			currentLine[lineSize] = '\0';
-
-			//GO TO FLAG
-			currentCarac = strstr(currentLine, "\t");
-
-			//GO TO RNAME (Chr name)
-			currentCarac = strstr(currentCarac+1, "\t");
-			if(lastChr == (nbchr - 1))
-			{
-				chr = (nbchr -1);
-			}
-			else
-			{
-				chr = getChr(currentCarac, chrNames, nbchr);
-			}
-
-
-			//GO TO COORD
-			currentCarac = strstr(currentCarac+1, "\t");
-			//TAKE COORD AND GO TO MAPQ
-			coord = strtoull(currentCarac, &currentCarac, 10);
-
-			//TAKE MAPQ AND GO TO CIGAR
-			quality = strtoull(currentCarac, &currentCarac, 10);
-
-
-			//GO TO RNEXT
-			currentCarac = strstr(currentCarac+1, "\t");
-			if(currentCarac[1] == '='){
-				mchr = chr;
-			}
-			else if(currentCarac[1] == '*'){
-				mchr = (nbchr-1);
-			}
-			else{
-				mchr = getChr(currentCarac, chrNames, nbchr);
-			}
-
-			//first we check if reads mapped on the same chromosome
-
-			if ((chr < nbchr-2) && (chr == mchr)){
-					//then we found concordant reads
-					if(quality > threshold){
-
-						reads[chr]->next = malloc(sizeof(Read));
-						reads[chr]->next->coord = coord;
-						reads[chr]->next->quality = quality;
-						reads[chr]->next->offset_source_file=offset_read_in_source_file;
-						reads[chr]->next->offset = lineSize;
-						reads[chr] = reads[chr]->next;
-						readNumberByChr[chr]++;
-					}
-			}
-			else if ((chr < (nbchr-2)) && ( mchr < (nbchr -2))){
-
-					//we found discordant reads
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-
-			}
-			else if ((chr == '*') && ( mchr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-			else if ((mchr == '*') && ( chr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-
-			else{
-					//we found unmapped pairs reads
-					reads[nbchr-2]->next = malloc(sizeof(Read));
-					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-2]->next->offset = lineSize;
-					reads[nbchr-2] = reads[nbchr-2]->next;
-					readNumberByChr[nbchr-2]++;
-			}
-
-
-
-			//we update the offset_read_in_source_file
-			offset_read_in_source_file += lineSize;
-			//we read the next line
-
-			for(i=0;i<MAX_LINE_SIZE;i++){
-				currentLine[i]=0;
-			}
-			next = tokenizer(NULL, '\n', currentLine);
-
-			counter++;
-		}
-
-		fprintf(stderr, "rank %d ::: counter = %zu \n", rank, counter);
-
-		for(i=0;i<nbchr;i++){
-			preadNumberByChr[0][i] += readNumberByChr[i];
-		}
-}
-
-
 
 int getChr(char *str, char** chrNames, int nbchr){
 	int i=0, found=0, size;
