@@ -77,10 +77,10 @@
  * Those parameters are harmless for other FS
  *
  */
-#define STRIPING_FACTOR "4"
-
+#define STRIPING_FACTOR "12"
+#define STRIPING_UNIT "4194304"   // 4 MB
 //#define STRIPING_UNIT "268435456"   // 256 MB
-#define STRIPING_UNIT "536870912"   // 500 MB
+//#define STRIPING_UNIT "536870912"   // 500 MB
 //#define STRIPING_UNIT "1073741824"  // 1GB
 //#define STRIPING_UNIT "1610612736"  // 1.5GB
 //#define STRIPING_UNIT "2147483648"  // 2GB
@@ -95,8 +95,8 @@
  * https://fs.hlrs.de/projects/craydoc/docs/books/S-2490-40/html-S-2490-40/chapter-sc4rx058-brbethke-paralleliowithmpi.html
  */
 
-#define NB_PROC  "40" //numer of threads for writing
-#define CB_NODES "4" //numer of server for writing
+#define NB_PROC  "20" //numer of threads for writing
+#define CB_NODES "12" //numer of server for writing
 #define CB_BLOCK_SIZE  "268435456" /* 256 MBytes - should match FS block size */
 #define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
 #define DATA_SIEVING_READ "enable"
@@ -257,13 +257,14 @@ int main (int argc, char *argv[]){
 
 	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
 
+
+	MPI_Info_create(&finfo);
 	/*
 	 * In this part you shall adjust the striping factor and unit according
 	 * to the underlying filesystem.
 	 * Harmless for other file system.
 	 *
 	 */
-	MPI_Info_create(&finfo);
 	MPI_Info_set(finfo,"striping_factor", STRIPING_FACTOR);
 	MPI_Info_set(finfo,"striping_unit", STRIPING_UNIT); //2G striping
 	MPI_Info_set(finfo,"ind_rd_buffer_size", STRIPING_UNIT); //2gb buffer
@@ -278,6 +279,7 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
+
 
 	//we open the input file
 	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
@@ -634,7 +636,8 @@ int main (int argc, char *argv[]){
 							compression_level,
 							local_data,
 							goff[rank],
-							write_sam);
+							write_sam
+							);
 
 
 					if (split_rank == chosen_rank){
@@ -712,9 +715,9 @@ int main (int argc, char *argv[]){
 		// the color tells in what communicator the rank pertain
 		// color = 0 will be the new communicator color
 		// otherwise the color is 1
-		int *color_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
 		// the key value tell the order in the new communicator
-		int *key_vec_to_send =  (int *)malloc(num_proc*sizeof(int));
+		int *color_vec_to_send 	=  malloc(num_proc * sizeof(int));
+		int *key_vec_to_send 	=  malloc(num_proc * sizeof(int));
 
 		// first we test if the there's reads to sort
 		// rank 0 recieve the sum of all the reads count
@@ -747,7 +750,8 @@ int main (int argc, char *argv[]){
 
 			//first we exchange the size o
 			if (rank == chosen_rank){
-				header=(char *)malloc((headerSize + 1)*sizeof(char));
+				header = malloc((headerSize + 1)*sizeof(char));
+				header[headerSize] = '\0';
 				MPI_Recv(header, headerSize + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			}
 			if (rank == 0){
@@ -924,41 +928,30 @@ int main (int argc, char *argv[]){
 				 */
 				local_readNum = max_num_read;
 
-				size_t *local_reads_coordinates_unsorted;
-				local_reads_coordinates_unsorted = (size_t*)calloc(local_readNum, sizeof(size_t));
+				time_count = MPI_Wtime();
+
+				size_t *local_reads_coordinates_unsorted 	= calloc(local_readNum, sizeof(size_t));
+				size_t *local_reads_coordinates_sorted 		= calloc(local_readNum, sizeof(size_t));
+				size_t *local_offset_source_unsorted 		= calloc(local_readNum, sizeof(size_t));
+				size_t *local_offset_source_sorted 			= calloc(local_readNum, sizeof(size_t));
+				int *local_dest_rank_sorted 				= calloc(local_readNum, sizeof(int));
+				int *local_reads_sizes_unsorted 			= calloc(local_readNum, sizeof(int));
+				int *local_reads_sizes_sorted 				= calloc(local_readNum, sizeof(int));
+				int *local_source_rank_unsorted 			= calloc(local_readNum, sizeof(int));
+				int *local_source_rank_sorted 				= calloc(local_readNum, sizeof(int));
+
+				if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[MPISORT][MALLOC 1] time spent = %f s\n", split_rank, MPI_Wtime() - time_count);
+
 				local_reads_coordinates_unsorted[0] = 0;
-
-				size_t *local_reads_coordinates_sorted;
-				local_reads_coordinates_sorted = (size_t*)calloc(local_readNum, sizeof(size_t));
-				local_reads_coordinates_sorted[0] = 0;
-
-				int *local_dest_rank_sorted;
-				local_dest_rank_sorted = (int*)calloc(local_readNum, sizeof(int));
-				local_dest_rank_sorted[0] = 0;
-
-				int *local_reads_sizes_unsorted; //vector of reads length
-				local_reads_sizes_unsorted = (int*)calloc(local_readNum, sizeof(int));
-				local_reads_sizes_unsorted[0] = 0;
-
-				int *local_reads_sizes_sorted; //vector of reads length
-				local_reads_sizes_sorted = (int*)calloc(local_readNum, sizeof(int));
-				local_reads_sizes_sorted[0] = 0;
-
-				int *local_source_rank_unsorted; //vector of read order in the split_rank
-				local_source_rank_unsorted = (int*)calloc(local_readNum, sizeof(int));
-				local_source_rank_unsorted[0] = 0;
-
-				int *local_source_rank_sorted; //vector of read order in the split_rank
-				local_source_rank_sorted = (int*)calloc(local_readNum, sizeof(int));
-				local_source_rank_sorted[0] = 0;
-
-				size_t *local_offset_source_unsorted; //vector of read order in the split_rank
-				local_offset_source_unsorted = (size_t*)calloc(local_readNum, sizeof(size_t));
-				local_offset_source_unsorted[0] = 0;
-
-				size_t *local_offset_source_sorted; //vector of read order in the split_rank
-				local_offset_source_sorted = (size_t*)calloc(local_readNum, sizeof(size_t));
-				local_offset_source_sorted[0] = 0;
+				local_reads_coordinates_sorted[0] 	= 0;
+				local_dest_rank_sorted[0] 			= 0;
+				local_reads_sizes_unsorted[0] 		= 0;
+				local_reads_sizes_sorted[0] 		= 0;
+				local_source_rank_unsorted[0] 		= 0;
+				local_source_rank_sorted[0] 		= 0;
+				local_offset_source_unsorted[0] 	= 0;
+				local_offset_source_sorted[0] 		= 0;
 
 				//those vectors are the same that  local_..._sorted but without zero padding
 				size_t *local_reads_coordinates_sorted_trimmed = NULL;
@@ -1000,8 +993,13 @@ int main (int argc, char *argv[]){
 				//this is to facilitate the bitonic sorting
 				//if the local coordinates to sort are to big we could get rid of
 				//this step.
+				time_count = MPI_Wtime();
+
 				base_arr2 = local_reads_coordinates_unsorted;
 				qksort(coord_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
+
+				if (split_rank == chosen_split_rank)
+						fprintf(stderr,	"rank %d :::::[MPISORT][LOCAL SORT] time spent = %f s\n", split_rank, MPI_Wtime() - time_count);
 
 				//We index data
 				for(j = 0; j < local_readNum; j++){
@@ -1034,6 +1032,9 @@ int main (int argc, char *argv[]){
 				 */
 
 				//we calll the bitonic
+
+				time_count = MPI_Wtime();
+
 				ParallelBitonicSort2(
 					split_comm,
 					split_rank,
@@ -1046,6 +1047,9 @@ int main (int argc, char *argv[]){
 					max_num_read
 					);
 
+				if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2] time spent = %f s\n",
+											split_rank, MPI_Wtime() - time_count);
 				size_t k1;
 				size_t tmp2 = 0;
 				for (k1 = 1; k1 < max_num_read; k1++){
@@ -1060,7 +1064,6 @@ int main (int argc, char *argv[]){
 				// We compute the local_dest_offsets_sorted
 				size_t local_total_offset = 0;
 
-				//size_t k1 = 0;
 				for (k1 = 0; k1 <  max_num_read; k1++){
 					local_offset_dest_sorted[k1] = local_reads_sizes_sorted[k1];
 					local_total_offset += local_reads_sizes_sorted[k1];
@@ -1085,16 +1088,15 @@ int main (int argc, char *argv[]){
 
 				MPI_Gather(&last_local_offset, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-				int i1 = 0;
 				if (rank ==0){
-					for (i1 = 1; i1 < (split_size + 1); i1++) {
-						y2[i1] = y[i1-1];
+					for (k1 = 1; k1 < (split_size + 1); k1++) {
+						y2[k1] = y[k1-1];
 					}
 				}
-				i1 = 0;
+
 				if (rank ==0){
-					for (i1 = 1; i1 < (split_size +1); i1++) {
-						y2[i1] = y2[i1-1] + y2[i1];
+					for (k1 = 1; k1 < (split_size +1); k1++) {
+						y2[k1] = y2[k1-1] + y2[k1];
 					}
 				}
 
@@ -1105,12 +1107,11 @@ int main (int argc, char *argv[]){
 				free(y2);
 
 				//we add offset of the previous rank
-				size_t k2=0;
-				for (k2 = 0; k2 < max_num_read; k2++){
-					if (local_reads_sizes_sorted[k2] != 0)
-						local_offset_dest_sorted[k2] += offset_to_add;
+				for (k1 = 0; k1 < max_num_read; k1++){
+					if (local_reads_sizes_sorted[k1] != 0)
+						local_offset_dest_sorted[k1] += offset_to_add;
 					else
-						local_offset_dest_sorted[k2] = 0;
+						local_offset_dest_sorted[k1] = 0;
 				}
 
 				/*
@@ -1163,20 +1164,15 @@ int main (int argc, char *argv[]){
 				size_t num_read_for_bruck = 0;
 				int *p = local_reads_sizes_sorted;
 				if (p[0] != 0) {offset = 0;};
-
-				if (p[max_num_read -1] == 0){
-
-					offset = max_num_read;
-				}
-				else {
-
-					while ((*p == 0) && (offset < max_num_read )){ offset++; p++;}
-				}
+				if (p[max_num_read -1] == 0){offset = max_num_read;}
+				else {while ((*p == 0) && (offset < max_num_read )){ offset++; p++;}}
 
 				/*
 				 * REMOVE ZERO PADDING BEFORE BRUCK
 				 *
 				 */
+
+				time_count = MPI_Wtime();
 
 				if (offset > 0){
 
@@ -1187,12 +1183,12 @@ int main (int argc, char *argv[]){
 
 						numItems = max_num_read - offset;
 
-						local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(numItems*sizeof(size_t));
-						local_offset_source_sorted_trimmed_for_bruck        = malloc(numItems*sizeof(size_t));
-						local_offset_dest_sorted_trimmed_for_bruck			= malloc(numItems*sizeof(size_t));
-						local_reads_sizes_sorted_trimmed_for_bruck          = malloc(numItems*sizeof(int));
-						local_dest_rank_sorted_trimmed_for_bruck            = malloc(numItems*sizeof(int));
-						local_source_rank_sorted_trimmed_for_bruck 		    = malloc(numItems*sizeof(int));
+						local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(numItems * sizeof(size_t));
+						local_offset_source_sorted_trimmed_for_bruck        = malloc(numItems * sizeof(size_t));
+						local_offset_dest_sorted_trimmed_for_bruck			= malloc(numItems * sizeof(size_t));
+						local_reads_sizes_sorted_trimmed_for_bruck          = malloc(numItems * sizeof(int));
+						local_dest_rank_sorted_trimmed_for_bruck            = malloc(numItems * sizeof(int));
+						local_source_rank_sorted_trimmed_for_bruck 		    = malloc(numItems * sizeof(int));
 						size_t y=0;
 
 						for (y = 0; y < numItems; y++){
@@ -1207,6 +1203,11 @@ int main (int argc, char *argv[]){
 
 						num_read_for_bruck = numItems;
 
+						/*
+						 *
+						 * FOR DEBUG
+						 *
+
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 							assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1215,28 +1216,30 @@ int main (int argc, char *argv[]){
 							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 						}
+						*/
+
 					}
 					else{
 
 						numItems = 0;
-						local_reads_coordinates_sorted_trimmed_for_bruck    = calloc(numItems, sizeof(size_t));
-						local_offset_source_sorted_trimmed_for_bruck        = calloc(numItems, sizeof(size_t));
-						local_offset_dest_sorted_trimmed_for_bruck          = calloc(numItems, sizeof(size_t));
-						local_reads_sizes_sorted_trimmed_for_bruck          = calloc(numItems, sizeof(int));
-						local_dest_rank_sorted_trimmed_for_bruck            = calloc(numItems, sizeof(int));
-						local_source_rank_sorted_trimmed_for_bruck 		    = calloc(numItems, sizeof(int));
+						local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(numItems * sizeof(size_t));
+						local_offset_source_sorted_trimmed_for_bruck        = malloc(numItems * sizeof(size_t));
+						local_offset_dest_sorted_trimmed_for_bruck          = malloc(numItems * sizeof(size_t));
+						local_reads_sizes_sorted_trimmed_for_bruck          = malloc(numItems * sizeof(int));
+						local_dest_rank_sorted_trimmed_for_bruck            = malloc(numItems * sizeof(int));
+						local_source_rank_sorted_trimmed_for_bruck 		    = malloc(numItems * sizeof(int));
 						num_read_for_bruck = 0;
 					}
 				}
 				else {
 
 					numItems = local_readNum;
-					local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(local_readNum*sizeof(size_t));
-					local_offset_source_sorted_trimmed_for_bruck        = malloc(local_readNum*sizeof(size_t));
-					local_offset_dest_sorted_trimmed_for_bruck          = malloc(local_readNum*sizeof(size_t));
-					local_reads_sizes_sorted_trimmed_for_bruck          = malloc(local_readNum*sizeof(int));
-					local_dest_rank_sorted_trimmed_for_bruck            = malloc(local_readNum*sizeof(int));
-					local_source_rank_sorted_trimmed_for_bruck 		    = malloc(local_readNum*sizeof(int));
+					local_reads_coordinates_sorted_trimmed_for_bruck    = malloc(local_readNum * sizeof(size_t));
+					local_offset_source_sorted_trimmed_for_bruck        = malloc(local_readNum * sizeof(size_t));
+					local_offset_dest_sorted_trimmed_for_bruck          = malloc(local_readNum * sizeof(size_t));
+					local_reads_sizes_sorted_trimmed_for_bruck          = malloc(local_readNum * sizeof(int));
+					local_dest_rank_sorted_trimmed_for_bruck            = malloc(local_readNum * sizeof(int));
+					local_source_rank_sorted_trimmed_for_bruck 		    = malloc(local_readNum * sizeof(int));
 
 					size_t y=0;
 					for (y = 0; y < local_readNum; y++){
@@ -1250,6 +1253,11 @@ int main (int argc, char *argv[]){
 					}
 
 					num_read_for_bruck = numItems;
+
+					/*
+					 *
+					 * FOR DEBUG
+					 *
 					for(y = 0; y < num_read_for_bruck; y++){
 						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1258,6 +1266,7 @@ int main (int argc, char *argv[]){
 						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
+					*/
 				}
 
 				free(local_reads_coordinates_sorted);
@@ -1268,13 +1277,16 @@ int main (int argc, char *argv[]){
 				free(local_source_rank_sorted);
 
 
+				if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[MPISORT][TRIMMING] time spent = %f s\n", split_rank, MPI_Wtime() - time_count);
+
 				/*
 				 * We do a Bruck on rank of origin reading
 				 */
 
 				size_t m=0;
 				int num_proc = dimensions;
-				size_t *number_of_reads_by_procs = (size_t*)calloc( dimensions, sizeof(size_t));
+				size_t *number_of_reads_by_procs = calloc( dimensions, sizeof(size_t));
 
 				//fprintf(stderr,	"rank %d :::::[MPISORT] num_read_for_bruck = %zu \n", split_rank, num_read_for_bruck);
 
@@ -1294,15 +1306,16 @@ int main (int argc, char *argv[]){
 				for(m = 0; m < dimensions; m++){
 					count6 += number_of_reads_by_procs[m];
 				}
+
 				assert( count6 == num_read_for_bruck );
 				MPI_Barrier(split_comm);
 
-				size_t **reads_coordinates 		= (size_t **)malloc(sizeof(size_t *)*dimensions);
-				size_t **local_source_offsets 	= (size_t **)malloc(sizeof(size_t *)*dimensions);
-				size_t **dest_offsets 			= (size_t **)malloc(sizeof(size_t *)*dimensions);
-				int **read_size 				= (int **)   malloc(sizeof(int *)*dimensions);
-				int **dest_rank 				= (int **)   malloc(sizeof(int *)*dimensions);
-				int **source_rank				= (int **)   malloc(sizeof(int *)*dimensions);
+				size_t **reads_coordinates 		= malloc(sizeof(size_t *) * dimensions);
+				size_t **local_source_offsets 	= malloc(sizeof(size_t *) * dimensions);
+				size_t **dest_offsets 			= malloc(sizeof(size_t *) * dimensions);
+				int **read_size 				= malloc(sizeof(int *) * dimensions);
+				int **dest_rank 				= malloc(sizeof(int *) * dimensions);
+				int **source_rank				= malloc(sizeof(int *) * dimensions);
 
 				/*
 				 * We send in order
@@ -1314,7 +1327,6 @@ int main (int argc, char *argv[]){
 				 *
 				 */
 
-				MPI_Barrier(split_comm);
 				COMM_WORLD = split_comm;
 				time_count = MPI_Wtime();
 
@@ -1338,10 +1350,11 @@ int main (int argc, char *argv[]){
 				);
 
 				if (split_rank == chosen_split_rank)
-					fprintf(stderr,	"rank %d :::::[MPISORT] After Bruck write 3 time spent = %f s\n",
+					fprintf(stderr,	"rank %d :::::[MPISORT][BRUCK 3] time spent = %f s\n",
 							split_rank, MPI_Wtime() - time_count);
 
-				MPI_Barrier(split_comm);
+
+				time_count = MPI_Wtime();
 
 				free(local_reads_coordinates_sorted_trimmed_for_bruck);
 				free(local_dest_rank_sorted_trimmed_for_bruck);
@@ -1358,6 +1371,9 @@ int main (int argc, char *argv[]){
 				local_source_rank_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
 				local_reads_sizes_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
 
+				if (split_rank == chosen_split_rank)
+					fprintf(stderr,	"rank %d :::::[MPISORT][FREE + MALLOC] time spent = %f s\n",
+											split_rank, MPI_Wtime() - time_count);
 				/*
 				 * GET DATA AFTER BRUCK
 				 *
@@ -1403,8 +1419,11 @@ int main (int argc, char *argv[]){
 
 				local_readNum = first_local_readNum;
 
-				MPI_Barrier(split_comm);
 
+				/*
+				 *
+				 * FOR DEBUG
+				 *
 				for ( j = 0; j < local_readNum; j++){
 					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
 					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
@@ -1413,6 +1432,7 @@ int main (int argc, char *argv[]){
 					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
 					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
 				}
+				*/
 
 				free(local_reads_coordinates_sorted_trimmed);
 
@@ -1420,6 +1440,8 @@ int main (int argc, char *argv[]){
 					fprintf(stderr,	"rank %d :::::[MPISORT] we call write SAM \n", split_rank);
 
 				malloc_trim(0);
+
+				time_count = MPI_Wtime();
 
 				writeSam(
 					split_rank,
@@ -1447,7 +1469,7 @@ int main (int argc, char *argv[]){
 				);
 
 				if (split_rank == chosen_split_rank){
-					fprintf(stderr,	"rank %d :::::[mpiSort] Time spend writeSam chromosom %s ,  %f seconds\n\n\n",
+					fprintf(stderr,	"rank %d :::::[MPISORT][WRITESAM] chromosom %s :::  %f seconds\n\n\n",
 							split_rank, chrNames[i], MPI_Wtime() - time_count);
 
 				}

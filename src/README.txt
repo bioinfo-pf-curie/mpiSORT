@@ -21,10 +21,19 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 15) Results <br />
 16) Example of code <br />
 17) Options <br />
-18) Improvements and future work <br />
-19) Authors and contacts  <br />
+18) Citations <br>
+19) Improvements and future work <br />
+20) Authors and contacts  <br />
 
 ### 1) Release notes 
+
+Release 1.0  from 14/04/2017
+
+1) Add citations.  <br />
+2) Improve the memory pressure (see memory usage).  <br />
+3) Remove some assert and add comments.  <br />
+4) Malloc_trim is no op on BSD or OSX.  <br />
+5) First tests (see results).  <br />
 
 Release 1.0 from 28/03/2017
 
@@ -152,7 +161,7 @@ Contact us if you need information.
 ### 5) Memory:
 
 The total memory used during the sorting is around one and a half the size of the SAM file. <br />
-For instance to sort 100Gb sam file (10X WGS 100pb, paired) memory usage is around 150 gb.  <br /> 
+For instance to sort 1.3TB sam file (the NA24631 from GIAB, 300X WGS 150pb paired and aligned with mpiBWA) use 1.7 TB of memory and splitted in 512 MPI workers it makes 3.5 Gb/cpu. <br />
 
 ### 6) CPU usage:
 
@@ -172,14 +181,10 @@ A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant 
 Output are bam files per chromosome, a bam file for discordant reads and a bam file for unmapped reads. <br />
 
 To index the bam file use tabix like this: <br />
-tabix -p sam chrN.bam <br />
-(samtools index doesn't work yet)<br />
+tabix -p sam chrN.gz <br />
 
-To uncompress the results:<br />
-samtools view -Sh chrN.bam > chrN.sam <br />
-
-Or rename the file with suffix .gz and 
-bgzip -d chrN.gz > chrN.sam
+To uncompress: <br />
+bgzip -d chrN.gz > chrN.sam <br />
 
 ### 9) MPI version:
 
@@ -213,14 +218,14 @@ In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant
 
 The default parameters of the programm are unharmed for other filesystem. <br />
 
-At TGCC the striping factor is 128 (number of OSSs servers) and the striping size is maximum 2.5 GB a SAM file of 1.2TB could be loaded in memory in less than 1 minute. <br /> 
+At TGCC with a striping factor of 128 (number of OSSs servers) and the a striping size of 2.5 GB, a SAM file of 1.2TB could be loaded in memory in less than 1 minute. <br /> 
 
 ### 13) Lustre optimization:
 
 The section of the code you can modify in MPI info according to your Lustre configuration: <br /> 
 
 For reading part (mpiSORT.c):<br /> 
-line 92 => 96 and 260 => 274 <br /> 
+line 92 => 96 and 261 => 280 <br /> 
 
 For writing part (in write.c): <br /> 
 line 1382 => 1388 <br /> 
@@ -257,6 +262,25 @@ http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequenc
 2016: OpenSFS conference Lustre LAD 2016 
 http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf
 
+2017: 
+
+Here are preliminary results on Broadwell cluster of the TGCC (Bruyères-le-Chatel , France).
+We have tested the sorting on the chinese trio from the GIAB. The alignment of the bigest sample (NA24631) is done with the MPI version of BWA-MEM.
+
+The time to sort the son's sample  (300X WGS, 150 pb) is :
+
+20 mn with 512 jobs and with an efficiency of 70% (30% time is spent in IO).
+With a Lustre configuration :
+lfs setstripe -c 12 -S 4m (for input) 
+lfs setstripe -c 12 -S 256m (for output)
+
+10 mn with 1024 jobs with an effciency of 60% (40% time is spent in IO)
+
+With a Lustre configuration :
+lfs setstripe -c 12 -S 256m (for input) 
+lfs setstripe -c 12 -S 256m (for output)
+
+
 ### 16) Example of code:
 
 How to launch the program with Torque:
@@ -283,21 +307,39 @@ mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
 the -q option is for quality filtering. <br />
 the -n for sorting by name <br />
 
-### 18) Improvements
+### 18) Citations
 
+We would like to thanks:  <br />
+
+ Li H. et al. ( 2009) The sequence alignment/map format and SAMtools. Bioinformatics  , 25, 2078– 2079.  <br />
+ 
+The Bruck algorithm was created by: <br />
+
+Bruck et al. (1997) Efficient Algorithms for All-to-All Communications in Multiport Message-Passing Systems. <br />
+EEE Transactions on Parallel and Distributed Systems, 8(11):1143–1156, 1997. <br />
+
+and its modified version: <br />
+
+Sascha Hunold et al. (2014). Implementing a Classic: Zero-copy All-to-all Communication with MPI Datatypes. <br />
+
+We also thanks Claude Scarpelli from the TGCC. <br />
+
+### 19) Improvements
+
+* Mark or remove duplicates. 
 * Make a pile up of the reads to produce VCF.
 * Merge aligner and sorting to avoid writing and reading part. 
 * Manage Bam file in input, output. 
-* Optimize communication for non power of 2 cpu number. 
-	     The gather and bradcast should be replace with Bruck. 
+* Optimize communication for non power of 2 cpu number. The gather and bradcast should be replace with Bruck. 
 * Generate index with the gz output as tabix does. 
-* Manage single reads. 
-* Mark or remove duplicates. 
-* Write SAM files per chromosom. 
 * Propose an option to write a big SAM file. 
-* Test malloc_trim on BSD or OSX. 
+
 	
-### 19) Authors and contacts
+### 20) Results
+
+
+
+### 21) Authors and contacts
 
 This program has been developed by<br />
 
@@ -314,6 +356,5 @@ Contacts:
 frederic.jarlier@curie.fr <br />
 njoly@pasteur.fr <br />
 philippe.hupe@curie.fr <br />
-
 
 
