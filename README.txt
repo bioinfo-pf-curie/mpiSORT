@@ -27,6 +27,11 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 
 ### 1) Release notes 
 
+Release 1.0  from 30/08/2017
+
+1) fix the condition for quality treshold. (parser.c line 179)
+Now we include read with mapping quality equal to zero (when no quality is specified).    
+
 Release 1.0  from 14/04/2017
 
 1) Add citations.  <br />

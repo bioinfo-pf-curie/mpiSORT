@@ -176,7 +176,7 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 
 			if ((chr < nbchr-2) && (chr == mchr)){
 					//then we found concordant reads
-					if(quality > threshold){
+					if(quality >= threshold){
 
 						reads[chr]->next = malloc(sizeof(Read));
 						reads[chr]->next->coord = coord;
