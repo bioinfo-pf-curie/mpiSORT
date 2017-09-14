@@ -285,6 +285,10 @@ With a Lustre configuration :
 lfs setstripe -c 12 -S 256m (for input) 
 lfs setstripe -c 12 -S 256m (for output)
 
+The last presentation of the tools:
+ http://devlog.cnrs.fr/jdev2017/posters
+
+in the section HPC@NGS
 
 ### 16) Example of code:
 
