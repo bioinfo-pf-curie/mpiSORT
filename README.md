@@ -33,6 +33,9 @@ Release 1.0 from 16/08/2018
 1) fix a bug in the offset of the first read. <br />
 Change the argument of init_goff function replace headerSize with hsiz in mpiSort.c.<br />
 
+2) next steps are:
+    -Investigate why Valgrind complains about MPI_mem_alloc in bitonic sort part?<br />
+    -Marking duplicates. <br />
 
 Release 1.0  from 30/08/2017
 
