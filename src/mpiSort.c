@@ -304,7 +304,7 @@ int main (int argc, char *argv[]){
 
 	//We place file offset of each process to the begining of one read's line
 	size_t *goff =(size_t*)calloc((size_t)(num_proc+1), sizeof(size_t));
-	init_goff(mpi_filed,headerSize,input_file_size,num_proc,rank,goff);
+	init_goff(mpi_filed,hsiz,input_file_size,num_proc,rank,goff);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
