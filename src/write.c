@@ -1283,7 +1283,6 @@ void writeSam(
 			fp_header->compressed_block_size = MAX_BLOCK_SIZE;
 			fp_header->compressed_block = malloc(MAX_BLOCK_SIZE);
 			fp_header->cache_size = 0;
-			fp_header->cache = kh_init(cache);
 			fp_header->block_address = 0;
 			fp_header->block_offset = 0;
 			fp_header->block_length = 0;
@@ -1331,6 +1330,7 @@ void writeSam(
 			}
 		}
 
+	        kh_destroy(cache, fp->cache);
 		free(char_buff_uncompressed);
 		size_t compSize = compressed_size;
 
@@ -1688,7 +1688,6 @@ void writeSam_discordant_and_unmapped(
 		fp_header->compressed_block_size = MAX_BLOCK_SIZE;
 		fp_header->compressed_block = malloc(MAX_BLOCK_SIZE);
 		fp_header->cache_size = 0;
-		fp_header->cache = kh_init(cache);
 		fp_header->block_address = 0;
 		fp_header->block_offset = 0;
 		fp_header->block_length = 0;
@@ -1731,6 +1730,8 @@ void writeSam_discordant_and_unmapped(
 			//}
 		}
 	} //end header compression
+
+        kh_destroy(cache, fp->cache);
 
 	MPI_Barrier(split_comm);
 	size_t write_offset = 0;
@@ -3392,7 +3393,6 @@ void writeSam_any_dim(
 		fp_header->compressed_block_size = MAX_BLOCK_SIZE;
 		fp_header->compressed_block = malloc(MAX_BLOCK_SIZE);
 		fp_header->cache_size = 0;
-		fp_header->cache = kh_init(cache);
 		fp_header->block_address = 0;
 		fp_header->block_offset = 0;
 		fp_header->block_length = 0;
@@ -3435,7 +3435,9 @@ void writeSam_any_dim(
 			//}
 		}
 	}
-
+	
+	kh_destroy(cache, fp->cache);
+	
 	free(char_buff_uncompressed);
 	size_t compSize = compressed_size;
 

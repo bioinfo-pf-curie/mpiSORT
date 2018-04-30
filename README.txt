@@ -27,7 +27,11 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 
 ### 1) Release notes 
 
-Release 1.0 from 16/08/2018
+Release 1.0 from 30/04/2018
+
+1) fix a memory leak with khash in write.c 
+
+Release 1.0 from 16/02/2018
 
 1) fix a bug in the offset of the first read.
 Change the argument of init_goff function replace headerSize with hsiz in mpiSort.c.
