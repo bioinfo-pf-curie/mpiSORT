@@ -27,6 +27,11 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 
 ### 1) Release notes 
 
+1) Creation of a google group
+	https://groups.google.com/forum/#!forum/hpc-bioinformatics-pipeline.
+
+2) For improvement on Lustre file system removed the “nosuid” mount option. 
+
 Release 1.0 from 30/04/2018
 
 1) fix a memory leak with khash in write.c 
