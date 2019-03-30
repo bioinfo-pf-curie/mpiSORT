@@ -27,6 +27,11 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 
 ### 1) Release notes 
 
+
+Release 1.0 from the 30/03/2019
+
+1) fix a corner case  
+
 Release 1.0 from the 28/06/2018
 
 1) Creation of a google group

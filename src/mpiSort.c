@@ -393,7 +393,7 @@ int main (int argc, char *argv[]){
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
 
 	if (local_data_tmp) free(local_data_tmp);
-	//malloc_trim(0);
+	malloc_trim(0);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -836,15 +836,13 @@ int main (int argc, char *argv[]){
 
 			MPI_Comm_rank(split_comm, &split_rank);
 			MPI_Comm_size(split_comm, &split_size);
-
-
-
+			
 			//we update g_rank
 			g_rank = split_rank;
 			g_size = split_size;
 		}
 		else{
-			g_rank = split_rank = rank;
+			g_rank = split_rank;			
 			g_size = split_size = num_proc;
 		}
 
@@ -925,6 +923,7 @@ int main (int argc, char *argv[]){
 
 				/*
 				 * Vector creation and allocation
+				 				fprintf(stderr,	"split rank %d :::::[MPISORT] max_num_read = %zu \n", split_rank, max_num_read);
 				 */
 				local_readNum = max_num_read;
 
@@ -1133,6 +1132,7 @@ int main (int argc, char *argv[]){
 				size_t N0 = max_num_read*dimensions - total_num_read;
 
 				int new_rank = 0;
+				int previous_rank = 0;
 				// we compute the new rank for
 				// the reads sorted by offset destination
 				size_t h = 0;
@@ -1141,7 +1141,7 @@ int main (int argc, char *argv[]){
 				pos_ref0 = max_num_read*split_rank - N0;
 				for(j = 0; j < max_num_read; j++) {
 					if ( local_reads_sizes_sorted[j] != 0){
-						int new_rank = 0;
+						int new_rank = chosen_split_rank;
 						pos_ref0 = (max_num_read*split_rank +j) - N0;
 						if (pos_ref0 >= 0) {
 							size_t tmp2 = 0;
@@ -1152,6 +1152,7 @@ int main (int argc, char *argv[]){
 									break;
 									}
 								}
+							previous_rank = local_dest_rank_sorted[j];
 							local_dest_rank_sorted[j] = new_rank;
 						}
 					}
@@ -1330,7 +1331,7 @@ int main (int argc, char *argv[]){
 				COMM_WORLD = split_comm;
 				time_count = MPI_Wtime();
 
-				bruckWrite3(rank,
+				bruckWrite3(split_rank,
 							dimensions,
 							count6,
 							number_of_reads_by_procs,
@@ -1381,10 +1382,12 @@ int main (int argc, char *argv[]){
 
 				j=0;
 				size_t k = 0;
+
 				for(m = 0; m < num_proc; m++)
 				{
 					for(k = 0; k < number_of_reads_by_procs[m]; k++)
 					{
+						
 						local_offset_dest_sorted_trimmed[k + j] 		= dest_offsets[m][k];
 						local_dest_rank_sorted_trimmed[k + j] 			= dest_rank[m][k];
 						local_reads_sizes_sorted_trimmed[k + j] 		= read_size[m][k];
