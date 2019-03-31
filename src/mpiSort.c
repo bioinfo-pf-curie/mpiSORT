@@ -724,6 +724,9 @@ int main (int argc, char *argv[]){
 		size_t total_reads_by_chr = 0;
 		MPI_Allreduce(&readNumberByChr[i], &total_reads_by_chr, 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 
+		//fprintf(stderr, "rank %d :::: readNumberByChr[i] = %zu \n", rank, readNumberByChr[i]);
+		//fprintf(stderr, "rank %d :::: total_reads_by_chr = %zu \n", rank, total_reads_by_chr);
+
 		if (total_reads_by_chr == 0)
 			continue; //pass to next chromosome
 
@@ -911,7 +914,7 @@ int main (int argc, char *argv[]){
 
 			}
 			//we test the computed dimension
-			if (dimensions == split_size){
+			if (dimensions == split_size ){
 
 				size_t max_num_read = 0;
 				MPI_Allreduce(&localReadNumberByChr[i], &max_num_read, 1, MPI_LONG_LONG_INT, MPI_MAX, split_comm);
@@ -1009,6 +1012,15 @@ int main (int argc, char *argv[]){
 					local_dest_rank_sorted[j] 					= rank; //will be updated after sorting the coordinates
 				}
 
+				/*
+				*   FOR DEBUG
+				*  
+				*/	
+
+				for(j = 0; j < local_readNum - 1; j++){
+					local_reads_coordinates_sorted[j] < local_reads_coordinates_sorted[j+1];
+				}
+
 				free(coord_index); 				 		//ok
 				free(local_source_rank_unsorted); 	    //ok
 				free(local_reads_coordinates_unsorted); //ok
@@ -1055,7 +1067,15 @@ int main (int argc, char *argv[]){
 					assert(local_reads_coordinates_sorted[k1-1] <= local_reads_coordinates_sorted[k1]);
 					local_dest_rank_sorted[k1]= split_rank;
 				}
+				/*
+				for (k1 = 0; k1 < max_num_read; k1++){
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2]  local_reads_coordinates_sorted[%zu]= %zu s\n",
+											split_rank, k1, local_reads_coordinates_sorted[k1]);
 
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2]  local_source_rank_sorted[%zu]= %d s\n",
+											split_rank, k1, local_source_rank_sorted[k1]);							
+				}
+				*/
 				size_t *local_offset_dest_sorted = malloc(max_num_read*sizeof(size_t));
 				size_t last_local_offset = 0;
 
@@ -1087,13 +1107,13 @@ int main (int argc, char *argv[]){
 
 				MPI_Gather(&last_local_offset, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-				if (rank ==0){
+				if (split_rank ==0){
 					for (k1 = 1; k1 < (split_size + 1); k1++) {
 						y2[k1] = y[k1-1];
 					}
 				}
 
-				if (rank ==0){
+				if (split_rank ==0){
 					for (k1 = 1; k1 < (split_size +1); k1++) {
 						y2[k1] = y2[k1-1] + y2[k1];
 					}
@@ -1112,6 +1132,26 @@ int main (int argc, char *argv[]){
 					else
 						local_offset_dest_sorted[k1] = 0;
 				}
+
+
+				/*
+				for (k1 = 0; k1 < max_num_read; k1++){
+
+					fprintf(stderr, "\n");
+
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2]  local_reads_coordinates_sorted[%zu]= %zu s\n",
+											split_rank, k1, local_reads_coordinates_sorted[k1]);
+
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2]  local_source_rank_sorted[%zu]= %d s\n",
+											split_rank, k1, local_source_rank_sorted[k1]);							
+				
+
+					fprintf(stderr,	"rank %d :::::[MPISORT][BITONIC 2]  local_offset_dest_sorted[%zu]= %d s\n",
+											split_rank, k1, local_offset_dest_sorted[k1]);							
+				
+					fprintf(stderr, "\n");
+				}
+				*/
 
 				/*
 				 * we update destination rank according to

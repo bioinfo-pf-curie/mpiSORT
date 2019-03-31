@@ -647,14 +647,14 @@ void writeSam(
 		 *
 		 * FOR DEBUG
 		 *
-		 *
+		 */
 
 		for(j = 1; j < max_num_read; j++){
 			assert(pbs_offset_source_phase1[j-1] <= pbs_offset_source_phase1[j]);
 			assert(pbs_dest_rank_phase1[j] < dimensions);
 			assert(pbs_orig_rank_off_phase1[j] < dimensions);
 		}
-		*/
+		
 
 		/*
 		 *
@@ -888,6 +888,18 @@ void writeSam(
 			new_local_offset_source_sorted_bruck2[j]		= new_local_offset_source_sorted_bruck[coord_index[j]];
 		}
 
+		/*
+		 *
+		 * FOR DEBUG
+		 *
+		 *
+		*/
+
+		for(j = 0; j < previous_local_readNum - 1; j++){
+
+			assert(new_local_offset_source_sorted_bruck2[j] < new_local_offset_source_sorted_bruck2[j+1]);
+		}
+
 		free(new_local_offset_source_sorted_bruck);
 		free(new_local_reads_sizes_sorted_bruck);
 		free(new_local_offset_destination_bruck);
@@ -904,7 +916,7 @@ void writeSam(
 		 * FOR DEBUG
 		 *
 		 *
-
+		*/
 		for(k = 1; k < previous_local_readNum; k++)
 		{
 			assert((new_local_offset_source_sorted_bruck2[k] - start_offset_in_file) <= strlen(data));
@@ -914,7 +926,7 @@ void writeSam(
 			assert(new_local_offset_destination_bruck2[k] 		 != 0);
 			assert(new_local_reads_sizes_sorted_bruck2[k] 		 != 0);
 		}
-		 */
+		 
 
 		if (dest_rank != NULL)
 			free(dest_rank);
@@ -1172,10 +1184,17 @@ void writeSam(
 		base_arr2 = data_offsets_to_sort;
 		qksort(new_offset_dest_index_phase3, previous_local_readNum, sizeof(size_t), 0, previous_local_readNum - 1, compare_size_t);
 
+
 		size_t* offsets_sorted = malloc(sizeof(size_t) * previous_local_readNum);
 		for (k = 0; k < previous_local_readNum; k++){
 			offsets_sorted[k] = data_offsets_to_sort[new_offset_dest_index_phase3[k]];
 		}
+
+
+		for (k = 0; k < previous_local_readNum - 1; k++){
+			assert (offsets_sorted[k] < offsets_sorted[k+1]);
+		}
+
 
 		free(data_offsets_to_sort);
 
@@ -1199,6 +1218,8 @@ void writeSam(
 
 		free(new_offset_dest_index_phase3);
 		free(data_reads_to_sort);
+
+		//fprintf (stderr, "[WRITE] rank = %d :: char_buff_uncompressed = %s \n", rank, char_buff_uncompressed);
 
 		/*
 		 * COMPRESSION PART
@@ -3305,6 +3326,9 @@ void writeSam_any_dim(
 		}
 		q1=0;
 	}
+
+
+	fprintf (stderr, "[WRITE] rank = %d :: char_buff_uncompressed = %s \n", rank, char_buff_uncompressed);
 
 	free(new_offset_dest_index_phase3);
 	free(data_reads_to_sort);
