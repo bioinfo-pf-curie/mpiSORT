@@ -1015,11 +1015,12 @@ int main (int argc, char *argv[]){
 				/*
 				*   FOR DEBUG
 				*  
-				*/	
+					
 
 				for(j = 0; j < local_readNum - 1; j++){
-					local_reads_coordinates_sorted[j] < local_reads_coordinates_sorted[j+1];
+					assert( local_reads_coordinates_sorted[j] < local_reads_coordinates_sorted[j+1]);
 				}
+				*/
 
 				free(coord_index); 				 		//ok
 				free(local_source_rank_unsorted); 	    //ok

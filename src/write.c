@@ -893,12 +893,13 @@ void writeSam(
 		 * FOR DEBUG
 		 *
 		 *
-		*/
+		
 
 		for(j = 0; j < previous_local_readNum - 1; j++){
 
 			assert(new_local_offset_source_sorted_bruck2[j] < new_local_offset_source_sorted_bruck2[j+1]);
 		}
+		*/
 
 		free(new_local_offset_source_sorted_bruck);
 		free(new_local_reads_sizes_sorted_bruck);
@@ -916,7 +917,7 @@ void writeSam(
 		 * FOR DEBUG
 		 *
 		 *
-		*/
+		
 		for(k = 1; k < previous_local_readNum; k++)
 		{
 			assert((new_local_offset_source_sorted_bruck2[k] - start_offset_in_file) <= strlen(data));
@@ -926,7 +927,7 @@ void writeSam(
 			assert(new_local_offset_destination_bruck2[k] 		 != 0);
 			assert(new_local_reads_sizes_sorted_bruck2[k] 		 != 0);
 		}
-		 
+		 */
 
 		if (dest_rank != NULL)
 			free(dest_rank);
@@ -1191,10 +1192,14 @@ void writeSam(
 		}
 
 
+		/*
+		 * for DEBUG	
+		 *
+
 		for (k = 0; k < previous_local_readNum - 1; k++){
 			assert (offsets_sorted[k] < offsets_sorted[k+1]);
 		}
-
+		*/
 
 		free(data_offsets_to_sort);
 
@@ -3327,9 +3332,12 @@ void writeSam_any_dim(
 		q1=0;
 	}
 
-
+	/*
+	 * for DEBUG
+	 *
 	fprintf (stderr, "[WRITE] rank = %d :: char_buff_uncompressed = %s \n", rank, char_buff_uncompressed);
-
+	*/
+	
 	free(new_offset_dest_index_phase3);
 	free(data_reads_to_sort);
 
