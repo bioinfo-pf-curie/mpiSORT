@@ -149,7 +149,7 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 				coord = strtoull(currentLine, NULL, strlen(currentLine));
 				//coord = strtoull(currentLine, NULL, strlen(currentLine));
 				coord = hash_name(currentLine, 16);
-				if(!rank) printf("%s => %zu\n", currentLine, coord);
+				//if(!rank) printf("%s => %zu\n", currentLine, coord);
 				strtoull(currentCarac, &currentCarac, 10);
 			}
 			else {
