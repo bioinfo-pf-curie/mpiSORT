@@ -28,6 +28,10 @@ Sorting big NGS data file in the context of distributed cluster and high perform
 ### 1) Release notes 
 
 
+Release 1.0 from the 09/01/2020  <br />
+
+1) remove character "\0" during parse paired
+
 Release 1.0 from the 31/03/2019  <br />
 
 1) fix a corner case when reads distribution is unbalanced.  <br />
