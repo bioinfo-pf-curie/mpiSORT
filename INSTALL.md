@@ -1,6 +1,10 @@
 
 You need to install zlib librairies <br />
+
 You need automake 1.15 for the installation. <br />
+
+But if you don't have automake 1.15 change in the configure.ac the line
+AM_INIT_AUTOMAKE([1.15 foreign -Wall]) with AM_INIT_AUTOMAKE([1.13 foreign -Wall]) 
 
 You can install automake and autoconf in differents directories and export the path like this: <br />
 
@@ -30,6 +34,5 @@ for passing mpi path: <br />
 ./configure CC=mpi_bin_path  <br />
 add --prefix in configure if you need  <br />
 
-If you don't have automake 1.15 change in the configure.ac the line
-AM_INIT_AUTOMAKE([1.15 foreign -Wall]) with AM_INIT_AUTOMAKE([1.13 foreign -Wall]) 
+
 
