@@ -1,5 +1,6 @@
 Bootstrap: docker
 From: centos:8
+Stage: build
 
 %setup
     mkdir -p ${SINGULARITY_ROOTFS}/opt
@@ -15,7 +16,19 @@ From: centos:8
     make
     make install
 
+Bootstrap: docker
+From: centos:8
+Stage: final
+
+%files from build
+    /opt/mpiSORT /opt/mpiSORT
+
+%post
+    yum install -y mpich
+    yum clean all
+
 %environment
+    export LANG=C
     export LC_ALL=C
     export PATH=$PATH:/opt/mpiSORT/bin
 
