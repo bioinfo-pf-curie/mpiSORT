@@ -87,7 +87,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = psort$(EXEEXT)
+bin_PROGRAMS = mpiSORT$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -107,9 +107,9 @@ am__objects_1 = mpiSort.$(OBJEXT) mpiSort_utils.$(OBJEXT) \
 	qksort.$(OBJEXT) parser.$(OBJEXT) tokenizer.$(OBJEXT) \
 	preWrite.$(OBJEXT) write.$(OBJEXT) write_utils.$(OBJEXT) \
 	sort_any_dim.$(OBJEXT)
-am_psort_OBJECTS = $(am__objects_1)
-psort_OBJECTS = $(am_psort_OBJECTS)
-psort_LDADD = $(LDADD)
+am_mpiSORT_OBJECTS = $(am__objects_1)
+mpiSORT_OBJECTS = $(am_mpiSORT_OBJECTS)
+mpiSORT_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -138,8 +138,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(psort_SOURCES)
-DIST_SOURCES = $(psort_SOURCES)
+SOURCES = $(mpiSORT_SOURCES)
+DIST_SOURCES = $(mpiSORT_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -254,7 +254,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_HEADERS = $(HDR)
-psort_SOURCES = $(SRC)
+mpiSORT_SOURCES = $(SRC)
 SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
 	parabitonicsort2.c parabitonicsort3.c qksort.c parser.c \
 	tokenizer.c preWrite.c write.c  write_utils.c sort_any_dim.c
@@ -357,9 +357,9 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-psort$(EXEEXT): $(psort_OBJECTS) $(psort_DEPENDENCIES) $(EXTRA_psort_DEPENDENCIES) 
-	@rm -f psort$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(psort_OBJECTS) $(psort_LDADD) $(LIBS)
+mpiSORT$(EXEEXT): $(mpiSORT_OBJECTS) $(mpiSORT_DEPENDENCIES) $(EXTRA_mpiSORT_DEPENDENCIES) 
+	@rm -f mpiSORT$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(mpiSORT_OBJECTS) $(mpiSORT_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

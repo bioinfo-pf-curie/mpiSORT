@@ -1,5 +1,5 @@
 
-bin_PROGRAMS = psort
+bin_PROGRAMS = mpiSORT
 noinst_HEADERS = $(HDR)
 
 psort_SOURCES = $(SRC)
