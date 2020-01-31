@@ -2,7 +2,7 @@
 bin_PROGRAMS = mpiSORT
 noinst_HEADERS = $(HDR)
 
-psort_SOURCES = $(SRC)
+mpiSORT_SOURCES = $(SRC)
 
 SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
 	parabitonicsort2.c parabitonicsort3.c qksort.c parser.c \
