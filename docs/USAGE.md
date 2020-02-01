@@ -1,29 +1,5 @@
-# mpiSORT
+# Documentation
 
-This software allows the sorting of high-throughput sequencing data after alignment from [SAM files](https://samtools.github.io/hts-specs/). `mpiSORT` relies on the Message Passing Interface (MPI) standard to perform the parallelisation of the sorting processing over multiple cores and nodes of high performance computing clusters.
-
-* [Installation](docs/INSTALL.md)
-* [Documentation](docs/USAGE.md)
-* [Credits](#credits)
-* [Acknowledgements](#acknowledgements)
-* [Release notes](CHANGELOG.md)
-* [Citation](#citation)
-
-## Credits
-
-This program has been developed by Frederic Jarlier from Institut Curie and Nicolas Joly from Institut Pasteur With the help of students from Paris Descartes University 
-and supervised by Philippe Hupé from Institut Curie.
-
-Contacts: [frederic.jarlier@curie.fr](mailto:frederic.jarlier@curie.fr]), [philippe.hupe@curie.fr](mailto:frederic.jarlier@curie.fr])
-
-## Acknowledgements
-
-## Citation
-
-## Sections:
-
-1) Release notes 
-2) Installation 
 3) Algorithm 
 4) Architectures 
 5) Memory usage 
@@ -42,14 +18,6 @@ Contacts: [frederic.jarlier@curie.fr](mailto:frederic.jarlier@curie.fr]), [phili
 18) Citations <br>
 19) Improvements and future work 
 20) Authors and contacts  
-
-### 1) Release notes 
-
-see CHANGELOG.md
-
-### 2) Installation
-
-see INSTALL.md
 
 ### 3) Algorithm
 
