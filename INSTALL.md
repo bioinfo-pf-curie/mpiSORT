@@ -12,20 +12,22 @@ The MPI compiler but be available in your PATH or set with the CC environment va
 
 If you don't have automake 1.15 but a former version (such as 1.13), you can edit in the `configure.ac` file and change the line `AM_INIT_AUTOMAKE([1.15 foreign -Wall])` with `AM_INIT_AUTOMAKE([1.13 foreign -Wall])`.
 
-If automake` and `autoconf` have been installed in custom directories, be sure your their are available in your PATH:
+If `automake` and `autoconf` have been installed in custom directories, be sure their are available in your PATH:
 
 `export PATH=path_to_automake/automake-1.15/bin:path_to_autoconf/autoconf-2.69/bin:${PATH}`
 
-If needed, you can set your PATH according to your configuration directly in your `${HOME}/.bashrc`.
+If needed, you can set your PATH according to your configuration directly in your `${HOME}/.bashrc` file.
 
 Custom options can be used with `configure` such as `--prefix` to set the destination installation path or `CC` for the MPI compiler, for example:
-./configure CC=mpi_bin_path --prefix
+`./configure CC=mpi_bin_path --prefix`
 
 ## Build from the git repository
 
 ```
 git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
 cd mpiSORT
+# Checkout the branch of the version you want to install, for example:
+# git checkout version-1.0.0
 aclocal
 autoconf
 automake --add-missing
@@ -44,6 +46,8 @@ make install
 ```
 git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
 cd mpiSORT
+# Checkout the branch of the version you want to package, for example:
+# git checkout version-1.0.0
 aclocal
 autoconf
 automake --add-missing
@@ -58,7 +62,7 @@ make dist
 
 ## Build from a tar.gz archive
 
-Download  the source code archive from [https://github.com/bioinfo-pf-curie/mpiSORT/releases](https://github.com/bioinfo-pf-curie/mpiSORT/releases).
+Download  the source code archive of the version you want to install from [https://github.com/bioinfo-pf-curie/mpiSORT/releases](https://github.com/bioinfo-pf-curie/mpiSORT/releases).
 
 ```
 tar xzf mpisort-1.0.tar.gz
@@ -75,12 +79,12 @@ make install
 
 ## Build from container recipes
 
-[singularity](https://sylabs.io/docs/) recipes are provided in the `containers` folder. At least [singularity](https://sylabs.io/docs/) version 3.2 is required to build the image. We provided two recipes, the first one using [CentOS](https://www.centos.org/), the second one using [ubuntu](https://ubuntu.com/) as it gives the details on how to install the software that you can reproduc if you want to install it locally on your computer.
+[singularity](https://sylabs.io/docs/) recipes are provided in the `containers` folder. At least [singularity](https://sylabs.io/docs/) version 3.2 is required to build the image. We provided two recipes, the first one using [CentOS](https://www.centos.org/), the second one using [ubuntu](https://ubuntu.com/) as it gives the details on how to install the software suc that you can reproduce the installation process if you want to install it locally on your computer.
 
 
 `singularity` must be available in your PATH.
 
 `sudo singularity build mpiSORT mpiSORT-ubuntu.def`.
 
-This will output `mpiSORT` executable (that is acty a singularity image) that you can launch as any executable.
+This will output the `mpiSORT` executable (that is actually a singularity image) that you can launch as any executable.
 
