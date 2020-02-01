@@ -44,24 +44,6 @@ make
 make install
 ```
 
-## Build a tar.gz archive
-
-
-```
-git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
-cd mpiSORT
-# Checkout the branch of the version you want to package, for example:
-# git checkout version-1.0.0
-aclocal
-autoconf
-automake --add-missing
-# If not yet in your PATH, you can provide the PATH to `mpicc`
-# or your favourite MPI compiler at the configure stage
-# using the CC environment variable, for example:
-#./configure CC=/usr/lib64/mpich/bin/mpicc
-./configure --prefix=${HOME}/local/mpiSORT
-make dist
-```
 
 
 ## Build from a tar.gz archive
@@ -92,3 +74,21 @@ make install
 
 This will output the `mpiSORT` executable (that is actually a singularity image) that you can launch as any executable.
 
+## Package the source code into tar.gz archive
+
+
+```
+git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
+cd mpiSORT
+# Checkout the branch of the version you want to package, for example:
+# git checkout version-1.0.0
+aclocal
+autoconf
+automake --add-missing
+# If not yet in your PATH, you can provide the PATH to `mpicc`
+# or your favourite MPI compiler at the configure stage
+# using the CC environment variable, for example:
+#./configure CC=/usr/lib64/mpich/bin/mpicc
+./configure --prefix=${HOME}/local/mpiSORT
+make dist
+```
