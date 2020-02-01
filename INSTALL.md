@@ -18,8 +18,12 @@ If `automake` and `autoconf` have been installed in custom directories, be sure 
 
 If needed, you can set your PATH according to your configuration directly in your `${HOME}/.bashrc` file.
 
+
 Custom options can be used with `configure` such as `--prefix` to set the destination installation path or `CC` for the MPI compiler, for example:
 `./configure CC=mpi_bin_path --prefix`
+
+This should be only what you need to know about how to use `./configure` but if you are interested, more details are available in the [README-configure](README-configure) and on the command line `./configure --help`.
+
 
 ## Build from the git repository
 
