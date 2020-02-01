@@ -18,9 +18,10 @@
 
 /*
    Module:
-     mpiSort_utils.h
+    sortAnyDim.h
 
-   Authors:
+   	Authors:
+
     Frederic Jarlier, 	Institut Curie
 	Nicolas Joly, 		Institut Pasteur
 	Nicolas Fedy,		Institut Curie
@@ -30,41 +31,37 @@
 */
 
 
-#include <assert.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
-void get_coordinates_and_offset_source_and_size_and_free_reads(
-		int rank,
-		int *local_read_rank,
-		size_t *coordinates,
-		size_t* offset,
-		int* size,
-		Read* data_chr,
-		int local_readNum
-		);
+#include <mpi.h>
 
-size_t init_coordinates_and_size(
-		int rank,
-		int *local_reads_rank,
-		size_t *local_reads_index,
-		size_t* coordinates,
-		int* size,
-		Read* data_chr,
-		int local_readNum
-		);
+#include "qkSort.h"
+#include "writeUtils.h"
+#include "parallelBitonicSort.h"
 
 
-void chosen_split_rank_gather_size_t(
+void parallel_sort_any_dim(						//dimensions for parabitonic
+		int dimensions,
+		size_t local_readNum,
+		int split_rank,
+		int split_size,
+		Read **reads,
+		int i, 									//chromosom number
+		int chosen_split_rank,
 		MPI_Comm split_comm,
-		int rank,
-		int num_proc,
-		int master,
-		size_t size,
-		size_t *size_per_jobs,
-		size_t *start_size_per_job,
-		size_t *all_data,
-		size_t *data,
-		size_t start_index
+		size_t *localReadNumberByChr,
+		char *local_data,
+		char *file_name,
+		char *output_dir,
+		MPI_Info finfo,
+		int compression_level,
+		size_t total_reads_by_chr,
+		size_t start_offset_in_file,
+		size_t headerSize,
+		char* header,
+		char *chrName,
+		MPI_File mpi_file_split_comm
 		);

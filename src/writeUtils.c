@@ -18,7 +18,7 @@
 
 /*
    Module:
-     write_utils.c
+     writeUtils.c
 
    Authors:
     Authors:
@@ -34,7 +34,7 @@
 #include <config.h>
 #endif
 
-#include "write_utils.h"
+#include "writeUtils.h"
 
 size_t g_wu_readNum;
 size_t g_wu_totalReadNum;

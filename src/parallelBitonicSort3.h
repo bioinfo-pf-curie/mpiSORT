@@ -18,7 +18,7 @@
 
 /*
    Module:
-     parabitonicsort.h
+     parallelBitonicSort.h
 
    Authors:
     Frederic Jarlier, 	Institut Curie

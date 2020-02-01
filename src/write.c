@@ -40,8 +40,8 @@
 #include "write.h"
 #include "bgzf.h"
 #include "bgzf.c"
-#include "mpiSort_utils.h"
-#include "parabitonicsort2.h"
+#include "mpiSortUtils.h"
+#include "parallelBitonicSort2.h"
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum)
 {

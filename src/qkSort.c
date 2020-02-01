@@ -18,7 +18,7 @@
 
 /*
    Module:
-     qksort.c
+     qkSort.c
 
    Authors:
     Frederic Jarlier, 	Institut Curie
@@ -33,7 +33,7 @@
 #include <config.h>
 #endif
 
-#include "qksort.h"
+#include "qkSort.h"
 
 size_t *base_arr2;
 

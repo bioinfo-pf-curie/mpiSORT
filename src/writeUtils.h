@@ -18,7 +18,7 @@
 
 /*
    Module:
-     write_utils.h
+     writeUtils.h
 
    Authors:
    Authors:

@@ -38,7 +38,7 @@
 #include <mpi.h>
 
 #include "preWrite.h"
-#include "write_utils.h"
+#include "writeUtils.h"
 #include "parser.h"
 
 void preWrite(Read* chr, size_t readNum, char** data, int* size){

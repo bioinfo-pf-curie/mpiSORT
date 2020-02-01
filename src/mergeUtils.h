@@ -18,7 +18,7 @@
 
 /*
    Module:
-     qksort.h
+     mergeUtils.h
 
    Authors:
     Frederic Jarlier, 	Institut Curie
@@ -29,21 +29,22 @@
 	Paul Paganiban,		Institut Curie
 */
 
-#ifndef QKSORT_H
-#define QKSORT_H
+
+
+#ifndef MERGE_UTILS_H_
+#define MERGE_UTILS_H_
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-extern size_t *base_arr2;
+#include "parser.h"
+#include "merge.h"
 
-int compare_size_t(const void *a, const void *b);
+int number_sons(int rank, int num_proc);
+void arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t size1, size_t size2);
+size_t bucket_arrayMerge(size_t* a1[], size_t* a2[], size_t* a3[], size_t* a4[], size_t s1, size_t s2, size_t s3, char lacking, size_t disp);
+void cellcpy(size_t* src[], size_t* dst[], size_t i1, size_t i2);
 
-int compare_size_t_V2(const void *a, const void *b);
-
-int partition(void *data, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
-
-int qksort(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
+void indexing(int rank, size_t readNum, Read* chr, size_t *send[]);
 
 #endif

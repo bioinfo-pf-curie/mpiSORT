@@ -18,10 +18,9 @@
 
 /*
    Module:
-    sort_any_dim.h
+     qkSort.h
 
-   	Authors:
-
+   Authors:
     Frederic Jarlier, 	Institut Curie
 	Nicolas Joly, 		Institut Pasteur
 	Nicolas Fedy,		Institut Curie
@@ -30,38 +29,21 @@
 	Paul Paganiban,		Institut Curie
 */
 
+#ifndef QKSORT_H
+#define QKSORT_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
-#include <mpi.h>
+extern size_t *base_arr2;
 
-#include "qksort.h"
-#include "write_utils.h"
-#include "parabitonicsort.h"
+int compare_size_t(const void *a, const void *b);
 
+int compare_size_t_V2(const void *a, const void *b);
 
-void parallel_sort_any_dim(						//dimensions for parabitonic
-		int dimensions,
-		size_t local_readNum,
-		int split_rank,
-		int split_size,
-		Read **reads,
-		int i, 									//chromosom number
-		int chosen_split_rank,
-		MPI_Comm split_comm,
-		size_t *localReadNumberByChr,
-		char *local_data,
-		char *file_name,
-		char *output_dir,
-		MPI_Info finfo,
-		int compression_level,
-		size_t total_reads_by_chr,
-		size_t start_offset_in_file,
-		size_t headerSize,
-		char* header,
-		char *chrName,
-		MPI_File mpi_file_split_comm
-		);
+int partition(void *data, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
+
+int qksort(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
+
+#endif
