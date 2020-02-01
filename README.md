@@ -1,29 +1,34 @@
-# Objective
+# mpiSORT
 
-Sorting big NGS data file in the context of distributed cluster and high performance computing, Version 1.0.
+This software allows the sorting of high-throughput sequencing data after alignment from [SAM files](https://samtools.github.io/hts-specs/). `mpiSORT` relies on the Message Passing Interface (MPI) standard to perform the parallelisation of the sorting processing over multiple cores and nodes of high performance computing clusters.
+
+* [Installation](INSTALL.md)
+* Documentation
+* [Release notes](CHANGELOG.md)
+* Citations
 
 ## Sections:
 
-1) Release notes <br />
-2) Installation <br />
-3) Algorithm <br />
-4) Architectures <br />
-5) Memory usage <br />
-6) CPU usage <br />
-7) Inputs <br />
-8) Outputs <br />
-9) Compiler <br />
-10) Sample test  <br />
-11) Configuration <br />
-12) Parallel file system configuration <br />
+1) Release notes 
+2) Installation 
+3) Algorithm 
+4) Architectures 
+5) Memory usage 
+6) CPU usage 
+7) Inputs 
+8) Outputs 
+9) Compiler 
+10) Sample test  
+11) Configuration 
+12) Parallel file system configuration 
 13) Lustre optimization
-14) Network file system configuration <br />
-15) Results <br />
-16) Example of code <br />
-17) Options <br />
+14) Network file system configuration 
+15) Results 
+16) Example of code 
+17) Options 
 18) Citations <br>
-19) Improvements and future work <br />
-20) Authors and contacts  <br />
+19) Improvements and future work 
+20) Authors and contacts  
 
 ### 1) Release notes 
 
@@ -37,78 +42,78 @@ see INSTALL.md
 
 Sorting a file is all about IO's and shuffling (or movements) of data. 
 
-We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on message passing interface paradigm (MPI) and distributed memory computer. <br />
+We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on message passing interface paradigm (MPI) and distributed memory computer. 
 
-There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache. <br />
+There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache. 
 
-The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm and work on parallel architectures. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of Peter S. Pacheco "Parallel programming with MPI". <br />
+The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm and work on parallel architectures. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of Peter S. Pacheco "Parallel programming with MPI". 
 
-The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures. <br /> 
+The shuffing of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures.  
 
-As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations.<br />
+As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data the striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process use in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimizations accelerate drastically the IO operations.
 
-Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. <br />
+Ordinary softwares (Samtools, Sambamba, Picard,... ) doesn't take into account the underlying distributed file system and low latency interconnexion when MPI does. 
 
-Here are some links fo further reading and MPI technics. <br />
+Here are some links fo further reading and MPI technics. 
 
-Description of Bruck algorithm:<br />
-http://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf<br />
-http://authors.library.caltech.edu/12348/1/BRUieeetpds97.pdf<br />
-http://hunoldscience.net/paper/classical_sahu_2014.pdf<br />
+Description of Bruck algorithm:
+http://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf
+http://authors.library.caltech.edu/12348/1/BRUieeetpds97.pdf
+http://hunoldscience.net/paper/classical_sahu_2014.pdf
 
-Description of Bitonic sorting:<br />
-https://en.wikipedia.org/wiki/Bitonic_sorter<br />
+Description of Bitonic sorting:
+https://en.wikipedia.org/wiki/Bitonic_sorter
 
 ### 4) Architectures:
 
 We have tested the programm on different architectures.
 
-In the Institut Curie we have a NFS and a 10Gb network. The France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France) is equiped with Lustre. <br />
+In the Institut Curie we have a NFS and a 10Gb network. The France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France) is equiped with Lustre. 
 
-Because of the development design the programm is optimized for HPC architecture. This programm runs better on low latency network and parallel file system. <br />
+Because of the development design the programm is optimized for HPC architecture. This programm runs better on low latency network and parallel file system. 
 
 Contact us if you need information.
 
 ### 5) Memory:
 
-The total memory used during the sorting is around one and a half the size of the SAM file. <br />
-For instance to sort 1.3TB sam file (the NA24631 from GIAB, 300X WGS 150pb paired and aligned with mpiBWA) use 1.7 TB of memory and splitted in 512 MPI workers it makes 3.5 Gb/cpu. <br />
+The total memory used during the sorting is around one and a half the size of the SAM file. 
+For instance to sort 1.3TB sam file (the NA24631 from GIAB, 300X WGS 150pb paired and aligned with mpiBWA) use 1.7 TB of memory and splitted in 512 MPI workers it makes 3.5 Gb/cpu. 
 
 ### 6) CPU usage:
 
-Due to the bitonic sorting the algorithm is optimized for power of 2 number of CPU. <br />
-So chose 2,4,8,16,32... for better performances.  <br />
+Due to the bitonic sorting the algorithm is optimized for power of 2 number of CPU. 
+So chose 2,4,8,16,32... for better performances.  
 
-It works also for other number of CPU but the algorithm add extra communications to fit power of 2 in bitonic part. <br />
-For no power 2 extra memory is needed for the rank 0. <br />
-This rank is responsible for collecting and dispatching data before and after bitonic. <br />
+It works also for other number of CPU but the algorithm add extra communications to fit power of 2 in bitonic part. 
+For no power 2 extra memory is needed for the rank 0. 
+This rank is responsible for collecting and dispatching data before and after bitonic. 
 
 ### 7) Input Data:
 
-A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired. <br />
+A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired. 
 
 ### 8) Outputs: 
 
-Output are gz files per chromosome, a gz file for discordant reads (not sorted) and a gz file for unmapped reads. <br />
+Output are gz files per chromosome, a gz file for discordant reads (not sorted) and a gz file for unmapped reads. 
 
-To index the bam file use tabix like this: <br />
-tabix -p sam chrN.gz <br />
+To index the bam file use tabix like this: 
+tabix -p sam chrN.gz 
 
-To uncompress: <br />
-bgzip -d chrN.gz > chrN.sam <br />
+To uncompress: 
+bgzip -d chrN.gz > chrN.sam 
 
 ### 9) MPI version:
 
-A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3. <br /> 
+A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3.  
 
 ### 10) Compiler: 
 
-A C compiler must be present. We have tested the programm with GCC and Intel Compiler. <br /> 
+A C compiler must be present. We have tested the programm with GCC and Intel Compiler.  
 
 ### 11) Sample test:
 
-We furnish a sample sam to sort for testing your installation. <br /> 
-We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. <br /> 
+We furnish a sample sam to sort for testing your installation.  
+We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system.  
 
 ### 12) Parallel file system configuration:
 
@@ -120,47 +125,47 @@ You chose the number of servers with the striping factor and the size of chunks 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 The parallel writing and reading are done via the MPI finfo structure in the first line of mpiSort.c.
 
-For reading and set the Lustre buffer size.  <br />
-To do that edit the code of mpiSort.c and change the parameters in the header part.  <br />
-After tuning parameters recompile the application.  <br />
+For reading and set the Lustre buffer size.  
+To do that edit the code of mpiSort.c and change the parameters in the header part.  
+After tuning parameters recompile the application.  
 
-If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.  <br />
-In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant. <br />
+If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.  
+In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant. 
 
-The default parameters of the programm are unharmed for other filesystem. <br />
+The default parameters of the programm are unharmed for other filesystem. 
 
-At TGCC with a striping factor of 128 (number of OSSs servers) and the a striping size of 2.5 GB, a SAM file of 1.2TB could be loaded in memory in less than 1 minute. <br /> 
+At TGCC with a striping factor of 128 (number of OSSs servers) and the a striping size of 2.5 GB, a SAM file of 1.2TB could be loaded in memory in less than 1 minute.  
 
 ### 13) Lustre optimization:
 
-The section of the code you can modify in MPI info according to your Lustre configuration: <br /> 
+The section of the code you can modify in MPI info according to your Lustre configuration:  
 
-For reading part (mpiSORT.c):<br /> 
-line 92 => 96 and 261 => 280 <br /> 
+For reading part (mpiSORT.c): 
+line 92 => 96 and 261 => 280  
 
-For writing part (in write.c): <br /> 
-line 1382 => 1388 <br /> 
-line 1483 => 1488 <br /> 
-line 1769 => 1776 <br /> 
-line 1801 => 1809 <br /> 
+For writing part (in write.c):  
+line 1382 => 1388  
+line 1483 => 1488  
+line 1769 => 1776  
+line 1801 => 1809  
 
-The parameters are harmeless for other filesystem. <br /> 
+The parameters are harmeless for other filesystem.  
 
-!!!We recommand to test different parameters before setting them once for all. <br /> 
+!!!We recommand to test different parameters before setting them once for all.  
 
 ### 14) Network File system configuration:
 
-We don't recommend to use MPI with NFS (it works but it does not scale very well). <br />
+We don't recommend to use MPI with NFS (it works but it does not scale very well). 
 
-If you run the programm on NFS take a power of 2 number of jobs. <br />
+If you run the programm on NFS take a power of 2 number of jobs. 
 
-For NFS users there is a bug in openMPI. <br />
+For NFS users there is a bug in openMPI. 
 https://www.open-mpi.org/community/lists/users/2016/06/29434.php
 
-a patch is available here:<br />
+a patch is available here:
 https://trac.mpich.org/projects/mpich/attachment/ticket/2338/ADIOI_NFS_ReadStrided.patch
 
-To improve TCP communications over openMPI : <br />
+To improve TCP communications over openMPI : 
 https://www.open-mpi.org/faq/?category=tcp
 
 ### 15) Results:
@@ -201,43 +206,43 @@ in the section HPC@NGS
 How to launch the program with Torque:
 
 !/bin/bash
-MSUB -r mpiSORT_HCC1187_20X_380cpu <br />
-MSUB -@ frederic.jarlier@curie.fr:begin,end <br />
-MSUB -n 380 <br />
-MSUB -T 6000 <br />
-MSUB -q large <br />
-MSUB -o $SCRATCHDIR/ngs_data/ERROR/output_%I.o <br />
-MSUB -e $SCRATCHDIR/ngs_data/ERROR/erreur_%I.e <br />
-MSUB -w <br />
+MSUB -r mpiSORT_HCC1187_20X_380cpu 
+MSUB -@ frederic.jarlier@curie.fr:begin,end 
+MSUB -n 380 
+MSUB -T 6000 
+MSUB -q large 
+MSUB -o $SCRATCHDIR/ngs_data/ERROR/output_%I.o 
+MSUB -e $SCRATCHDIR/ngs_data/ERROR/erreur_%I.e 
+MSUB -w 
 
-mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT <br />
-BIN_NAME=psort <br />
-FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam <br />
-OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ <br />
-FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt <br />
-mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 <br />
+mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT 
+BIN_NAME=psort 
+FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam 
+OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/ 
+FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt 
+mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0 
 
 ### 17) Options 
 
-the -q option is for quality filtering. <br />
-the -n for sorting by name <br />
+the -q option is for quality filtering. 
+the -n for sorting by name 
 
 ### 18) Citations
 
-We would like to thanks:  <br />
+We would like to thanks:  
 
- Li H. et al. ( 2009) The sequence alignment/map format and SAMtools. Bioinformatics  , 25, 2078– 2079.  <br />
+ Li H. et al. ( 2009) The sequence alignment/map format and SAMtools. Bioinformatics  , 25, 2078– 2079.  
  
-The Bruck algorithm was created by: <br />
+The Bruck algorithm was created by: 
 
-Bruck et al. (1997) Efficient Algorithms for All-to-All Communications in Multiport Message-Passing Systems. <br />
-EEE Transactions on Parallel and Distributed Systems, 8(11):1143–1156, 1997. <br />
+Bruck et al. (1997) Efficient Algorithms for All-to-All Communications in Multiport Message-Passing Systems. 
+EEE Transactions on Parallel and Distributed Systems, 8(11):1143–1156, 1997. 
 
-and its modified version: <br />
+and its modified version: 
 
-Sascha Hunold et al. (2014). Implementing a Classic: Zero-copy All-to-all Communication with MPI Datatypes. <br />
+Sascha Hunold et al. (2014). Implementing a Classic: Zero-copy All-to-all Communication with MPI Datatypes. 
 
-We also thanks Claude Scarpelli from the TGCC. <br />
+We also thanks Claude Scarpelli from the TGCC. 
 
 ### 19) Improvements
 
@@ -256,21 +261,21 @@ We also thanks Claude Scarpelli from the TGCC. <br />
 
 ### 21) Authors and contacts
 
-This program has been developed by<br />
+This program has been developed by
 
-Frederic Jarlier from Institut Curie and Nicolas Joly from Institut Pasteur<br />
+Frederic Jarlier from Institut Curie and Nicolas Joly from Institut Pasteur
 
-With the help of students from Paris Descartes University <br /> 
+With the help of students from Paris Descartes University  
 
-and supervised by <br />
+and supervised by 
 
-Philippe Hupe from Institut Curie <br />
+Philippe Hupe from Institut Curie 
 
 Contacts:
 
-frederic.jarlier@curie.fr <br />
-njoly@pasteur.fr <br />
-philippe.hupe@curie.fr <br />
+frederic.jarlier@curie.fr 
+njoly@pasteur.fr 
+philippe.hupe@curie.fr 
 
 
 
