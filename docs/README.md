@@ -18,8 +18,8 @@ A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant 
 
 ### Options
 
-the -q option is for quality filtering. 
-the -n for sorting by name
+* `-q INTEGER` value for the quality filtering (default is `0`)
+* `-n` sort the reads by name
 
 ### Output
 
@@ -255,6 +255,4 @@ We also thanks Claude Scarpelli from the TGCC.
 * Optimize communication for non power of 2 cpu number. The gather and bradcast should be replace with Bruck. 
 * Generate index with the gz output as tabix does. 
 * Propose an option to write a big SAM file. 
-
-	
 
