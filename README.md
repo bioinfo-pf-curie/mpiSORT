@@ -3,7 +3,7 @@
 This software allows the sorting of high-throughput sequencing data after alignment from [SAM files](https://samtools.github.io/hts-specs/). `mpiSORT` relies on the Message Passing Interface (MPI) standard to perform the parallelisation of the sorting processing over multiple cores and nodes of high performance computing clusters.
 
 * [Installation](docs/INSTALL.md)
-* [Documentation](docs/USAGE.md)
+* [Documentation](docs/README.md)
 * [Credits](#credits)
 * [Acknowledgements](#acknowledgements)
 * [Release notes](CHANGELOG.md)
