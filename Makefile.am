@@ -1,4 +1,4 @@
 
 SUBDIRS = . src
 
-EXTRA_DIST = docs README.md CHANGELOG.md
+EXTRA_DIST = docs examples README.md CHANGELOG.md
