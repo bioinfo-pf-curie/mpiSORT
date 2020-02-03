@@ -25,8 +25,8 @@ such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) o
 
 ### Install mpirun on Ubuntu
 
-* for [open-mpi](https://www.open-mpi.org/): `sudo yum install openmpi-bin`
-* for [mpich](https://www.mpich.org/): `sudo yum install mpich`
+* for [open-mpi](https://www.open-mpi.org/): `sudo apt-get install openmpi-bin`
+* for [mpich](https://www.mpich.org/): `sudo apt-get install mpich`
 
 
 ## Usage
@@ -35,12 +35,12 @@ such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) o
 
 `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
 
-The `-n` options passed to `mpirun` indicates the number of processes to run in parallel (this is basically the number of cores that will be used). For for details on how to choose the number processes, see [Informatic resources](#informatic-resources) section.
+The `-n` options passed to `mpirun` indicates the number of processes to run in parallel (this is basically the number of cores that will be used). For for details on how to choose the number processes, see the [Informatic resources](#informatic-resources) section.
 
 `mpiSORT` requires two mandatory arguments:
 
 * [Input](#input): the path to the SAM file to be sorted
-* [Output](#output): the directory in which the results sill be written
+* [Output](#output): the directory in which the results will be written
 
 ### Input
 
@@ -53,7 +53,7 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) wi
 
 ### Output
 
-Output are gz files:
+The output consists of gz files:
 * one per chromosome (e.g. chr11.gz)
 * one for discordant reads (discordant.gz)
 * one for unmapped reads (unmapped.gz)
