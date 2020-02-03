@@ -65,7 +65,7 @@ make install
 
 ## Build from container recipes
 
-[singularity](https://sylabs.io/docs/) recipes are provided in the `containers` folder. At least [singularity](https://sylabs.io/docs/) version 3.2 is required to build the image. We provided two recipes, the first one using [CentOS](https://www.centos.org/), the second one using [ubuntu](https://ubuntu.com/) as it gives the details on how to install the software suc that you can reproduce the installation process if you want to install it locally on your computer.
+[singularity](https://sylabs.io/docs/) recipes are provided in the [containers](../containers) folder. At least [singularity](https://sylabs.io/docs/) version 3.2 is required to build the image. We provided two recipes, the first one using [CentOS](https://www.centos.org/), the second one using [ubuntu](https://ubuntu.com/) as it gives the details on how to install the software such that you can reproduce the installation process if you want to install it locally on your computer.
 
 
 `singularity` must be available in your PATH.

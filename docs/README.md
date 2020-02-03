@@ -1,5 +1,7 @@
 # Documentation
 
+* [Installation](INSTALL.md)
+* [Prerequisites](#prerequisites)
 * [Usage](#usage)
     * [Input](#input)
     * [Options](#options)
@@ -10,30 +12,61 @@
 * [Examples](#examples)
 * [Filesystems](#filesystems)
 
+
+## Prerequisites
+
+Follow the [Installation](INSTALL.md) guidelines to compile and install `mpiSORT`. As `mpiSORT` relies on the Message Passing Interface (MPI) standard, `mpirun` must be available to run the program. Several MPI implementations exist
+such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) or [Intel® MPI Library](https://software.intel.com/en-us/mpi-library). The `mpirun` program must be available in your PATH.
+
+### Install mpirun on CentOS
+
+* for [open-mpi](https://www.open-mpi.org/): `sudo yum install openmpi openmpi-devel`
+* for [mpich](https://www.mpich.org/): `sudo yum install mpich`
+
+### Install mpirun on Ubuntu
+
+* for [open-mpi](https://www.open-mpi.org/): `sudo yum install openmpi-bin`
+* for [mpich](https://www.mpich.org/): `sudo yum install mpich`
+
+
 ## Usage
+
+`mpiSORT` is executed with the `mpirun` program, for example:
+
+`mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
+
+The `-n` options passed to `mpirun` indicates the number of processes to run in parallel (this is basically the number of cores that will be used). For for details on how to choose the number processes, see [Informatic resources](#informatic-resources) section.
+
+`mpiSORT` requires two mandatory arguments:
+
+* [Input](#input): the path to the SAM file to be sorted
+* [Output](#output): the directory in which the results sill be written
 
 ### Input
 
-A SAM file produced by an aligner with paired reads (BWA, Bowtie) and compliant with the SAM format. The reads must be paired.
+A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) with paired reads and compliant with the SAM format. Only paired paired.
 
 ### Options
 
-* `-q INTEGER` value for the quality filtering (default is `0`)
-* `-n` sort the reads by name
+* `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept).
+* `-n` sorts the read by their name (but it is not commonly used).
 
 ### Output
 
-Output are gz files per chromosome, a gz file for discordant reads (not sorted) and a gz file for unmapped reads. 
+Output are gz files:
+* one per chromosome (e.g. chr11.gz)
+* one for discordant reads (discordant.gz)
+* one for unmapped reads (unmapped.gz)
 
-To index the bam file use tabix like this: 
-tabix -p sam chrN.gz 
+To index the SAM:
+`tabix -p sam chr11.gz`
 
 `tabix` is available from [Samtools](http://www.htslib.org/doc/tabix.html)
 
-To uncompress: 
-bgzip -d chrN.gz > chrN.sam 
+To uncompress:
+`bgzip -d chr11.gz -c > chr11.sam`
 
-`bgzip` is available from [Samtools](http://www.htslib.org/doc/tabix.html)
+`bgzip` is available from [Samtools](http://www.htslib.org/doc/bgzip.html)
 
 ## Informatic resources
 
