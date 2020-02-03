@@ -127,7 +127,10 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 
 			//GO TO FLAG
 			currentCarac = strstr(currentLine, "\t");
-			//*currentCarac = '\0';
+			
+			// mandatory for sorting by name
+			*currentCarac = '\0';
+			
 			currentCarac++;
 
 			//GO TO RNAME (Chr name)
