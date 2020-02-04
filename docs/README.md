@@ -88,26 +88,29 @@ This rank is responsible for collecting and dispatching data before and after bi
 ## Examples
 
 
-How to launch the program with Torque:
+How to launch the program with Slurm:
 
 ```
 #! /bin/bash
-MSUB -r mpiSORT_HCC1187_20X_380cpu
-MSUB -@ frederic.jarlier@curie.fr:begin,end
-MSUB -n 380
-MSUB -T 6000
-MSUB -q large
-MSUB -o $SCRATCHDIR/ngs_data/ERROR/output_%I.o
-MSUB -e $SCRATCHDIR/ngs_data/ERROR/erreur_%I.e
-MSUB -w
+#SBATCH -J MPISORT_MYSAM_1024CPU
+#SBATCH -N 16
+#SBATCH -n 1024
+#SBATCH -c 1
+#SBATCH --tasks-per-node=64
+#SBATCH -t 24:00:00
+#SBATCH -o STDOUT_FILE.%j.o            
+#SBATCH -e STDERR_FILE.%j.e
 
-mpiSORT_BIN_DIR=$SCRATCHDIR/script_files/mpi_SORT
-BIN_NAME=psort
-FILE_TO_SORT=$SCRATCHDIR/ngs_data/HCC1187C_20X.sam
-OUTPUT_DIR=$SCRATCHDIR/ngs_data/sort_result/20X/
-FILE=$SCRATCHDIR/ngs_data/sort_result/psort_time_380cpu_HCC1187_20X.txt
-mprun $mpiSORT_BIN_DIR/$BIN_NAME $FILE_TO_SORT $OUTPUT_DIR -q 0
+mpirun $MPISORT $SAM $OUTPUTDIR -q 0
 ```
+
+MPI support many workflow manager: Slurm, Torque, PBS, ...
+
+mpirun can also be launched without workflow manager support. 
+In this case pass a file with the server name in -host option.
+
+There are many ways to distribute and bind jobs according to your architecture.
+We encourage you to read the mpirun documentation and also test the best configuration.
 
 ## Filesystems
 
@@ -137,13 +140,11 @@ At TGCC with a striping factor of 128 (number of OSSs servers) and the a stripin
 The section of the code you can modify in MPI info according to your Lustre configuration:  
 
 For reading part (mpiSort.c): 
-line 92 => 96 and 261 => 280  
+line 98 => 102 and 261 => 280  
 
 For writing part (in write.c):  
-line 1382 => 1388  
-line 1483 => 1488  
-line 1769 => 1776  
-line 1801 => 1809  
+line 1406 => 1412  
+line 3516 => 3521  
 
 The parameters are harmless for other filesystem.  
 
