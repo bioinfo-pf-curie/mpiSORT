@@ -10,8 +10,9 @@
     * [Memory](#memory)
     * [Cpu](#cpu)
 * [Examples](#examples)
+    * [Standard](#standard)
     * [Slurm](#slurm)
-    * [PBS/Torque](#pbs/torque)
+    * [PBS/Torque](#pbstorque)
 * [Filesystems](#filesystems)
 
 
@@ -121,7 +122,7 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 
 ```
 
-### Torque/PBS
+### PBS/Torque
 
 
 ## Filesystems
