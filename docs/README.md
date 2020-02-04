@@ -1,6 +1,6 @@
 # Documentation
 
-* [Installation](INSTALL.md)
+* [Installation](#installation)
 * [Prerequisites](#prerequisites)
 * [Usage](#usage)
     * [Input](#input)
@@ -10,12 +10,18 @@
     * [Memory](#memory)
     * [Cpu](#cpu)
 * [Examples](#examples)
+    * [Slurm](#slurm)
+    * [PBS/Torque](#pbs/torque)
 * [Filesystems](#filesystems)
 
 
+## Installation
+
+Follow the [Installation](INSTALL.md) guidelines to compile and install `mpiSORT`.
+
 ## Prerequisites
 
-Follow the [Installation](INSTALL.md) guidelines to compile and install `mpiSORT`. As `mpiSORT` relies on the Message Passing Interface (MPI) standard, `mpirun` must be available to run the program. Several MPI implementations exist
+As `mpiSORT` relies on the Message Passing Interface (MPI) standard, `mpirun` must be available to run the program. Several MPI implementations exist
 such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) or [Intel® MPI Library](https://software.intel.com/en-us/mpi-library). The `mpirun` program must be available in your PATH.
 
 ### Install mpirun on CentOS
@@ -73,44 +79,48 @@ To uncompress:
 ### Memory
 
 The total memory used during the sorting is around one and a half the size of the SAM file.
-For instance to sort 1.3TB sam file (the NA24631 from GIAB, 300X WGS 150pb paired and aligned with mpiBWA) use 1.7 TB of memory and splitted in 512 MPI workers it makes 3.5 Gb/cpu.
+For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and splitted over 512 MPI workers (i.e. cores) that corresponds to makes 3.3 Gb of memory per core.
 
 ### Cpu
 
-Due to the bitonic sorting the algorithm is optimized for power of 2 number of CPU.
-So chose 2, 4, 8, 16, 32, etc. for better performances
+Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is recommended to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
 
-It works also for other number of CPU but the algorithm add extra communications to fit power of 2 in bitonic part.
-For no power 2 extra memory is needed for the rank 0.
-This rank is responsible for collecting and dispatching data before and after bitonic.
+
+However, the  `-n` parameter can be set to any other value but extra  MPI communications will be added to fit power of 2 required by the bitonic algorithm. In this case, additonal memory is needed for the rank 0 worker. This rank is responsible for collecting and dispatching the data before and after bitonic.
 
 
 ## Examples
 
+There are many ways to distribute and bind MPI jobs according to your architecture. We provide below several examples to launch MPI jobs in a standard manner or with a job scheduling system such as [Slurm](https://slurm.schedmd.com/sbatch.html) and [PBS/Torque](https://support.adaptivecomputing.com/support/documentation-index/torque-resource-manager-documentation/).
 
-How to launch the program with Slurm:
+### Standard
 
-```
+`mpirun` can be launched in a standard manner without using any job scheduling systems. For example:
+
+`mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
+
+If needed, a file with the server name in `-host` option can be provided to `mpirun`. We invite you to read the `mpirun` documentation for more details.
+
+
+### Slurm
+
+```shell
 #! /bin/bash
-#SBATCH -J MPISORT_MYSAM_1024CPU
-#SBATCH -N 16
-#SBATCH -n 1024
+#SBATCH -J MPISORT_MYSAM_64_CORES
+#SBATCH -N 4                       # Ask 4 nodes
+#SBATCH -n 16                      # Total number of cores
 #SBATCH -c 1
-#SBATCH --tasks-per-node=64
-#SBATCH -t 24:00:00
-#SBATCH -o STDOUT_FILE.%j.o            
+#SBATCH --tasks-per-node=4         # Ask 4 cores per node
+#SBATCH -t 01:00:00
+#SBATCH -o STDOUT_FILE.%j.o
 #SBATCH -e STDERR_FILE.%j.e
 
-mpirun $MPISORT $SAM $OUTPUTDIR -q 0
+mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
+
 ```
 
-MPI support many workflow manager: Slurm, Torque, PBS, ...
+### Torque/PBS
 
-mpirun can also be launched without workflow manager support. 
-In this case pass a file with the server name in -host option.
-
-There are many ways to distribute and bind jobs according to your architecture.
-We encourage you to read the mpirun documentation and also test the best configuration.
 
 ## Filesystems
 
