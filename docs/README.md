@@ -13,7 +13,10 @@
     * [Standard](#standard)
     * [Slurm](#slurm)
     * [PBS/Torque](#pbstorque)
+* [Performance](#performance)
 * [Filesystems](#filesystems)
+* [Algorithm](#algorithm)
+* [References](#references)
 
 
 ## Installation
@@ -34,6 +37,7 @@ such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) o
 
 * for [open-mpi](https://www.open-mpi.org/): `sudo apt-get install openmpi-bin`
 * for [mpich](https://www.mpich.org/): `sudo apt-get install mpich`
+
 
 
 ## Usage
@@ -96,6 +100,8 @@ However, the  `-n` parameter can be set to any other value but extra  MPI commun
 
 There are many ways to distribute and bind MPI jobs according to your architecture. We provide below several examples to launch MPI jobs in a standard manner or with a job scheduling system such as [Slurm](https://slurm.schedmd.com/sbatch.html) and [PBS/Torque](https://support.adaptivecomputing.com/support/documentation-index/torque-resource-manager-documentation/).
 
+A toy dataset (SAM file) is provided in the [examples/data](../examples/data) folder for testing the program. We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system. You can use this sample to test the program.
+
 ### Standard
 
 `mpirun` can be launched in a standard manner without using any job scheduling systems. For example:
@@ -110,10 +116,10 @@ If needed, a file with the server name in `-host` option can be provided to `mpi
 ```shell
 #! /bin/bash
 #SBATCH -J MPISORT_MYSAM_64_CORES
-#SBATCH -N 4                       # Ask 4 nodes
-#SBATCH -n 16                      # Total number of cores
+#SBATCH -N 2                       # Ask 2 nodes
+#SBATCH -n 4                      # Total number of cores
 #SBATCH -c 1
-#SBATCH --tasks-per-node=4         # Ask 4 cores per node
+#SBATCH --tasks-per-node=2         # Ask 2 cores per node
 #SBATCH -t 01:00:00
 #SBATCH -o STDOUT_FILE.%j.o
 #SBATCH -e STDERR_FILE.%j.e
@@ -127,21 +133,26 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 
 ## Filesystems
 
+
+As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data. The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process used in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimization accelerate drastically the IO operations.
+
+Standard software (Samtools, Sambamba, Picard,... ) don't take into account the underlying distributed file system and low latency interconnexion when MPI does.
+
 ### Parallel file system configuration:
 
-MPI improves IOs by means of parallelization. 
+MPI improves IOs by means of parallelization.
 
-On parallel file system like Lustre, GPFS one way of accelerating IO is to stripe them across servers. 
-You chose the number of servers with the striping factor and the size of chunks with the striping size. 
+On parallel file system like Lustre, GPFS one way of accelerating IO is to stripe them across servers.
+You can choose the number of servers with the striping factor and the size of chunks with the striping size. 
 
 Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
 The parallel writing and reading are done via the MPI finfo structure in the first line of mpiSort.c.
 
-For reading and set the Lustre buffer size.  
-To do that edit the code of mpiSort.c and change the parameters in the header part.  
+For reading and set the Lustre buffer size.
+To do that edit the code of mpiSort.c and change the parameters in the header part.
 After tuning parameters recompile the application.  
 
-If you are familiar with MPI IO operation you can also test different commands collective, double buffered, data sieving.
+If you are familiar with MPI IO operations you can also test different commands collective, double buffered, data sieving.
 In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant. 
 
 The default parameters of the programm are unharmed for other filesystem. 
@@ -150,7 +161,7 @@ At TGCC with a striping factor of 128 (number of OSSs servers) and the a stripin
 
 ### Lustre
 
-The section of the code you can modify in MPI info according to your Lustre configuration:  
+The section of the code you can modify in MPI info according to your Lustre configuration:
 
 For reading part (mpiSort.c): 
 line 98 => 102 and 261 => 280  
@@ -179,127 +190,58 @@ To improve TCP communications over openMPI :
 https://www.open-mpi.org/faq/?category=tcp
 
 3) Algorithm 
-4) Architectures 
-9) Compiler 
-10) Sample test  
-11) Configuration 
 12) Parallel file system configuration 
 13) Lustre optimization
 14) Network file system configuration 
-15) Results 
-18) Citations
-19) Improvements and future work 
-20) Authors and contacts  
 
-### 3) Algorithm
+## Performance
 
-Sorting a file is all about IO's and shuffling (or movements) of data. 
+Obviously, the performance of `mpiSORT` depends on the computing infrastruture. Using the computing cluster provided by the [TGCC France Génomique](https://www.france-genomique.org/plateformes-et-equipements/plateforme-tgcc-arpajon/) (Broadwell architecture), we obtained the following performance sorting the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome:
 
-We have developed a real parallel and distributed file system aware program to overcome some issues encounter with traditionnal tools like Samtools, Sambamba, Picard. We propose a novel approach based on message passing interface paradigm (MPI) and distributed memory computer. 
 
-There are several aspects in this sorting algorithm that are important: the bitonic-sort, the shuffling of the data and the distributed cache. 
+* **20 minutes** with 512 jobs and with an efficiency of 70% (30% time is spent in IO) with a [Lustre](http://lustre.org/) configuration :
+    * `lfs setstripe -c 12 -S 4m` (for input)
+    * `lfs setstripe -c 12 -S 256m` (for output)
 
-The parallel merge-sort has been replaced with a bitonic merge-sort. The bitonic sort is a real parallel sorting algorithm and work on parallel architectures. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of Peter S. Pacheco "Parallel programming with MPI". 
-
-The shuffling of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures.  
-
-As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data. The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process used in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimization accelerate drastically the IO operations.
-
-Standard software (Samtools, Sambamba, Picard,... ) don't take into account the underlying distributed file system and low latency interconnexion when MPI does. 
-
-Here are some links fo further reading and MPI technics. 
-
-Description of Bruck algorithm:
-http://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf
-http://authors.library.caltech.edu/12348/1/BRUieeetpds97.pdf
-http://hunoldscience.net/paper/classical_sahu_2014.pdf
-
-Description of Bitonic sorting:
-https://en.wikipedia.org/wiki/Bitonic_sorter
-
-### 4) Architectures:
-
-We have tested the programm on different architectures.
-
-In the Institut Curie we have a NFS and a 10Gb network. The France Genomic cluster of TGCC (Très Grand Centre de Calcul) of CEA (Bruyeres le Chatel, France) is equiped with Lustre. 
+* **10 minutes** with 1024 jobs with an efficiency of 60% (40% time is spent in IO) with a Lustre configuration :
+    * `lfs setstripe -c 12 -S 256m` (for input)
+    * `lfs setstripe -c 12 -S 256m` (for output)
 
 Because of the development design the programm is optimized for HPC architecture. This programm runs better on low latency network and parallel file system. 
 
-Contact us if you need information.
+## Algorithm
+
+Sorting a file is all about IO's and shuffling (or movements) of data. Therefore, we developed a program that capitalizes on parallel and distributed file system in order to overcome the bottlenecks encountered with traditionnal tools to sort large sequencing data. Our approach relies on message passing interface paradigm (MPI) and distributed memory available on high computing performance architecture.
+
+The program we implemented in based on the major components: the bitonic-sort, the shuffling of the data and the distributed cache.
+
+The [bitonic sort](https://en.wikipedia.org/wiki/Bitonic_sorter) is a real parallel sorting algorithm that works on parallel architectures. The complexity of the bitonic is of (log(n))^2 instead of nlog(n) with the parallel merge-sort. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of [Peter S. Pacheco "Parallel programming with MPI".](https://www.cs.usfca.edu/~peter/ppmpi/)
+
+The shuffling of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures.
+
+For more details, see the [References](#references) section.
+
+## References
+
+Original Bruck algorithm:
+
+* Bruck et al. (1997) [Efficient Algorithms for All-to-All Communications in Multiport Message-Passing Systems](https://dl.acm.org/doi/10.1109/71.642949). EEE Transactions on Parallel and Distributed Systems, 1997 ([pdf](http://authors.library.caltech.edu/12348/1/BRUieeetpds97.pdf)).
+
+Modified versions of the Bruch algorithm:
+
+* Jesper Larsson Träff, Antoine  Rougier and Sascha  Hunold, [Implementing a Classic:Zero-copy All-to-all Communication with MPI Datatypes](https://dl.acm.org/doi/10.1145/2597652.2597662). ICS '14: Proceedings of the 28th ACM international conference on Supercomputing, 2014 ([pdf](http://hunoldscience.net/paper/classical_sahu_2014.pdf)).
+
+* Rajeev Thakur, Rolf  Rabenseifner and William Gropp, [Optimization of Collective Communication Operations in MPICH](https://dl.acm.org/doi/10.1177/1094342005051521). International Journal of High Performance Computing Applications, 2005 ([pdf](http://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf)).
+
+Description of the SAM format:
+
+* Li H. et al, [The sequence alignment/map format and SAMtools](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2723002/). Bioinformatics, 2009.
 
 
-### 9) MPI version:
+* [samtools](https://github.com/lh3/samtools) source code. The `bgzf.c` program was used and included in the `mpiSORT` source code. [samtools](https://github.com/lh3/samtools) is provided under *The MIT License,  Copyright (c) 2008 Broad Institute / Massachusetts Institute of Technology*.
 
-A MPI version should be installed first. We have tested the program with different MPI flavour: OpenMPI 1.10.0 and 1.8.3.
+Presentation about our program:
 
-### 10) Compiler: 
-
-A C compiler must be present. We have tested the programm with GCC and Intel Compiler.
-
-### 11) Sample test:
-
-A toy dataset (SAM file) is provided in the [examples/data](../examples/data) folder for testing the program.
-We test it with from 1 to 8 jobs and 2 nodes with a normal network and file system.
-
-### 15) Results:
-
-To see results and speed-ups please check out those links
-
-2015: This link was the first presentation of the tools 
-http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequencage_jarlier.pdf?id=jdev2015%3Aposters&cache=cache
-
-2016: OpenSFS conference Lustre LAD 2016 
-http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf
-
-2017: 
-
-Here are preliminary results on Broadwell cluster of the TGCC (Bruyères-le-Chatel , France).
-We have tested the sorting on the chinese trio from the GIAB. The alignment of the bigest sample (NA24631) is done with the MPI version of BWA-MEM.
-
-The time to sort the son's sample  (300X WGS, 150 pb) is :
-
-20 mn with 512 jobs and with an efficiency of 70% (30% time is spent in IO).
-With a Lustre configuration :
-lfs setstripe -c 12 -S 4m (for input) 
-lfs setstripe -c 12 -S 256m (for output)
-
-10 mn with 1024 jobs with an efficiency of 60% (40% time is spent in IO)
-
-With a Lustre configuration :
-lfs setstripe -c 12 -S 256m (for input) 
-lfs setstripe -c 12 -S 256m (for output)
-
-The last presentation of the tools:
- http://devlog.cnrs.fr/jdev2017/posters
-
-in the section HPC@NGS
-
-
-
-### 18) Citations
-
-We would like to thanks:  
-
- Li H. et al. ( 2009) The sequence alignment/map format and SAMtools. Bioinformatics  , 25, 2078– 2079.  
- 
-The Bruck algorithm was created by: 
-
-Bruck et al. (1997) Efficient Algorithms for All-to-All Communications in Multiport Message-Passing Systems. 
-EEE Transactions on Parallel and Distributed Systems, 8(11):1143–1156, 1997. 
-
-and its modified version: 
-
-Sascha Hunold et al. (2014). Implementing a Classic: Zero-copy All-to-all Communication with MPI Datatypes. 
-
-We also thanks Claude Scarpelli from the TGCC. 
-
-### 19) Improvements
-
-* Mark or remove duplicates. 
-* Make a pile up of the reads to produce VCF.
-* Merge aligner and sorting to avoid writing and reading part. 
-* Manage Bam file in input, output. 
-* Optimize communication for non power of 2 cpu number. The gather and bradcast should be replace with Bruck. 
-* Generate index with the gz output as tabix does. 
-* Propose an option to write a big SAM file. 
-
+* Journées nationales du DEVeloppement logiciel, 2015 [pdf](http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequencage_jarlier.pdf?id=jdev2015%3Aposters&cache=cache)
+* OpenSFS conference Lustre LAD, 2016 [pdf](http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf)
+* Journées nationales du DEVeloppement logiciel, 2017 [pdf](http://devlog.cnrs.fr/_media/jdev2017/poster_jdev2017_hpcngs_frederic_jarlier.pdf?id=jdev2017%3Aposters&cache=cache)
