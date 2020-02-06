@@ -66,8 +66,8 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) wi
 
 The output consists of gz files:
 * one per chromosome (e.g. chr11.gz)
-* one for discordant reads (discordant.gz)
-* one for unmapped reads (unmapped.gz)
+* one for discordant reads (discordant.gz): discordants reads are reads where one pair aligns on a chromosome and the other pair aligns on another chromosome
+* one for unmapped reads (unmapped.gz): unmapped reads are reads without coordinates on any chromosome
 
 To index the SAM:
 `tabix -p sam chr11.gz`
