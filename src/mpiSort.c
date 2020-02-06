@@ -95,11 +95,13 @@
  * https://fs.hlrs.de/projects/craydoc/docs/books/S-2490-40/html-S-2490-40/chapter-sc4rx058-brbethke-paralleliowithmpi.html
  */
 
+// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 #define NB_PROC  "20" //numer of threads for writing
 #define CB_NODES "12" //numer of server for writing
 #define CB_BLOCK_SIZE  "268435456" /* 256 MBytes - should match FS block size */
 #define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
 #define DATA_SIEVING_READ "enable"
+// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 /*
  * Capacity constant no need to change it
@@ -255,8 +257,8 @@ int main (int argc, char *argv[]){
 	assert(munmap(xbuf, (size_t)st.st_size) != -1);
 	assert(close(fd) != -1);
 
-	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
 
+    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 	MPI_Info_create(&finfo);
 	/*
@@ -279,6 +281,8 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
+    
+    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 
 	//we open the input file

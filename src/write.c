@@ -1401,17 +1401,15 @@ void writeSam(
 		sprintf(path, "%s/%s.gz", output_dir, chrName);
 
 
-		//task FINE TUNING FINFO FOR WRITING OPERATIONS
-
+		// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 		MPI_Info_set(finfo,"striping_factor","12");
 		//MPI_Info_set(finfo,"striping_unit","1610612736"); //1G striping
 		MPI_Info_set(finfo,"striping_unit","268435456"); //256 Mo
-
 		MPI_Info_set(finfo,"nb_proc","12");
 		MPI_Info_set(finfo,"cb_nodes","12");
 		MPI_Info_set(finfo,"cb_block_size","4194304"); /* 4194304 = 4 MBytes - should match FS block size */
 		//MPI_Info_set(finfo,"cb_buffer_size","1610612736"); /* 128 MBytes (Optional) */
-
+		// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 		ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 
@@ -3511,7 +3509,7 @@ void writeSam_any_dim(
 		fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Opening the file %s \n", rank, path );
 
 
-	//task FINE TUNING FINFO FOR WRITING OPERATIONS
+    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 	/*
 	MPI_Info_set(finfo,"striping_factor","128");
 	MPI_Info_set(finfo,"striping_unit","1610612736"); //1G striping
@@ -3520,6 +3518,7 @@ void writeSam_any_dim(
 	MPI_Info_set(finfo,"cb_block_size","1610612736"); // 4194304 MBytes - should match FS block size
 	MPI_Info_set(finfo,"cb_buffer_size","1610612736"); // 128 MBytes (Optional)
 	*/
+    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 	ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 

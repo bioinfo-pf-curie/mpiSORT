@@ -14,7 +14,7 @@
     * [Slurm](#slurm)
     * [PBS/Torque](#pbstorque)
 * [Performance](#performance)
-* [Filesystems](#filesystems)
+* [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
 
@@ -131,68 +131,15 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 ### PBS/Torque
 
 
-## Filesystems
+## Parallel filesystems
+
+As the `mpiSORT` program uses MPI functions for reading and writing you can take advantage of a parallel file system to tackle the IOs bottleneck and speed-up the sorting of a SAM file. Using a parallel filesystem such as [Lustre](http://lustre.org/) or [BeeGFS](https://www.beegfs.io/) will be mandatory as long as the SAM file to sort is bigger and bigger.
 
 
-As the programs use MPI fonctions for reading and writing you can take advantage of a parallel file system. To speed-up reading and writing you can set the striping of your data. The striping tells the number of file servers you want to use and the size of data blocks on each server. You can compare the striping of the file with the mapping process used in Hadoop. This is the way your data are distributed among the servers of your file system. This kind of optimization accelerate drastically the IO operations.
+Note that for advanced users, it is even possible to fine tune the source code such that `mpiSORT` can optimally used the settings of the parallel filesystem on which you will run the program. Refer to the [Advanced](ADVANCED.md) guidelines to do so.
 
-Standard software (Samtools, Sambamba, Picard,... ) don't take into account the underlying distributed file system and low latency interconnexion when MPI does.
 
-### Parallel file system configuration:
-
-MPI improves IOs by means of parallelization.
-
-On parallel file system like Lustre, GPFS one way of accelerating IO is to stripe them across servers.
-You can choose the number of servers with the striping factor and the size of chunks with the striping size. 
-
-Before running and compile you must tell the programm how the input data is striped on Lustre and how to stripe the output data.
-The parallel writing and reading are done via the MPI finfo structure in the first line of mpiSort.c.
-
-For reading and set the Lustre buffer size.
-To do that edit the code of mpiSort.c and change the parameters in the header part.
-After tuning parameters recompile the application.  
-
-If you are familiar with MPI IO operations you can also test different commands collective, double buffered, data sieving.
-In file write.c in the function writeSam, writeSam_unmapped, writeSam_discordant. 
-
-The default parameters of the programm are unharmed for other filesystem. 
-
-At TGCC with a striping factor of 128 (number of OSSs servers) and the a striping size of 2.5 GB, a SAM file of 1.2TB could be loaded in memory in less than 1 minute.  
-
-### Lustre
-
-The section of the code you can modify in MPI info according to your Lustre configuration:
-
-For reading part (mpiSort.c): 
-line 98 => 102 and 261 => 280  
-
-For writing part (in write.c):  
-line 1406 => 1412  
-line 3516 => 3521  
-
-The parameters are harmless for other filesystem.  
-
-!!!We recommand to test different parameters before setting them once for all.  
-
-### Network File system configuration:
-
-We don't recommend to use MPI with NFS (it works but it does not scale very well). 
-
-If you run the programm on NFS take a power of 2 number of jobs. 
-
-For NFS users there is a bug in openMPI. 
-https://www.open-mpi.org/community/lists/users/2016/06/29434.php
-
-a patch is available here:
-https://trac.mpich.org/projects/mpich/attachment/ticket/2338/ADIOI_NFS_ReadStrided.patch
-
-To improve TCP communications over openMPI : 
-https://www.open-mpi.org/faq/?category=tcp
-
-3) Algorithm 
-12) Parallel file system configuration 
-13) Lustre optimization
-14) Network file system configuration 
+We don't recommend to use MPI with [NFS](https://en.wikipedia.org/wiki/Network_File_System) (it works but it does not scale very well).
 
 ## Performance
 
