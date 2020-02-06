@@ -15,7 +15,7 @@ For the reading part there are two blocks of code in the `mpiSort.c` in which yo
 // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 // END> FINE TUNING FINFO FOR WRITING OPERATIONS
-
+```
 
 For writing part there are two blocks of codes in the `write.c` in which you can set the [Lustre](http://lustre.org/) buffer size, these blocks of code being surrounded by the following tags:
 
