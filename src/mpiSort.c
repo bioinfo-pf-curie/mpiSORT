@@ -1612,7 +1612,7 @@ static void usage(const char *prg) {
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"
         "\n\t-n\n"
         "\t     sorts the read by their name (but it is not commonly used).\n"
-        "\ninput: input file is a sam file of paired reads"
+        "\ninput: input file is a sam file of paired reads\n"
         "\noutput: set of gz files with\n"
         "\t* one per chromosome (e.g. chr11.gz)\n"
         "\t* one for discordant reads (discordant.gz): discordants reads are reads \n"
