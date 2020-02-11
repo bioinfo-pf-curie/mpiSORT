@@ -115,11 +115,12 @@ If needed, a file with the server name in `-host` option can be provided to `mpi
 
 ```shell
 #! /bin/bash
-#SBATCH -J MPISORT_MYSAM_64_CORES
-#SBATCH -N 2                       # Ask 2 nodes
-#SBATCH -n 4                      # Total number of cores
-#SBATCH -c 1
-#SBATCH --tasks-per-node=2         # Ask 2 cores per node
+#SBATCH -J MPISORT_MYSAM_4_JOBS
+#SBATCH -N 2                       	# Ask 2 nodes
+#SBATCH -n 4                       	# Total number of cores
+#SBATCH -c 1			   	# use 1 core per mpi job
+#SBATCH --tasks-per-node=2         	# Ask 2 cores per node
+#SBATCH --mem-per-cpu=${MEM}	   	# See Memory ressources
 #SBATCH -t 01:00:00
 #SBATCH -o STDOUT_FILE.%j.o
 #SBATCH -e STDERR_FILE.%j.e
@@ -130,6 +131,17 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 
 ### PBS/Torque
 
+```shell
+#! /bin/bash
+#PBS -N MPISORT_MYSAM_4_JOBS
+#PBS -l	nodes=2:ppn=2:mem=${MEM}     	# Ask 2 nodes and 2 jobs per node
+#PBS -l walltime=24:00:00
+#PBS -o STDOUT_FILE.%j.o
+#PBS -e STDERR_FILE.%j.e
+
+mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
+
+```
 
 ## Parallel filesystems
 
