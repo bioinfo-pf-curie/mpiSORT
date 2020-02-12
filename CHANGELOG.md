@@ -1,10 +1,9 @@
 version-1.0.0
-    - mpiSORT: sorts SAM files
+
+    * mpiSORT: sorts SAM files
 
 
-=====================
 Preliminary releases
-=====================
 
 Release from the 09/01/2020
 
