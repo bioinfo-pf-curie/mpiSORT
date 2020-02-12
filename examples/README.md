@@ -1,4 +1,4 @@
-# Scripts and data to tes the program
+# Scripts and data to test the program
 
 Your can try:
 
