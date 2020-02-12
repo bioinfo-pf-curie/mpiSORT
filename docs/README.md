@@ -110,8 +110,11 @@ A toy dataset (SAM file) is provided in the [examples/data](../examples/data) fo
 
 If needed, a file with the server name in `-host` option can be provided to `mpirun`. We invite you to read the `mpirun` documentation for more details.
 
+You can go in the [examples](../examples) directory and execute the [standard.sh](../examples/standard.sh) script to test the program.
 
 ### Slurm
+
+In order to submit a job using [Slurm](https://slurm.schedmd.com/sbatch.html), you can write a shell script as follows:
 
 ```shell
 #! /bin/bash
@@ -127,9 +130,14 @@ If needed, a file with the server name in `-host` option can be provided to `mpi
 
 mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 
+
 ```
 
+You can go in the [examples](../examples) directory and submit the job with `sbatch` using the [slurm.sh](../examples/slurm.sh) script to test the program.
+
 ### PBS/Torque
+
+In order to submit a job using [PBS/Torque](https://support.adaptivecomputing.com/support/documentation-index/torque-resource-manager-documentation/), you can write a shell script as follows:
 
 ```shell
 #! /bin/bash
@@ -142,6 +150,8 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
 
 ```
+
+You can go in the [examples](../examples) directory and submit the job with `qsub` command using the [pbs.sh](../examples/pbs.sh) script to test the program.
 
 ## Parallel filesystems
 
