@@ -202,6 +202,24 @@ int main (int argc, char *argv[]){
 	res = MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
 	assert(res == MPI_SUCCESS);
 
+
+	/* Check if num_proc is a power of 2 or not null */
+        if (num_proc == 0){
+		fprintf(stderr, "Number of processes must be greater than 0 \n");
+		res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+                //err(1, "You ask for 0 cpu this is not possible !!\n");	
+	}
+	
+        if ( (num_proc & (num_proc - 1)) ){
+		fprintf(stderr, "Number of processes must be power of two \n");
+                res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+                //err(1, "Number of processes must be power of two \n");
+	}
+
 	g_rank = rank;
 	g_size = num_proc;
 
