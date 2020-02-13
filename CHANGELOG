@@ -4,6 +4,13 @@ version-1.0.0
 
 Preliminary releases
 
+
+Release from the 13/02/2020
+
+1) Now only power are accepted for CPU number
+2) Fix problem when sorting by name (get back the "\0")
+
+
 Release from the 09/01/2020
 
 1) remove character "\0" during parse paired
