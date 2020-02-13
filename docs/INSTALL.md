@@ -4,7 +4,7 @@
 
 * an implementation of the Message Passing Interface (MPI) standard such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) or [Intel® MPI Library](https://software.intel.com/en-us/mpi-library)
 * [zlib](https://zlib.net/)
-* [autoconf](https://www.gnu.org/software/autoconf/)
+* [autoconf 2.69](https://www.gnu.org/software/autoconf/)
 * [automake 1.13](https://www.gnu.org/software/automake/)
 * [make](https://www.gnu.org/software/make/)
 
