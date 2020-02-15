@@ -46,7 +46,7 @@ such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) o
 
 `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
 
-The `-n` options passed to `mpirun` indicates the number of processes to run in parallel (this is basically the number of cores that will be used). For for details on how to choose the number processes, see the [Informatic resources](#informatic-resources) section.
+The `-n` options passed to `mpirun` indicates the number of processes to run in parallel (this is basically the number of cores that will be used). For more details on how to choose the number processes, see the [Informatic resources](#informatic-resources) section.
 
 `mpiSORT` requires two mandatory arguments:
 
