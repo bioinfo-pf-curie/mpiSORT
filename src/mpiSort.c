@@ -1620,6 +1620,7 @@ static void usage(const char *prg) {
 	fprintf(stderr, "program: %s is a MPI version for sorting paired-end SAM file\n"
 		"version: %s\n"
 		"\nusage : mpirun -n TOTAL_PROC %s SAM_FILE OUTPUT_DIRECTORY -q QUALITY -n \n"
+        "\n\tTOTAL_PROC tells how many cores will be used by MPI to parallelize the computation.\n"
         "\noptions:\n"
         "\n\t-q INTEGER\n"
         "\t     filters the reads according to their quality. Reads quality under the\n"
