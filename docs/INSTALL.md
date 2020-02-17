@@ -29,7 +29,7 @@ If you have automake 1.15 you can edit in the `configure.ac` file and change the
 git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
 cd mpiSORT
 # Checkout the branch of the version you want to install, for example:
-# git checkout version-1.0.0
+# git checkout version-1.0
 aclocal
 autoconf
 automake --add-missing
@@ -79,7 +79,7 @@ This will output the `mpiSORT` executable (that is actually a singularity image)
 git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
 cd mpiSORT
 # Checkout the branch of the version you want to package, for example:
-# git checkout version-1.0.0
+# git checkout version-1.0
 aclocal
 autoconf
 automake --add-missing
