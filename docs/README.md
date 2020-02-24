@@ -183,7 +183,9 @@ The program we implemented in based on the major components: the bitonic-sort, t
 
 The [bitonic sort](https://en.wikipedia.org/wiki/Bitonic_sorter) is a real parallel sorting algorithm that works on parallel architectures. The complexity of the bitonic is of n(log(n))^2. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of [Peter S. Pacheco "Parallel programming with MPI".](https://www.cs.usfca.edu/~peter/ppmpi/).
 
+
 ![Bitonic sort](https://upload.wikimedia.org/wikipedia/commons/b/bd/BitonicSort1.svg)
+[bitonic sort](https://en.wikipedia.org/wiki/Bitonic_sorter)
 
 The shuffling of the data is done through the Bruck method. This method has the advantage of avoiding the shuffle bottleneck (The All2all). Bruck is a log(N) method and scale very well for distributed architectures.
 
