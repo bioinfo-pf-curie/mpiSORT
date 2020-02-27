@@ -254,8 +254,9 @@ int main (int argc, char *argv[]){
 		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
 	}
-	chrNames[nbchr++] = strdup(UNMAPPED);
 	chrNames[nbchr++] = strdup(DISCORDANT);
+	chrNames[nbchr++] = strdup(UNMAPPED);
+	//chrNames[nbchr++] = strdup(DISCORDANT);
 
 	hsiz = x - xbuf;
 	hbuf = strndup(xbuf, hsiz);
