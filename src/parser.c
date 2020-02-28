@@ -85,6 +85,114 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
 
 }
 
+
+
+void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,
+		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
+
+                char *currentCarac;
+                char currentLine[MAX_LINE_SIZE];
+                unsigned char quality;
+                unsigned int i, chr, nbchr = 0;
+                int lastChr = -1;
+                int next;
+                size_t lineSize, offset_read_in_source_file;
+                size_t coord;
+                size_t *readNumberByChr;
+                size_t counter = 0;
+                Read **reads = *preads;
+
+                for(i=0;i<MAX_LINE_SIZE;i++){
+                        currentLine[i]=0;
+                }
+		 //we take the first line *
+                 //before calling parsepaired, we know that localdata is at the begining of a read
+                 next = tokenizer(localData,'\n', currentLine);
+                 offset_read_in_source_file = start_offset;
+                 nbchr = nbchrom;
+                 readNumberByChr = (size_t*)calloc(nbchr, sizeof(size_t));
+
+		 while(next){
+
+                        lineSize = strlen(currentLine) + 1;
+			 //we update the offset in the
+			 //source file
+			currentLine[lineSize - 1] = '\n';
+                        currentLine[lineSize] = '\0';
+			//GO TO FLAG
+                        currentCarac = strstr(currentLine, "\t");
+			*currentCarac = '\0';
+			currentCarac++;
+			 currentCarac = strstr(currentCarac+1, "\t");
+                        if(currentCarac[1] == '*'){
+                                chr = (nbchr-1);
+                        }
+                        else
+                        {
+                                chr = getChr(currentCarac, chrNames, nbchr);
+
+                        }
+			currentCarac = strstr(currentCarac+1, "\t");
+			if (parse_mode == MODE_NAME) {
+                                coord = strtoull(currentLine, NULL, strlen(currentLine));
+				coord = hash_name(currentLine, 16);
+				strtoull(currentCarac, &currentCarac, 10);
+	                }
+			else {
+                                //TAKE COORD AND GO TO MAPQ
+                                coord = strtoull(currentCarac, &currentCarac, 10);
+
+                         quality = strtoull(currentCarac, &currentCarac, 10);}
+			
+			 if (chr < nbchr-2){                                
+				 if(quality >= threshold){
+
+                                       reads[chr]->next = malloc(sizeof(Read));
+                                       reads[chr]->next->coord = coord;
+                                       reads[chr]->next->quality = quality;
+                                       reads[chr]->next->offset_source_file=offset_read_in_source_file;
+                                       reads[chr]->next->offset = lineSize;
+                                       reads[chr] = reads[chr]->next;
+                                       readNumberByChr[chr]++;
+                                }
+
+			}
+			else if ((chr == 65535)){
+                                reads[nbchr-2]->next = malloc(sizeof(Read));
+                                reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                reads[nbchr-2]->next->offset = lineSize;
+                                reads[nbchr-2] = reads[nbchr-2]->next;
+                                readNumberByChr[nbchr-2]++;
+                        }    
+			else {
+                                reads[nbchr-1]->next = malloc(sizeof(Read));
+                                reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+                                reads[nbchr-1]->next->offset = lineSize;
+                                reads[nbchr-1] = reads[nbchr-1]->next;
+                                readNumberByChr[nbchr-1]++;
+                        }
+                                 			
+			offset_read_in_source_file += lineSize;
+
+			for(i=0;i<MAX_LINE_SIZE;i++){
+                                currentLine[i]=0;
+                        }
+                        next = tokenizer(NULL, '\n', currentLine);
+
+                        counter++;
+                }
+
+                fprintf(stderr, "rank %d ::: counter = %zu \n", rank, counter);
+
+                for(i=0;i<nbchr;i++){
+                        preadNumberByChr[0][i] += readNumberByChr[i];
+                }
+                free(readNumberByChr);
+}
+
+
+
+
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,
 		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
 

@@ -105,7 +105,7 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
  * \param preads The reads linked list. Will be set in this function.
  */
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
-
+void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 /**
  * \brief Extract integer number of current chromosome given as a string
  *

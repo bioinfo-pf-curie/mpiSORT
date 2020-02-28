@@ -152,7 +152,7 @@ int main (int argc, char *argv[]){
 	compression_level = 3;
 	parse_mode = MODE_OFFSET;
 	sort_name = "coordinate";
-	paired = 0;
+	paired = 0; /* by default reads are considered single*/ 
 	threshold = 0;
 	write_sam = 0;
 	/* Check command line */
@@ -393,8 +393,8 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-
+		if (paired == 1) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
 		int pos =0;
