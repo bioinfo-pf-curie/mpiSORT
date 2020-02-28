@@ -189,39 +189,62 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 			else if ((chr < (nbchr-2)) && ( mchr < (nbchr -2))){
 
 					//we found discordant reads
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-
-			}
-			else if ((chr == '*') && ( mchr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-			else if ((mchr == '*') && ( chr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-
-			else{
-					//we found unmapped pairs reads
 					reads[nbchr-2]->next = malloc(sizeof(Read));
 					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
 					reads[nbchr-2]->next->offset = lineSize;
 					reads[nbchr-2] = reads[nbchr-2]->next;
 					readNumberByChr[nbchr-2]++;
+
+			}
+			else if ((chr == '*') && ( mchr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-2]->next = malloc(sizeof(Read));
+					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-2]->next->offset = lineSize;
+					reads[nbchr-2] = reads[nbchr-2]->next;
+					readNumberByChr[nbchr-2]++;
+			}
+			else if ((mchr == '*') && ( chr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-2]->next = malloc(sizeof(Read));
+					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-2]->next->offset = lineSize;
+					reads[nbchr-2] = reads[nbchr-2]->next;
+					readNumberByChr[nbchr-2]++;
+			}
+			else if ((mchr == 65535) && ( chr == 65535)){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }
+                        else if ((mchr == 65535) && ( chr < (nbchr - 1))){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }
+                        else if ((chr == 65535) && ( mchr < (nbchr - 1))){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }                                                       
+			else{
+					//we found unmapped pairs reads
+					reads[nbchr-1]->next = malloc(sizeof(Read));
+					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-1]->next->offset = lineSize;
+					reads[nbchr-1] = reads[nbchr-1]->next;
+					readNumberByChr[nbchr-1]++;
 			}
 
 
@@ -270,5 +293,6 @@ int getChr(char *str, char** chrNames, int nbchr){
 	}
 
 	free(tmp_chr);
-	return i-1;
+	if (found) return i - 1;
+	else return i = 65535;
 }
