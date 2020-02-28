@@ -61,7 +61,7 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) wi
 
 * `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept).
 * `-n` sorts the read by their name (but it is not commonly used).
-
+* `-p` if the read are paired end (by defaut reads are single end)
 ### Output
 
 The output consists of gz files:
