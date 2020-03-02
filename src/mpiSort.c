@@ -1617,11 +1617,12 @@ int main (int argc, char *argv[]){
 
 static void usage(const char *prg) {
 
-	fprintf(stderr, "program: %s is a MPI version for sorting paired-end SAM file\n"
+	fprintf(stderr, "program: %s is a MPI version for sorting SAM file\n"
 		"version: %s\n"
 		"\nusage : mpirun -n TOTAL_PROC %s SAM_FILE OUTPUT_DIRECTORY -q QUALITY -n \n"
         "\n\tTOTAL_PROC tells how many cores will be used by MPI to parallelize the computation.\n"
         "\noptions:\n"
+        "\n\t-p if the read are paired-end (by defaut reads are single-end)\n"
         "\n\t-q INTEGER\n"
         "\t     filters the reads according to their quality. Reads quality under the\n"
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"

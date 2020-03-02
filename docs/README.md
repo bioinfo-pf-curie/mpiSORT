@@ -55,13 +55,14 @@ The `-n` options passed to `mpirun` indicates the number of processes to run in 
 
 ### Input
 
-A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) with paired reads and compliant with the SAM format. Only paired paired.
+A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) compliant with the SAM format.
 
 ### Options
 
 * `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept).
+* `-p` if the read are paired-end (by defaut reads are single-end)
 * `-n` sorts the read by their name (but it is not commonly used).
-* `-p` if the read are paired end (by defaut reads are single end)
+
 ### Output
 
 The output consists of gz files:
