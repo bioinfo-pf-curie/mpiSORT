@@ -104,7 +104,7 @@ A toy dataset (SAM file) is provided in the [examples/data](../examples/data) fo
 
 `mpirun` can be launched in a standard manner without using any job scheduling systems. For example:
 
-`mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
+`mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p`
 
 If needed, a file with the server name in `-host` option can be provided to `mpirun`. We invite you to read the `mpirun` documentation for more details.
 
@@ -126,7 +126,7 @@ In order to submit a job using [Slurm](https://slurm.schedmd.com/sbatch.html), y
 #SBATCH -o STDOUT_FILE.%j.o
 #SBATCH -e STDERR_FILE.%j.e
 
-mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
+mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p -q 0
 
 
 ```
@@ -145,7 +145,7 @@ In order to submit a job using [PBS/Torque](https://support.adaptivecomputing.co
 #PBS -o STDOUT_FILE.%j.o
 #PBS -e STDERR_FILE.%j.e
 
-mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0
+mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p -q 0
 
 ```
 
