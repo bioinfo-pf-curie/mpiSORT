@@ -24,7 +24,7 @@ fi
 
 cd ${PBS_O_WORKDIR}
 
-mpirun -n 4 mpiSORT data/HCC1187C_70K_READS.sam ${output_dir}  -q 0 2> ${output_dir}/mpiSORT.log
+mpirun -n 4 mpiSORT data/HCC1187C_70K_READS.sam ${output_dir} -p -q 0 2> ${output_dir}/mpiSORT.log
 
 echo "INFO: mpiSORT.log is available in ${output_dir}"
 
