@@ -122,7 +122,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired, write_sam;
+	int res, nbchr, i, paired, uniq_chr, write_sam;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -152,11 +152,12 @@ int main (int argc, char *argv[]){
 	compression_level = 3;
 	parse_mode = MODE_OFFSET;
 	sort_name = "coordinate";
-	paired = 0; /* by default reads are considered single*/ 
+	paired = 0; /* by default reads are considered single*/
+	uniq_chr = 0; 
 	threshold = 0;
 	write_sam = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpq:")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpuq:")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -171,6 +172,9 @@ int main (int argc, char *argv[]){
 			case 'p': /* Paired reads */
 				paired = 1;
 				break;
+			case 'u': /* We say we have only one chromosome in the file */
+                                uniq_chr = 1;
+                                break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
 				break;
@@ -211,6 +215,9 @@ int main (int argc, char *argv[]){
                 exit(2);
                 //err(1, "You ask for 0 cpu this is not possible !!\n");	
 	}
+
+	
+	//remove this condition to play with non power of 2
 	
         if ( (num_proc & (num_proc - 1)) ){
 		fprintf(stderr, "Number of processes must be power of two \n");
@@ -254,8 +261,39 @@ int main (int argc, char *argv[]){
 		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
 	}
-	chrNames[nbchr++] = strdup(DISCORDANT);
-	chrNames[nbchr++] = strdup(UNMAPPED);
+	
+	//in the case of a unique chromosome in the sam
+	//the discordant file is named chrX_discordant
+	if (uniq_chr) {
+		size_t v1 = strlen(chrNames[nbchr - 1]);
+		size_t v2 = strlen(DISCORDANT);
+		size_t v3 = strlen(UNMAPPED);
+		
+		char *vd = malloc(v1+v2+1);
+		char *vu = malloc(v1+v3+1);
+		vd[v1+v2]=0;
+		vu[v1+v3]=0;
+		//asprintf ( &u, chrNames[nbchr-1],"_" );
+		//asprintf ( &v, u, DISCORDANT);
+		vd=strdup(chrNames[nbchr - 1]);
+		strcat(vd,"_");
+		strcat(vd,DISCORDANT);
+		
+		vu=strdup(chrNames[nbchr - 1]);
+                strcat(vu,"_");
+                strcat(vu,UNMAPPED);
+
+		chrNames[nbchr++] = strdup(vd);
+		chrNames[nbchr++] = strdup(vu);		
+		
+		free(vu);
+		free(vd);
+	
+	}
+	else {
+		chrNames[nbchr++] = strdup(DISCORDANT);
+		chrNames[nbchr++] = strdup(UNMAPPED);
+	}
 
 	hsiz = x - xbuf;
 	hbuf = strndup(xbuf, hsiz);
@@ -1527,7 +1565,8 @@ int main (int argc, char *argv[]){
 					local_source_rank_sorted_trimmed,
 					local_data,
 					goff[rank],
-					first_local_readNum
+					first_local_readNum,
+					uniq_chr
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1565,7 +1604,8 @@ int main (int argc, char *argv[]){
 						headerSize,
 						header,
 						chrNames[i],
-						mpi_file_split_comm
+						mpi_file_split_comm,
+						uniq_chr
 					);
 
 			} //end if dimensions < split_rank
@@ -1592,7 +1632,7 @@ int main (int argc, char *argv[]){
 
 
 	free(goff);
-	free(local_data);
+	if (!uniq_chr)	free(local_data);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1623,6 +1663,7 @@ static void usage(const char *prg) {
         "\n\tTOTAL_PROC tells how many cores will be used by MPI to parallelize the computation.\n"
         "\noptions:\n"
         "\n\t-p if the read are paired-end (by defaut reads are single-end)\n"
+	"\n\t-u if the file contains only one chromosome for instance results from mpiBwaByChr (by defaut all chromosomes are present)\n"
         "\n\t-q INTEGER\n"
         "\t     filters the reads according to their quality. Reads quality under the\n"
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"

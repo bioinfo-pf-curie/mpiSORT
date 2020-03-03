@@ -62,13 +62,16 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept).
 * `-p` if the read are paired-end (by defaut reads are single-end)
 * `-n` sorts the read by their name (but it is not commonly used).
-
+* `-u` it the input SAM are results of mpiBWAByChr or if there is only one chromosome in the SAM file.
+ 
 ### Output
 
 The output consists of gz files:
 * one per chromosome (e.g. chr11.gz)
 * one for discordant reads (discordant.gz): discordants reads are reads where one pair aligns on a chromosome and the other pair aligns on another chromosome
 * one for unmapped reads (unmapped.gz): unmapped reads are reads without coordinates on any chromosome
+* when `-u` is set the unmapped and discordant file are prefixed with the chromosome's name 
+
 
 To index the SAM:
 `tabix -p sam chr11.gz`
@@ -88,6 +91,8 @@ The total memory used during the sorting is around one and a half the size of th
 For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and splitted over 512 MPI workers (i.e. cores) that corresponds to makes 3.3 Gb of memory per core.
 
 NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams
+
+To reduce further the memory pressure you can sort the chromosome individually. In this case produce one SAM file by chromosome (for instance with mpiBWAByChr) and pass it with the option -u to mpiSORT. The total memory needed in this case is around 2.5 the individual SAM size. This method is also better for cluster jobs distribution. 
 
 ### Cpu
 

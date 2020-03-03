@@ -61,7 +61,8 @@ void writeSam(
 		int *original_rank_source_offset_phase1,
 		char* data,
 		size_t offset_data_in_file,
-		size_t original_local_readNum
+		size_t original_local_readNum,
+		int uniq_chr
 		);
 
 
@@ -147,7 +148,8 @@ void writeSam_any_dim(
 		int* new_read_size,
 		int* new_rank,
 		char *data,
-		size_t start_offset_in_file);
+		size_t start_offset_in_file,
+		int uniq_chr);
 
 
 

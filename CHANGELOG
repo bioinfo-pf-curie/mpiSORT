@@ -5,6 +5,11 @@ version-1.0
 Preliminary releases
 
 
+Release from the 03/03/2020
+
+1) rename output file when sorting results of mpiBWAByChr now it is chrX_discordant. It contains essentially the supplementary discordant alignments
+2) remove memory pressure when sorting results of mpiBWAByChr. Now the memory needed is 2.5 the SAM size file.
+
 Release from the 13/02/2020
 
 1) Now only power are accepted for CPU number

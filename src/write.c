@@ -494,7 +494,8 @@ void writeSam(
 		int *source_rank_phase1,
 		char *data,
 		size_t start_offset_in_file,
-		size_t previous_local_readNum
+		size_t previous_local_readNum,
+		int uniq_chr
 		){
 
 
@@ -969,6 +970,7 @@ void writeSam(
 		}
 
 		free(new_local_offset_source_sorted_bruck2);
+		if (uniq_chr) free(data);
 		int res;
 
 		/*
@@ -1856,7 +1858,8 @@ void writeSam_any_dim(
 		int* new_read_size,
 		int* new_rank,
 		char *data,
-		size_t start_offset_in_file){
+		size_t start_offset_in_file,
+		int uniq_chr){
 
 
 	/*
@@ -3104,7 +3107,7 @@ void writeSam_any_dim(
 	}
 
 	int res;
-
+	if (uniq_chr) free(data);
 	/*
 	 * We unpack in a loop the same way
 	 */
