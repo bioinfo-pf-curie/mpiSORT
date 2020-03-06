@@ -59,18 +59,29 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 
 ### Options
 
-* `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept).
-* `-p` if the read are paired-end (by defaut reads are single-end)
-* `-n` sorts the read by their name (but it is not commonly used).
-* `-u` it the input SAM are results of mpiBWAByChr or if there is only one chromosome in the SAM file.
+* `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept) (optionnal)
+* `-p` if the read are paired-end (by defaut reads are single-end) (optionnal)
+* `-n` sorts the read by their name (but it is not commonly used) (optionnal)
+* `-u` it the input SAM are results of mpiBWAByChr or if there is only one chromosome in the SAM file (optionnal)
+
  
+
 ### Output
 
 The output consists of gz files:
 * one per chromosome (e.g. chr11.gz)
 * one for discordant reads (discordant.gz): discordants reads are reads where one pair aligns on a chromosome and the other pair aligns on another chromosome
 * one for unmapped reads (unmapped.gz): unmapped reads are reads without coordinates on any chromosome
-* when `-u` is set the unmapped and discordant file are prefixed with the chromosome's name 
+* when `-u` is set the unmapped and discordant file are prefixed with the chromosome's name
+
+Nota Bene:
+
+Discordant.sam produce by mpiSORT is different than discordant.sam produce by mpiBWAByChr. 
+
+1) If you use mpiSort with `-u` after mpiBWAByChr on a chromosome file the discordant.sam contains the supplementary alignments produce by BWA ie the discordant fragments with flag above 2048. 
+Supplementary alignment mapping on the same chromosome are not filtered. Also in that case unmapped.sam is not present because unmapped reads have been filtered by mpiBWAByChr.   
+
+2) If you use mpiSort after mpiBWA the discordant.sam contains all primary and secondary discordant alignments. And the unmapped is generally not empty. 
 
 
 To index the SAM:
