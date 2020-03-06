@@ -78,8 +78,8 @@ Nota Bene:
 
 Discordant.sam produce by mpiSORT is different than discordant.sam produce by mpiBWAByChr. 
 
-1) If you use mpiSort with `-u` after mpiBWAByChr on a chromosome file the discordant.sam contains the supplementary alignments produce by BWA ie the discordant fragments with flag above 2048. 
-Supplementary alignment mapping on the same chromosome are not filtered. Also in that case unmapped.sam is not present because unmapped reads have been filtered by mpiBWAByChr.   
+1) If you use mpiSort with `-u` after mpiBWAByChr on a chromosome file the discordant.sam contains the supplementary discordant alignments produce by BWA ie the discordant fragments with flag above 2048. 
+All the primary alignment are sorted. Also in that case unmapped.sam is not present because unmapped reads have been filtered by mpiBWAByChr.   
 
 2) If you use mpiSort after mpiBWA the discordant.sam contains all primary and secondary discordant alignments. And the unmapped is generally not empty. 
 
