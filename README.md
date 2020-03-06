@@ -17,5 +17,7 @@ Contacts: [frederic.jarlier@curie.fr](mailto:frederic.jarlier@curie.fr]), [phili
 
 ## Acknowledgements
 
+* [TGCC France Génomique](https://www.france-genomique.org/plateformes-et-equipements/plateforme-tgcc-arpajon/)
+
 ## Citation
 

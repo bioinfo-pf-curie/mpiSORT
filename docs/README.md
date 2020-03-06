@@ -74,14 +74,13 @@ The output consists of gz files:
 * one for unmapped reads (unmapped.gz): unmapped reads are reads without coordinates on any chromosome
 * when `-u` is set the unmapped and discordant file are prefixed with the chromosome's name
 
-Nota Bene:
+Note that:
 
-Discordant.sam produce by mpiSORT is different than discordant.sam produce by mpiBWAByChr. 
+1. the discordant.sam file produced by `mpiSORT` is different from the `discordant.sam` produce by `mpiBWAByChr` ([mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA) documentation).
 
-1) If you use mpiSort with `-u` after mpiBWAByChr on a chromosome file the discordant.sam contains the supplementary discordant alignments produce by BWA ie the discordant fragments with flag above 2048. 
-All the primary alignment are sorted. Also in that case unmapped.sam is not present because unmapped reads have been filtered by mpiBWAByChr.   
+2. if you use `mpiSORT` with `-u` option on a chromosome sam file produced by `mpiBWAByChr` (e.g. chr1.sam), `mpiSORT` will produce a file name discordant.sam that will contain the supplementary discordant alignments of produce by BWA (i.e the discordant fragments with a flag above 2048). All the primary alignments are sorted. In this case, the `unmapped.sam` will not be produced either by `mpiSORT` as the unmapped reads have already been filtered out by `mpiBWAByChr` in a dedicated file.
 
-2) If you use mpiSort after mpiBWA the discordant.sam contains all primary and secondary discordant alignments. And the unmapped is generally not empty. 
+3. if you use `mpiSORT` on a sam file produced by `mpiBWA`, the discordant.sam contains all primary and secondary discordant alignments. The unmapped.gz file is generally not empty.
 
 
 To index the SAM:
