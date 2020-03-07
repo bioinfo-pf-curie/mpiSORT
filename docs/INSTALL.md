@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* an implementation of the Message Passing Interface (MPI) standard such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) or [Intel® MPI Library](https://software.intel.com/en-us/mpi-library)
+* an implementation of the [Message Passing Interface (MPI)](https://en.wikipedia.org/wiki/Message_Passing_Interface) standard such as [mpich](https://www.mpich.org/), [open-mpi](https://www.open-mpi.org/) or [Intel® MPI Library](https://software.intel.com/en-us/mpi-library)
 * [zlib](https://zlib.net/)
 * [autoconf 2.69](https://www.gnu.org/software/autoconf/)
 * [automake 1.13](https://www.gnu.org/software/automake/)
@@ -11,7 +11,8 @@
 The MPI compiler but be available in your PATH or set with the CC environment variable.
 
 Custom options can be used with `configure` such as `--prefix` to set the destination installation path or `CC` for the MPI compiler, for example:
-`./configure CC=mpi_bin_path --prefix`
+
+`./configure CC=mpi_bin_path --prefix=${HOME}/local`
 
 This should be only what you need to know about how to use `./configure` but if you are interested, more details are available in the [README-configure](README-configure) and on the command line `./configure --help`.
 

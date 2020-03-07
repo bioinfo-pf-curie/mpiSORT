@@ -76,9 +76,9 @@ The output consists of gz files:
 
 Note that:
 
-1. the discordant.sam file produced by `mpiSORT` is different from the `discordant.sam` produce by `mpiBWAByChr` ([mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA) documentation).
+1. the discordant.sam file produced by `mpiSORT` is different from the `discordant.sam` produced by `mpiBWAByChr` ([mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA) documentation).
 
-2. if you use `mpiSORT` with `-u` option on a chromosome sam file produced by `mpiBWAByChr` (e.g. chr1.sam), `mpiSORT` will produce a file name discordant.sam that will contain the supplementary discordant alignments of produce by BWA (i.e the discordant fragments with a flag above 2048). All the primary alignments are sorted. In this case, the `unmapped.sam` will not be produced either by `mpiSORT` as the unmapped reads have already been filtered out by `mpiBWAByChr` in a dedicated file.
+2. if you use `mpiSORT` with `-u` option on a chromosome sam file produced by `mpiBWAByChr` (e.g. chr1.sam), `mpiSORT` will produce a file named discordant.sam that will contain the supplementary discordant alignments produced by BWA (i.e the discordant fragments with a flag above 2048). All the primary alignments are sorted. In this case, the `unmapped.sam` will not be produced either by `mpiSORT` as the unmapped reads have already been filtered out by `mpiBWAByChr` in a dedicated file.
 
 3. if you use `mpiSORT` on a sam file produced by `mpiBWA`, the discordant.sam contains all primary and secondary discordant alignments. The unmapped.gz file is generally not empty.
 
@@ -102,7 +102,7 @@ For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncb
 
 NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams
 
-To reduce further the memory pressure you can sort the chromosome individually. In this case produce one SAM file by chromosome (for instance with mpiBWAByChr) and pass it with the option -u to mpiSORT. The total memory needed in this case is around 2.5 the individual SAM size. This method is also better for cluster jobs distribution. 
+To reduce further the memory pressure you can sort the chromosome individually. In this case, you can use one SAM file by chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 the individual SAM size. This method is also better for cluster jobs distribution. 
 
 ### Cpu
 
@@ -189,7 +189,7 @@ Obviously, the performance of `mpiSORT` depends on the computing infrastruture. 
     * `lfs setstripe -c 12 -S 256m` (for input)
     * `lfs setstripe -c 12 -S 256m` (for output)
 
-Because of the development design the programm is optimized for HPC architecture. This programm runs better on low latency network and parallel file system. 
+Because of the development design the programm is optimized for HPC architecture. This program runs better on low latency network and parallel file system. 
 
 ## Algorithm
 
