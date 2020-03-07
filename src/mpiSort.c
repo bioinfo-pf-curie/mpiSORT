@@ -1,19 +1,15 @@
 /*
-   mpiSORT
-   Copyright (C) 2016-2017 Institut Curie / Institut Pasteur
-
-   mpiSORT is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   mpiSORT is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser Public License
-   along with mpiSORT.  If not, see <http://www.gnu.org/licenses/>.
+   This file is part of mpiSORT
+   
+   Copyright Institut Curie 2020
+   
+   This software is a computer program whose purpose is to sort SAM file.
+   
+   You can use, modify and/ or redistribute the software under the terms of license (see the LICENSE file for more details).
+   
+   The software is distributed in the hope that it will be useful, but "AS IS" WITHOUT ANY WARRANTY OF ANY KIND. Users are therefore encouraged to test the software's suitability as regards their requirements in conditions enabling the security of their systems and/or data. 
+   
+   The fact that you are presently reading this means that you have had knowledge of the license and that you accept its terms.
 */
 
 /*
@@ -55,12 +51,12 @@
 #include "parser.h"
 #include "preWrite.h"
 #include "write.h"
-#include "sort_any_dim.h"
-#include "mpiSort_utils.h"
-#include "write_utils.h"
-#include "qksort.h"
-#include "parabitonicsort2.h"
-#include "parabitonicsort3.h"
+#include "sortAnyDim.h"
+#include "mpiSortUtils.h"
+#include "writeUtils.h"
+#include "qkSort.h"
+#include "parallelBitonicSort2.h"
+#include "parallelBitonicSort3.h"
 
 
 /*
@@ -95,11 +91,13 @@
  * https://fs.hlrs.de/projects/craydoc/docs/books/S-2490-40/html-S-2490-40/chapter-sc4rx058-brbethke-paralleliowithmpi.html
  */
 
+// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 #define NB_PROC  "20" //numer of threads for writing
 #define CB_NODES "12" //numer of server for writing
 #define CB_BLOCK_SIZE  "268435456" /* 256 MBytes - should match FS block size */
 #define CB_BUFFER_SIZE  "536870912" /* multiple of the block size by the number of proc*/
 #define DATA_SIEVING_READ "enable"
+// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 /*
  * Capacity constant no need to change it
@@ -124,7 +122,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired, write_sam;
+	int res, nbchr, i, paired, uniq_chr, write_sam;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -154,11 +152,12 @@ int main (int argc, char *argv[]){
 	compression_level = 3;
 	parse_mode = MODE_OFFSET;
 	sort_name = "coordinate";
-	paired = 0;
+	paired = 0; /* by default reads are considered single*/
+	uniq_chr = 0; 
 	threshold = 0;
 	write_sam = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpq:")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpuq:")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -173,6 +172,9 @@ int main (int argc, char *argv[]){
 			case 'p': /* Paired reads */
 				paired = 1;
 				break;
+			case 'u': /* We say we have only one chromosome in the file */
+                                uniq_chr = 1;
+                                break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
 				break;
@@ -203,6 +205,27 @@ int main (int argc, char *argv[]){
 	assert(res == MPI_SUCCESS);
 	res = MPI_Comm_size(MPI_COMM_WORLD, &num_proc);
 	assert(res == MPI_SUCCESS);
+
+
+	/* Check if num_proc is a power of 2 or not null */
+        if (num_proc == 0){
+		fprintf(stderr, "Number of processes must be greater than 0 \n");
+		res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+                //err(1, "You ask for 0 cpu this is not possible !!\n");	
+	}
+
+	
+	//remove this condition to play with non power of 2
+	
+        if ( (num_proc & (num_proc - 1)) ){
+		fprintf(stderr, "Number of processes must be power of two \n");
+                res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+                //err(1, "Number of processes must be power of two \n");
+	}
 
 	g_rank = rank;
 	g_size = num_proc;
@@ -238,8 +261,39 @@ int main (int argc, char *argv[]){
 		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
 	}
-	chrNames[nbchr++] = strdup(UNMAPPED);
-	chrNames[nbchr++] = strdup(DISCORDANT);
+	
+	//in the case of a unique chromosome in the sam
+	//the discordant file is named chrX_discordant
+	if (uniq_chr) {
+		size_t v1 = strlen(chrNames[nbchr - 1]);
+		size_t v2 = strlen(DISCORDANT);
+		size_t v3 = strlen(UNMAPPED);
+		
+		char *vd = malloc(v1+v2+1);
+		char *vu = malloc(v1+v3+1);
+		vd[v1+v2]=0;
+		vu[v1+v3]=0;
+		//asprintf ( &u, chrNames[nbchr-1],"_" );
+		//asprintf ( &v, u, DISCORDANT);
+		vd=strdup(chrNames[nbchr - 1]);
+		strcat(vd,"_");
+		strcat(vd,DISCORDANT);
+		
+		vu=strdup(chrNames[nbchr - 1]);
+                strcat(vu,"_");
+                strcat(vu,UNMAPPED);
+
+		chrNames[nbchr++] = strdup(vd);
+		chrNames[nbchr++] = strdup(vu);		
+		
+		free(vu);
+		free(vd);
+	
+	}
+	else {
+		chrNames[nbchr++] = strdup(DISCORDANT);
+		chrNames[nbchr++] = strdup(UNMAPPED);
+	}
 
 	hsiz = x - xbuf;
 	hbuf = strndup(xbuf, hsiz);
@@ -255,8 +309,8 @@ int main (int argc, char *argv[]){
 	assert(munmap(xbuf, (size_t)st.st_size) != -1);
 	assert(close(fd) != -1);
 
-	//task FIRST FINE TUNING FINFO FOR READING OPERATIONS
 
+    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 	MPI_Info_create(&finfo);
 	/*
@@ -279,6 +333,8 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
+    
+    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 
 	//we open the input file
@@ -375,8 +431,8 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-
+		if (paired == 1) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
 		int pos =0;
@@ -1509,7 +1565,8 @@ int main (int argc, char *argv[]){
 					local_source_rank_sorted_trimmed,
 					local_data,
 					goff[rank],
-					first_local_readNum
+					first_local_readNum,
+					uniq_chr
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1547,7 +1604,8 @@ int main (int argc, char *argv[]){
 						headerSize,
 						header,
 						chrNames[i],
-						mpi_file_split_comm
+						mpi_file_split_comm,
+						uniq_chr
 					);
 
 			} //end if dimensions < split_rank
@@ -1574,7 +1632,7 @@ int main (int argc, char *argv[]){
 
 
 	free(goff);
-	free(local_data);
+	if (!uniq_chr)	free(local_data);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1599,22 +1657,34 @@ int main (int argc, char *argv[]){
 
 static void usage(const char *prg) {
 
-	fprintf(stderr, "Program: MPI version for sorting aligned FASTQ data\n"
-		"Version: v%s\n"
-		"Contact 1: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
-		"usage : mpirun -n TOTAL_PROC %s FILE_TO_SORT OUTPUT_FILE -q QUALITY \n"
-		"output : a gz files per chromosome, a gz file of unmapped reads \n"
-		"                 a gz files of discordants reads. \n"
-		"Discordants reads are reads where one pairs align on a chromosome \n"
-		"and the other pair align on another chromosome \n"
-		"Unmapped reads are reads without coordinates on any genome \n"
-		"Requirements : automake 1.15, autoconf 2.69 and a MPI compiler"
-		""
-		""
-		"For perfomances matters the file you want to sort could be \n"
-		"stripped on parallel file system. \n"
-		"With Lustre you mention it with lfs setstripe command like this \n"
-		"lfs set stripe -c stripe_number -s stripe_size folder           \n"
-		,VERSION, prg);
+	fprintf(stderr, "program: %s is a MPI version for sorting SAM file\n"
+		"version: %s\n"
+		"\nusage : mpirun -n TOTAL_PROC %s SAM_FILE OUTPUT_DIRECTORY -q QUALITY -n \n"
+        "\n\tTOTAL_PROC tells how many cores will be used by MPI to parallelize the computation.\n"
+        "\noptions:\n"
+        "\n\t-p if the read are paired-end (by defaut reads are single-end)\n"
+	"\n\t-u if the file contains only one chromosome for instance results from mpiBwaByChr (by defaut all chromosomes are present)\n"
+        "\n\t-q INTEGER\n"
+        "\t     filters the reads according to their quality. Reads quality under the\n"
+        "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"
+        "\n\t-n\n"
+        "\t     sorts the read by their name (but it is not commonly used).\n"
+        "\ninput: input file is a sam file of paired reads\n"
+        "\noutput: set of gz files with\n"
+        "\t* one per chromosome (e.g. chr11.gz)\n"
+        "\t* one for discordant reads (discordant.gz): discordants reads are reads \n"
+        "\t  where one pair aligns on a chromosome and the other pair aligns on \n"
+        "\t  another chromosome \n"
+        "\t* one for unmapped reads (unmapped.gz): unmapped reads are reads without \n"
+        "\t  coordinates on any chromosome \n"
+		"\nexample : mpirun -n 4 %s  HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0 -n \n"
+        "\nFor more detailed documentation visit:\n"
+        "\thttps://github.com/bioinfo-pf-curie/mpiSORT\n"
+        "\nCopyright (C) 2020  Institut Curie <http://www.curie.fr> \n"
+        "\nThis program comes with ABSOLUTELY NO WARRANTY. \n"
+        "This is free software, and you are welcome to redistribute it \n"
+        "under the terms of the CeCILL License. \n"
+		"\ncontact: Frederic Jarlier (frederic.jarlier@curie.fr) \n"
+		,prg, VERSION, prg, prg);
 
 	return; }

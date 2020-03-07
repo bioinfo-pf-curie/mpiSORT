@@ -1,19 +1,15 @@
 /*
-   mpiSORT
-   Copyright (C) 2016-2017 Institut Curie / Institut Pasteur
-
-   mpiSORT is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   mpiSORT is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser Public License
-   along with mpiSORT.  If not, see <http://www.gnu.org/licenses/>.
+   This file is part of mpiSORT
+   
+   Copyright Institut Curie 2020
+   
+   This software is a computer program whose purpose is to sort SAM file.
+   
+   You can use, modify and/ or redistribute the software under the terms of license (see the LICENSE file for more details).
+   
+   The software is distributed in the hope that it will be useful, but "AS IS" WITHOUT ANY WARRANTY OF ANY KIND. Users are therefore encouraged to test the software's suitability as regards their requirements in conditions enabling the security of their systems and/or data. 
+   
+   The fact that you are presently reading this means that you have had knowledge of the license and that you accept its terms.
 */
 
 /*
@@ -89,6 +85,114 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
 
 }
 
+
+
+void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,
+		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
+
+                char *currentCarac;
+                char currentLine[MAX_LINE_SIZE];
+                unsigned char quality;
+                unsigned int i, chr, nbchr = 0;
+                int lastChr = -1;
+                int next;
+                size_t lineSize, offset_read_in_source_file;
+                size_t coord;
+                size_t *readNumberByChr;
+                size_t counter = 0;
+                Read **reads = *preads;
+
+                for(i=0;i<MAX_LINE_SIZE;i++){
+                        currentLine[i]=0;
+                }
+		 //we take the first line *
+                 //before calling parsepaired, we know that localdata is at the begining of a read
+                 next = tokenizer(localData,'\n', currentLine);
+                 offset_read_in_source_file = start_offset;
+                 nbchr = nbchrom;
+                 readNumberByChr = (size_t*)calloc(nbchr, sizeof(size_t));
+
+		 while(next){
+
+                        lineSize = strlen(currentLine) + 1;
+			 //we update the offset in the
+			 //source file
+			currentLine[lineSize - 1] = '\n';
+                        currentLine[lineSize] = '\0';
+			//GO TO FLAG
+                        currentCarac = strstr(currentLine, "\t");
+			*currentCarac = '\0';
+			currentCarac++;
+			 currentCarac = strstr(currentCarac+1, "\t");
+                        if(currentCarac[1] == '*'){
+                                chr = (nbchr-1);
+                        }
+                        else
+                        {
+                                chr = getChr(currentCarac, chrNames, nbchr);
+
+                        }
+			currentCarac = strstr(currentCarac+1, "\t");
+			if (parse_mode == MODE_NAME) {
+                                coord = strtoull(currentLine, NULL, strlen(currentLine));
+				coord = hash_name(currentLine, 16);
+				strtoull(currentCarac, &currentCarac, 10);
+	                }
+			else {
+                                //TAKE COORD AND GO TO MAPQ
+                                coord = strtoull(currentCarac, &currentCarac, 10);
+
+                         quality = strtoull(currentCarac, &currentCarac, 10);}
+			
+			 if (chr < nbchr-2){                                
+				 if(quality >= threshold){
+
+                                       reads[chr]->next = malloc(sizeof(Read));
+                                       reads[chr]->next->coord = coord;
+                                       reads[chr]->next->quality = quality;
+                                       reads[chr]->next->offset_source_file=offset_read_in_source_file;
+                                       reads[chr]->next->offset = lineSize;
+                                       reads[chr] = reads[chr]->next;
+                                       readNumberByChr[chr]++;
+                                }
+
+			}
+			else if ((chr == 65535)){
+                                reads[nbchr-2]->next = malloc(sizeof(Read));
+                                reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                reads[nbchr-2]->next->offset = lineSize;
+                                reads[nbchr-2] = reads[nbchr-2]->next;
+                                readNumberByChr[nbchr-2]++;
+                        }    
+			else {
+                                reads[nbchr-1]->next = malloc(sizeof(Read));
+                                reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+                                reads[nbchr-1]->next->offset = lineSize;
+                                reads[nbchr-1] = reads[nbchr-1]->next;
+                                readNumberByChr[nbchr-1]++;
+                        }
+                                 			
+			offset_read_in_source_file += lineSize;
+
+			for(i=0;i<MAX_LINE_SIZE;i++){
+                                currentLine[i]=0;
+                        }
+                        next = tokenizer(NULL, '\n', currentLine);
+
+                        counter++;
+                }
+
+                fprintf(stderr, "rank %d ::: counter = %zu \n", rank, counter);
+
+                for(i=0;i<nbchr;i++){
+                        preadNumberByChr[0][i] += readNumberByChr[i];
+                }
+                free(readNumberByChr);
+}
+
+
+
+
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,
 		int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads){
 
@@ -128,7 +232,7 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 			//GO TO FLAG
 			currentCarac = strstr(currentLine, "\t");
 			
-			// mandatory for sorting by name
+			//mandatory to sort by name
 			*currentCarac = '\0';
 			
 			currentCarac++;
@@ -193,39 +297,62 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 			else if ((chr < (nbchr-2)) && ( mchr < (nbchr -2))){
 
 					//we found discordant reads
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-
-			}
-			else if ((chr == '*') && ( mchr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-			else if ((mchr == '*') && ( chr < (nbchr -2))){
-
-					//we found discordant reads with one pair unmapped
-					reads[nbchr-1]->next = malloc(sizeof(Read));
-					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
-					reads[nbchr-1]->next->offset = lineSize;
-					reads[nbchr-1] = reads[nbchr-1]->next;
-					readNumberByChr[nbchr-1]++;
-			}
-
-			else{
-					//we found unmapped pairs reads
 					reads[nbchr-2]->next = malloc(sizeof(Read));
 					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
 					reads[nbchr-2]->next->offset = lineSize;
 					reads[nbchr-2] = reads[nbchr-2]->next;
 					readNumberByChr[nbchr-2]++;
+
+			}
+			else if ((chr == '*') && ( mchr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-2]->next = malloc(sizeof(Read));
+					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-2]->next->offset = lineSize;
+					reads[nbchr-2] = reads[nbchr-2]->next;
+					readNumberByChr[nbchr-2]++;
+			}
+			else if ((mchr == '*') && ( chr < (nbchr -2))){
+
+					//we found discordant reads with one pair unmapped
+					reads[nbchr-2]->next = malloc(sizeof(Read));
+					reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-2]->next->offset = lineSize;
+					reads[nbchr-2] = reads[nbchr-2]->next;
+					readNumberByChr[nbchr-2]++;
+			}
+			else if ((mchr == 65535) && ( chr == 65535)){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }
+                        else if ((mchr == 65535) && ( chr < (nbchr - 1))){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }
+                        else if ((chr == 65535) && ( mchr < (nbchr - 1))){
+
+                                        reads[nbchr-2]->next = malloc(sizeof(Read));
+                                        reads[nbchr-2]->next->offset_source_file=offset_read_in_source_file;
+                                        reads[nbchr-2]->next->offset = lineSize;
+                                        reads[nbchr-2] = reads[nbchr-2]->next;
+                                        readNumberByChr[nbchr-2]++;
+                        }                                                       
+			else{
+					//we found unmapped pairs reads
+					reads[nbchr-1]->next = malloc(sizeof(Read));
+					reads[nbchr-1]->next->offset_source_file=offset_read_in_source_file;
+					reads[nbchr-1]->next->offset = lineSize;
+					reads[nbchr-1] = reads[nbchr-1]->next;
+					readNumberByChr[nbchr-1]++;
 			}
 
 
@@ -274,5 +401,6 @@ int getChr(char *str, char** chrNames, int nbchr){
 	}
 
 	free(tmp_chr);
-	return i-1;
+	if (found) return i - 1;
+	else return i = 65535;
 }

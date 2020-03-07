@@ -14,9 +14,10 @@
 
 /*
    Module:
-     mergeSort.c
+    sortAnyDim.h
 
-   Authors:
+   	Authors:
+
     Frederic Jarlier, 	Institut Curie
 	Nicolas Joly, 		Institut Pasteur
 	Nicolas Fedy,		Institut Curie
@@ -25,57 +26,39 @@
 	Paul Paganiban,		Institut Curie
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 
-#include "mergeSort.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
-Read* mergeSort(Read* c, size_t n){
-	size_t q, p;
-	Read* d;
+#include <mpi.h>
 
-	q = n / 2;
-	p = n - q;
+#include "qkSort.h"
+#include "writeUtils.h"
+#include "parallelBitonicSort.h"
 
-	if(p > 1){
-		d = mergeSort(c, p);
-		if(q > 1)
-			mergeSort(d, q);
-	}
-	else
-		d = c->next;
-	d = structMerge(c, p, d, q);
 
-	return d;
-}
-
-Read* structMerge(Read* c, size_t p, Read* d, size_t q){
-
-	Read* t;
-
-	while(1){
-
-		if (c->next->coord > d->next->coord){
-			t = d->next;
-			d->next = t->next;
-			t->next = c->next;
-			c->next = t;
-			if (q == 1)
-				break;
-			--q;
-		}
-		else {
-			if(p == 1){
-				while (q > 0){
-					d = d->next;
-					--q;
-				}
-				break;
-			}
-			--p;
-		}
-		c = c->next;
-	}
-	return d;
-}
+void parallel_sort_any_dim(						//dimensions for parabitonic
+		int dimensions,
+		size_t local_readNum,
+		int split_rank,
+		int split_size,
+		Read **reads,
+		int i, 									//chromosom number
+		int chosen_split_rank,
+		MPI_Comm split_comm,
+		size_t *localReadNumberByChr,
+		char *local_data,
+		char *file_name,
+		char *output_dir,
+		MPI_Info finfo,
+		int compression_level,
+		size_t total_reads_by_chr,
+		size_t start_offset_in_file,
+		size_t headerSize,
+		char* header,
+		char *chrName,
+		MPI_File mpi_file_split_comm,
+		int uniq_chr
+		);

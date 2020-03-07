@@ -14,7 +14,7 @@
 
 /*
    Module:
-     mergeSort.c
+     qkSort.h
 
    Authors:
     Frederic Jarlier, 	Institut Curie
@@ -25,57 +25,21 @@
 	Paul Paganiban,		Institut Curie
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
+#ifndef QKSORT_H
+#define QKSORT_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+extern size_t *base_arr2;
+
+int compare_size_t(const void *a, const void *b);
+
+int compare_size_t_V2(const void *a, const void *b);
+
+int partition(void *data, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
+
+int qksort(void *data, size_t size, size_t esize, size_t i, size_t k, int (*compare)(const void *key1, const void *key2));
+
 #endif
-
-#include "mergeSort.h"
-
-Read* mergeSort(Read* c, size_t n){
-	size_t q, p;
-	Read* d;
-
-	q = n / 2;
-	p = n - q;
-
-	if(p > 1){
-		d = mergeSort(c, p);
-		if(q > 1)
-			mergeSort(d, q);
-	}
-	else
-		d = c->next;
-	d = structMerge(c, p, d, q);
-
-	return d;
-}
-
-Read* structMerge(Read* c, size_t p, Read* d, size_t q){
-
-	Read* t;
-
-	while(1){
-
-		if (c->next->coord > d->next->coord){
-			t = d->next;
-			d->next = t->next;
-			t->next = c->next;
-			c->next = t;
-			if (q == 1)
-				break;
-			--q;
-		}
-		else {
-			if(p == 1){
-				while (q > 0){
-					d = d->next;
-					--q;
-				}
-				break;
-			}
-			--p;
-		}
-		c = c->next;
-	}
-	return d;
-}

@@ -1,19 +1,15 @@
 /*
-   mpiSORT
-   Copyright (C) 2016-2017 Institut Curie / Institut Pasteur
-
-   mpiSORT is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   mpiSORT is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser Public License
-   along with mpiSORT.  If not, see <http://www.gnu.org/licenses/>.
+   This file is part of mpiSORT
+   
+   Copyright Institut Curie 2020
+   
+   This software is a computer program whose purpose is to sort SAM file.
+   
+   You can use, modify and/ or redistribute the software under the terms of license (see the LICENSE file for more details).
+   
+   The software is distributed in the hope that it will be useful, but "AS IS" WITHOUT ANY WARRANTY OF ANY KIND. Users are therefore encouraged to test the software's suitability as regards their requirements in conditions enabling the security of their systems and/or data. 
+   
+   The fact that you are presently reading this means that you have had knowledge of the license and that you accept its terms.
 */
 
 /*
@@ -40,8 +36,8 @@
 #include "write.h"
 #include "bgzf.h"
 #include "bgzf.c"
-#include "mpiSort_utils.h"
-#include "parabitonicsort2.h"
+#include "mpiSortUtils.h"
+#include "parallelBitonicSort2.h"
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum)
 {
@@ -498,7 +494,8 @@ void writeSam(
 		int *source_rank_phase1,
 		char *data,
 		size_t start_offset_in_file,
-		size_t previous_local_readNum
+		size_t previous_local_readNum,
+		int uniq_chr
 		){
 
 
@@ -973,6 +970,7 @@ void writeSam(
 		}
 
 		free(new_local_offset_source_sorted_bruck2);
+		if (uniq_chr) free(data);
 		int res;
 
 		/*
@@ -1401,17 +1399,15 @@ void writeSam(
 		sprintf(path, "%s/%s.gz", output_dir, chrName);
 
 
-		//task FINE TUNING FINFO FOR WRITING OPERATIONS
-
+		// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 		MPI_Info_set(finfo,"striping_factor","12");
 		//MPI_Info_set(finfo,"striping_unit","1610612736"); //1G striping
 		MPI_Info_set(finfo,"striping_unit","268435456"); //256 Mo
-
 		MPI_Info_set(finfo,"nb_proc","12");
 		MPI_Info_set(finfo,"cb_nodes","12");
 		MPI_Info_set(finfo,"cb_block_size","4194304"); /* 4194304 = 4 MBytes - should match FS block size */
 		//MPI_Info_set(finfo,"cb_buffer_size","1610612736"); /* 128 MBytes (Optional) */
-
+		// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 		ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 
@@ -1862,7 +1858,8 @@ void writeSam_any_dim(
 		int* new_read_size,
 		int* new_rank,
 		char *data,
-		size_t start_offset_in_file){
+		size_t start_offset_in_file,
+		int uniq_chr){
 
 
 	/*
@@ -3110,7 +3107,7 @@ void writeSam_any_dim(
 	}
 
 	int res;
-
+	if (uniq_chr) free(data);
 	/*
 	 * We unpack in a loop the same way
 	 */
@@ -3511,7 +3508,7 @@ void writeSam_any_dim(
 		fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Opening the file %s \n", rank, path );
 
 
-	//task FINE TUNING FINFO FOR WRITING OPERATIONS
+    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 	/*
 	MPI_Info_set(finfo,"striping_factor","128");
 	MPI_Info_set(finfo,"striping_unit","1610612736"); //1G striping
@@ -3520,6 +3517,7 @@ void writeSam_any_dim(
 	MPI_Info_set(finfo,"cb_block_size","1610612736"); // 4194304 MBytes - should match FS block size
 	MPI_Info_set(finfo,"cb_buffer_size","1610612736"); // 128 MBytes (Optional)
 	*/
+    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 	ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 

@@ -1,15 +1,15 @@
 
-bin_PROGRAMS = psort
+bin_PROGRAMS = mpiSORT
 noinst_HEADERS = $(HDR)
 
-psort_SOURCES = $(SRC)
+mpiSORT_SOURCES = $(SRC)
 
-SRC = mpiSort.c mpiSort_utils.c mergeSort.c parabitonicsort.c \
-	parabitonicsort2.c parabitonicsort3.c qksort.c parser.c \
-	tokenizer.c preWrite.c write.c  write_utils.c sort_any_dim.c
+SRC = mpiSort.c mpiSortUtils.c mergeSort.c parallelBitonicSort.c \
+	parallelBitonicSort2.c parallelBitonicSort3.c qkSort.c parser.c \
+	tokenizer.c preWrite.c write.c  writeUtils.c sortAnyDim.c
 
-HDR = mpiSort_utils.h mergeSort.h parabitonicsort.h \
-	parabitonicsort2.h parabitonicsort3.h qksort.h \
-	parser.h tokenizer.h preWrite.h write.h write_utils.h \
-	bgzf.c bgzf.h khash.h sort_any_dim.h \
+HDR = mpiSortUtils.h mergeSort.h parallelBitonicSort.h \
+	parallelBitonicSort2.h parallelBitonicSort3.h qkSort.h \
+	parser.h tokenizer.h preWrite.h write.h writeUtils.h \
+	bgzf.c bgzf.h khash.h sortAnyDim.h \
 	compat.h
