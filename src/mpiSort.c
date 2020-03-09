@@ -265,30 +265,8 @@ int main (int argc, char *argv[]){
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
-		size_t v1 = strlen(chrNames[nbchr - 1]);
-		size_t v2 = strlen(DISCORDANT);
-		size_t v3 = strlen(UNMAPPED);
-		
-		char *vd = malloc(v1+v2+1);
-		char *vu = malloc(v1+v3+1);
-		vd[v1+v2]=0;
-		vu[v1+v3]=0;
-		//asprintf ( &u, chrNames[nbchr-1],"_" );
-		//asprintf ( &v, u, DISCORDANT);
-		vd=strdup(chrNames[nbchr - 1]);
-		strcat(vd,"_");
-		strcat(vd,DISCORDANT);
-		
-		vu=strdup(chrNames[nbchr - 1]);
-                strcat(vu,"_");
-                strcat(vu,UNMAPPED);
-
-		chrNames[nbchr++] = strdup(vd);
-		chrNames[nbchr++] = strdup(vu);		
-		
-		free(vu);
-		free(vd);
-	
+		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], DISCORDANT);
+		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], UNMAPPED);
 	}
 	else {
 		chrNames[nbchr++] = strdup(DISCORDANT);
