@@ -17,7 +17,7 @@
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
-
+* [FAQ](*faq) 
 
 ## Installation
 
@@ -237,3 +237,15 @@ Presentations about our program:
 * Journées nationales du DEVeloppement logiciel, 2015 [pdf](http://devlog.cnrs.fr/_media/jdev2015/poster_jdev2015_institut_curie_hpc_sequencage_jarlier.pdf?id=jdev2015%3Aposters&cache=cache)
 * OpenSFS conference Lustre LAD, 2016 [pdf](http://www.eofs.eu/_media/events/lad16/03_speedup_whole_genome_analysis_jarlier.pdf)
 * Journées nationales du DEVeloppement logiciel, 2017 [pdf](http://devlog.cnrs.fr/_media/jdev2017/poster_jdev2017_hpcngs_frederic_jarlier.pdf?id=jdev2017%3Aposters&cache=cache)
+
+## FAQ
+
+1) Q: Is it a mandatory to have a power of 2 keys (reads) in my SAM files?
+
+   A: No it is not a mandatory. It is best case but in practice and most of the time it is impossible. The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much. Why? Because the algorithm works in (log(N))² time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds are set and your sorting time is predictable (or real time). In conclusion each time you increase the keys with a factor of 2 you increase the time by a factor of (log(2))^2.  
+
+
+
+
+
+
