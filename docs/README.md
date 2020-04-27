@@ -17,7 +17,7 @@
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
-* [FAQ](*faq) 
+* [FAQ](#faq) 
 
 ## Installation
 
