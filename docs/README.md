@@ -180,12 +180,12 @@ echo $?
 
 and then it's ok. 
 
-We conclude that the limit amount of SAM we can give to a job is 2.5 GB. Now according to this number you can compute whatever the sample size the minimum number of CPU.
-If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB or 6.25 GB/cpu.
+We conclude that the limit amount of SAM we can give to a job is 2.5 GB. Now according to this number we can compute according to the sample size the minimum number of CPU.
+If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB (see memory section) or 6.25 GB/cpu.
 
 Be carefull as a CPU can manage efficiently a fixed amount stay below the ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum performances.   
      
-We are not sure if this limitation is due to MPI version, we have serverals leads. This is still under investigation.
+We are not sure if this limitation is due to MPI version or to our Bruck implementation, we have serverals leads. This is still under investigation.
 
 ## Examples
 
