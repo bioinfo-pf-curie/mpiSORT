@@ -9,7 +9,7 @@
 * [Informatic resources](#informatic-resources)
     * [Memory](#memory)
     * [Cpu](#cpu)
-    * [Benchmark](#bench)
+    * [Benchmark](#benchmark)
 * [Examples](#examples)
     * [Standard](#standard)
     * [Slurm](#slurm)
@@ -18,7 +18,7 @@
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
-* [FAQ](#faq) 
+* [FAQ](#faq)
 
 ## Installation
 
@@ -111,85 +111,88 @@ Due to the bitonic sorting, the algorithm is optimized for power of 2 number of 
 
 ### Benchmark
 
-This section provides some guidelines to benchmark mpiBWA and bwa with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running mpiSORT on your cluster.
+This section provides some guidelines to benchmark `mpiSORT` with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running `mpiSORT` on your cluster.
 
-mpiSORT is memory bounded. It means there is a maximum amount of memory a MPI job can use. From our experiences it depends on the architectures and (maybe) on the MPI version.
+`mpiSORT` is memory bounded. It means that there is a maximum amount of memory that a MPI job can use. From our experience, it depends on the architecture and (maybe) on the MPI version.
 Here we present the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
 
-The benchmark is different from mpiBWA. the idea is to vary the sample size with a fixed number of jobs. 
+This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
 
-For instance we take 2 MPI jobs and we increase the sample size.
+For example, we take 2 MPI jobs and we increase the sample size .
 
 #### Assess the memory baseline with mpiSORT
 
-We take a small sample of 1GB (sample1.sam).
+As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step.
+
+Take a small sample of 1GB (sample1.sam).
 
 ```
 mpirun -n 2 mpiSort sample1GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
 
-We take a small sample of 2GB.
+Take a small sample of 2GB.
 
 ```
 mpirun -n 2 mpiSort sample2GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
 
-We take a small sample of 3GB.
+Take a small sample of 3GB.
 
 ```
 mpirun -n 2 mpiSort sample3GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
 
-We take a small sample of 4GB.
+Take a small sample of 4GB.
 
 ```
 mpirun -n 2 mpiSort sample4GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
 
-We take a small sample of 5GB.
+Take a small sample of 5GB.
 
 ```
 mpirun -n 2 mpiSort sample5GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
 
-We take a small sample of 6GB.
+Take a small sample of 6GB.
+
+```
+mpirun -n 2 mpiSort sample5GB.sam -u -q 0
+echo $?
+0 ### it works!
+
+```
+Take a small sample of 7GB.
 
 ```
 mpirun -n 2 mpiSort sample6GB.sam -u -q 0
 echo $?
-1
+1 ### it fails!
 ```
 
-So a sample a 6GB mpiSORT does not pass the test with 2 jobs. 
+Thus, a SAM file of 6GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that the two cores running the job did not have enough memory.
 
-Increase the number of jobs
+Therefore, try to increase the number of jobs to use more cores on more nodes to have access to more memory.
 
 ```
-mpirun -n 4 mpiSort sample6GB.sam -u -q 0
+mpirun -N 2 -n 2 mpiSort sample6GB.sam -u -q 0
 echo $?
-0
+0 ### it works!
 ```
-
-and then it's ok. 
 
 #### Conclusion
 
-We conclude that the limit amount of SAM we can give to a job is 2.5GB. Now according to this number we can compute, according to the sample size, the minimum number of CPU.
-If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB (see memory section) or 6.25 GB/cpu.
-
-Be carefull as a CPU can manage efficiently a fixed amount stay below this ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum effciency.   
-     
-We are not sure if this limitation is due to MPI version or to our Bruck implementation, we have serverals leads. This is still under investigation.
+From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is 2.5GB. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)) or 6.25 GB/core. Be careful to be not too close to this ration to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
 
 ## Examples
 
@@ -325,9 +328,4 @@ Presentations about our program:
 1) Q: Is it a mandatory to have a power of 2 keys (reads) in my SAM files?
 
    A: No it is not a mandatory. It is best case but in practice and most of the time it is impossible (you can think of the FFTW tool). The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much, around 9% in time with N=2^20 and N=2^21  (according to your computing infrastructure). Why? Because the algorithm works in O(log²) time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds are set and your sorting time is predictable (or real time). In conclusion each time the keys increase with a factor of 2 the time increases by (N/(N+1))². The counterpart is you will need more ressources.  
-
-
-
-
-
 
