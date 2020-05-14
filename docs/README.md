@@ -184,7 +184,7 @@ echo $?
 
 #### Conclusion
 
-From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is 2.5GB. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)). 2.5GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 6.25GB. Be careful to be not too close to this ratio to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
+From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is beetwen 2GB and 2.5GB. With further tests we see 2Gb is the upper limit. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)). 2GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 4.5GB. Be careful to be not too close to this ratio to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
 
 ## Examples
 
