@@ -124,46 +124,56 @@ We take a small sample of 1GB (sample1.sam).
 
 ```
 mpirun -n 2 mpiSort sample1GB.sam -u -q 0
+echo $?
+0
 ```
 
 We take a small sample of 2GB (sample2.sam).
 
 ```
 mpirun -n 2 mpiSort sample2GB.sam -u -q 0
+echo $?
+0
 ```
 
 We take a small sample of 3GB (sample3.sam).
 
 ```
-mpirun -n 2 mpiSort sample3GB.sam -u -q 0  
+mpirun -n 2 mpiSort sample3GB.sam -u -q 0
+echo $?
+0
 ```
 
 We take a small sample of 4GB (sample4.sam).
 
 ```
 mpirun -n 2 mpiSort sample4GB.sam -u -q 0
+echo $?
+0
 ```
 
 We take a small sample of 5GB (sample4.sam).
 
 ```
 mpirun -n 2 mpiSort sample5GB.sam -u -q 0
+echo $?
+0
 ```
 
 We take a small sample of 6GB (sample4.sam).
 
 ```
 mpirun -n 2 mpiSort sample6GB.sam -u -q 0
+echo $?
+1
 ```
 
-So for a sample a 6GB mpiSORT does not finish.
+So for a sample a 6GB mpiSORT does not pass the test.
 
 We conclude that the limit amount of SAM we can give to a job is 2.5 GB. Now according to this number you can compute whatever the sample size the minimum number of CPU.
 If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB or 6.25 GB/cpu.
 
-As a CPU can manage efficiently a fixed amount we recommand to stay below the ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum performances.   
-
-
+But be carefull as a CPU can manage efficiently a fixed amount stay below the ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum performances.   
      
 
 ## Examples
