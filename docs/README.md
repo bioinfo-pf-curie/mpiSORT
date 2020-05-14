@@ -105,6 +105,8 @@ NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamp
 
 To reduce further the memory required you can use as input a SAM file that contains the reads from only one chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 times the size of the individual SAM size. This method is also better for cluster jobs distribution.
 
+To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
+
 ### Cpu
 
 Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is mandatory to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
@@ -118,7 +120,6 @@ Here we present the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
 
 This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
 
-
 #### Assess the memory baseline with mpiSORT
 
 As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step using 2 MPI jobs to use both cores of your node.
@@ -126,7 +127,7 @@ As a toy example, assume that you have a node with 2 cores and 16GB of RAM memor
 Take a small sample of 1GB (sample1.sam).
 
 ```
-mpirun -n 2 mpiSort sample1GB.sam -u -q 0
+mpirun -N 1 -n 2 mpiSort sample1GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
@@ -134,7 +135,7 @@ echo $?
 Take a small sample of 2GB.
 
 ```
-mpirun -n 2 mpiSort sample2GB.sam -u -q 0
+mpirun -N 1 -n 2 mpiSort sample2GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
@@ -142,7 +143,7 @@ echo $?
 Take a small sample of 3GB.
 
 ```
-mpirun -n 2 mpiSort sample3GB.sam -u -q 0
+mpirun -N 1 -n 2 mpiSort sample3GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
@@ -150,7 +151,7 @@ echo $?
 Take a small sample of 4GB.
 
 ```
-mpirun -n 2 mpiSort sample4GB.sam -u -q 0
+mpirun -N 1 -n 2 mpiSort sample4GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
@@ -158,7 +159,7 @@ echo $?
 Take a small sample of 5GB.
 
 ```
-mpirun -n 2 mpiSort sample5GB.sam -u -q 0
+mpirun -N 1 -n 2 mpiSort sample5GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
@@ -166,32 +167,24 @@ echo $?
 Take a small sample of 6GB.
 
 ```
-mpirun -n 2 mpiSort sample5GB.sam -u -q 0
-echo $?
-0 ### it works!
-
-```
-Take a small sample of 7GB.
-
-```
 mpirun -n 2 mpiSort sample6GB.sam -u -q 0
 echo $?
 1 ### it fails!
 ```
 
-Thus, a SAM file of 6GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that the two cores running the job did not have enough memory.
+Thus, a SAM file of 6GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
 
-Therefore, try to increase the number of jobs to use more cores on more nodes to have access to more memory.
+Therefore, we need more cores. We increase the number of jobs to use 4 cores on 2 nodes.
 
 ```
-mpirun -N 2 -n 2 mpiSort sample6GB.sam -u -q 0
+mpirun -N 2 -npernode 2 -n 4 mpiSort sample6GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
 
 #### Conclusion
 
-From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is 2.5GB. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)) or 6.25 GB/core. Be careful to be not too close to this ration to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
+From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is 2.5GB. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)) or 6.25 GB/core. 6.25GB is the maximum memory we can give to a mpiSORT job. Be careful to be not too close to this ratio to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
 
 ## Examples
 
