@@ -9,6 +9,7 @@
 * [Informatic resources](#informatic-resources)
     * [Memory](#memory)
     * [Cpu](#cpu)
+    * [Benchmark](#bench)
 * [Examples](#examples)
     * [Standard](#standard)
     * [Slurm](#slurm)
@@ -108,6 +109,62 @@ To reduce further the memory required you can use as input a SAM file that conta
 
 Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is mandatory to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
 
+### Benchmark
+
+This section provides some guidelines to benchmark mpiBWA and bwa with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running mpiSORT on your cluster.
+
+mpiSORT is memory bounded. It means there is a maximum amount of memory a MPI job can use. From our experiences it depends on the architectures and (maybe) on the MPI version.
+Here we present the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
+
+The benchmark is different from mpiBWA. the idea is to vary the sample size with a fixed number of jobs. 
+
+For instance we take 2 MPI jobs and we increase the sample size.
+
+We take a small sample of 1GB (sample1.sam).
+
+```
+mpirun -n 2 mpiSort sample1GB.sam -u -q 0
+```
+
+We take a small sample of 2GB (sample2.sam).
+
+```
+mpirun -n 2 mpiSort sample2GB.sam -u -q 0
+```
+
+We take a small sample of 3GB (sample3.sam).
+
+```
+mpirun -n 2 mpiSort sample3GB.sam -u -q 0  
+```
+
+We take a small sample of 4GB (sample4.sam).
+
+```
+mpirun -n 2 mpiSort sample4GB.sam -u -q 0
+```
+
+We take a small sample of 5GB (sample4.sam).
+
+```
+mpirun -n 2 mpiSort sample5GB.sam -u -q 0
+```
+
+We take a small sample of 6GB (sample4.sam).
+
+```
+mpirun -n 2 mpiSort sample6GB.sam -u -q 0
+```
+
+So for a sample a 6GB mpiSORT does not finish.
+
+We conclude that the limit amount of SAM we can give to a job is 2.5 GB. Now according to this number you can compute whatever the sample size the minimum number of CPU.
+If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB or 6.25 GB/cpu.
+
+As a CPU can manage efficiently a fixed amount we recommand to stay below the ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum performances.   
+
+
+     
 
 ## Examples
 
@@ -133,9 +190,9 @@ In order to submit a job using [Slurm](https://slurm.schedmd.com/sbatch.html), y
 #! /bin/bash
 #SBATCH -J MPISORT_MYSAM_4_JOBS
 #SBATCH -N 2                       	# Ask 2 nodes
-#SBATCH -n 4                       	# Total number of cores
-#SBATCH -c 1			   	# use 1 core per mpi job
-#SBATCH --tasks-per-node=2         	# Ask 2 cores per node
+#SBATCH -n 4                       	# Total number of mpi jobs
+#SBATCH -c 1			   	# use 1 core per mpi jobs
+#SBATCH --tasks-per-node=2         	# Ask 2 mpi jobs per node
 #SBATCH --mem-per-cpu=${MEM}	   	# See Memory ressources
 #SBATCH -t 01:00:00
 #SBATCH -o STDOUT_FILE.%j.o
