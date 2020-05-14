@@ -118,11 +118,10 @@ Here we present the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
 
 This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
 
-For example, we take 2 MPI jobs and we increase the sample size .
 
 #### Assess the memory baseline with mpiSORT
 
-As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step.
+As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step using 2 MPI jobs to use both cores of your node.
 
 Take a small sample of 1GB (sample1.sam).
 
