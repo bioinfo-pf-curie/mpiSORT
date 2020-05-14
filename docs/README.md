@@ -161,23 +161,17 @@ Take a small sample of 5GB.
 ```
 mpirun -N 1 -n 2 mpiSort sample5GB.sam -u -q 0
 echo $?
-0 ### it works!
+! ### it fails!
 ```
 
-Take a small sample of 6GB.
 
-```
-mpirun -n 2 mpiSort sample6GB.sam -u -q 0
-echo $?
-1 ### it fails!
-```
 
 Thus, a SAM file of 6GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
 
 Therefore, we need more cores. We increase the number of jobs to use 4 cores on 2 nodes.
 
 ```
-mpirun -N 2 -npernode 2 -n 4 mpiSort sample6GB.sam -u -q 0
+mpirun -N 2 -npernode 2 -n 4 mpiSort sample5GB.sam -u -q 0
 echo $?
 0 ### it works!
 ```
