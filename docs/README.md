@@ -120,6 +120,8 @@ The benchmark is different from mpiBWA. the idea is to vary the sample size with
 
 For instance we take 2 MPI jobs and we increase the sample size.
 
+#### Assess the memory baseline with mpiSORT
+
 We take a small sample of 1GB (sample1.sam).
 
 ```
@@ -180,10 +182,12 @@ echo $?
 
 and then it's ok. 
 
-We conclude that the limit amount of SAM we can give to a job is 2.5 GB. Now according to this number we can compute according to the sample size the minimum number of CPU.
+#### Conclusion
+
+We conclude that the limit amount of SAM we can give to a job is 2.5GB. Now according to this number we can compute, according to the sample size, the minimum number of CPU.
 If your sample is let says 200GB you will need a least 80 cpu to accomplish the job and a total RAM of 500GB (see memory section) or 6.25 GB/cpu.
 
-Be carefull as a CPU can manage efficiently a fixed amount stay below the ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum performances.   
+Be carefull as a CPU can manage efficiently a fixed amount stay below this ratio (Cluster total RAM)/(Cluster total CPU) this way you get the maximum effciency.   
      
 We are not sure if this limitation is due to MPI version or to our Bruck implementation, we have serverals leads. This is still under investigation.
 
