@@ -115,10 +115,11 @@ Due to the bitonic sorting, the algorithm is optimized for power of 2 number of 
 
 This section provides some guidelines to benchmark `mpiSORT` with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running `mpiSORT` on your cluster.
 
-`mpiSORT` is memory bounded. It means that there is a maximum amount of memory that a MPI job can use. From our experience, it depends on the architecture and (maybe) on the MPI version.
-Here we present the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
+`mpiSORT` is memory bounded. It means that there is a maximum amount of memory that a MPI job can use.
 
 This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
+
+The figures we present stem from a the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
 
 #### Assess the memory baseline with mpiSORT
 
@@ -164,9 +165,7 @@ echo $?
 ! ### it fails!
 ```
 
-
-
-Thus, a SAM file of 6GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
+Thus, a SAM file of 5GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
 
 Therefore, we need more cores. We increase the number of jobs to use 4 cores on 2 nodes.
 
@@ -178,7 +177,7 @@ echo $?
 
 #### Conclusion
 
-From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is beetwen 2GB and 2.5GB. With further tests we see 2Gb is the upper limit. According to this number, we can now compute the minimum number of cores you need to use to process the data according to its size. In the example above, at least 80 cores on 40 nodes are needed to process as 200GB SAM and a total RAM of 500GB (see [memory](#memory)). 2GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 5GB. Be careful to be not too close to this ratio to leave some memory free for the safety of the node but getting closer to this ratio will allow the best usage efficiency of the computing resources.
+From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is beetwen 2GB and 2.5GB. With further tests we see 2Gb is the upper limit. 2GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 2 x 2.5 = 5GB (see [memory](#memory)). So according to this number, we can compute the minimum number of cores you need to process a SAM file. For instance and with the example above, sorting a 200GB SAM file will required at least 80 cores on 40 nodes are needed and a total RAM of 500GB. Be careful to be not too close to this ratio and leave some memory free for the safety of the node. 
 
 ## Examples
 
