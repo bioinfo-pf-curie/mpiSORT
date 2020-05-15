@@ -119,7 +119,7 @@ This section provides some guidelines to benchmark `mpiSORT` with your infrastru
 
 This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
 
-The figures we present stem from a the benchmark we did with Open MPI 3.1.4 on Intel Skylake.
+The figures are from a the bench we did with Open MPI 3.1.4 on Intel Skylake.
 
 #### Assess the memory baseline with mpiSORT
 
