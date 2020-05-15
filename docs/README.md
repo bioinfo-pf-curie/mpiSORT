@@ -9,6 +9,7 @@
 * [Informatic resources](#informatic-resources)
     * [Memory](#memory)
     * [Cpu](#cpu)
+    * [Benchmark](#benchmark)
 * [Examples](#examples)
     * [Standard](#standard)
     * [Slurm](#slurm)
@@ -17,7 +18,7 @@
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
-* [FAQ](#faq) 
+* [FAQ](#faq)
 
 ## Installation
 
@@ -104,10 +105,79 @@ NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamp
 
 To reduce further the memory required you can use as input a SAM file that contains the reads from only one chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 times the size of the individual SAM size. This method is also better for cluster jobs distribution.
 
+To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
+
 ### Cpu
 
 Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is mandatory to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
 
+### Benchmark
+
+This section provides some guidelines to benchmark `mpiSORT` with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running `mpiSORT` on your cluster.
+
+`mpiSORT` is memory bounded. It means that there is a maximum amount of memory that a MPI job can use.
+
+This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
+
+The figures are from a the bench we did with Open MPI 3.1.4 on Intel Skylake.
+
+#### Assess the memory baseline with mpiSORT
+
+As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step using 2 MPI jobs to use both cores of your node.
+
+Take a small sample of 1GB (sample1.sam).
+
+```
+mpirun -N 1 -n 2 mpiSort sample1GB.sam -u -q 0
+echo $?
+0 ### it works!
+```
+
+Take a small sample of 2GB.
+
+```
+mpirun -N 1 -n 2 mpiSort sample2GB.sam -u -q 0
+echo $?
+0 ### it works!
+```
+
+Take a small sample of 3GB.
+
+```
+mpirun -N 1 -n 2 mpiSort sample3GB.sam -u -q 0
+echo $?
+0 ### it works!
+```
+
+Take a small sample of 4GB.
+
+```
+mpirun -N 1 -n 2 mpiSort sample4GB.sam -u -q 0
+echo $?
+0 ### it works!
+```
+
+Take a small sample of 5GB.
+
+```
+mpirun -N 1 -n 2 mpiSort sample5GB.sam -u -q 0
+echo $?
+! ### it fails!
+```
+
+Thus, a SAM file of 5GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
+
+Therefore, we need more cores. We increase the number of jobs to use 4 cores on 2 nodes.
+
+```
+mpirun -N 2 -npernode 2 -n 4 mpiSort sample5GB.sam -u -q 0
+echo $?
+0 ### it works!
+```
+
+#### Conclusion
+
+From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is beetwen 2GB and 2.5GB. With further tests we see 2Gb is the upper limit. 2GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 2 x 2.5 = 5GB (see [memory](#memory)). So according to this number, we can compute the minimum number of cores you need to process a SAM file. For instance and with the example above, sorting a 200GB SAM file will required at least 80 cores on 40 nodes and a total RAM of 500GB.
 
 ## Examples
 
@@ -133,9 +203,9 @@ In order to submit a job using [Slurm](https://slurm.schedmd.com/sbatch.html), y
 #! /bin/bash
 #SBATCH -J MPISORT_MYSAM_4_JOBS
 #SBATCH -N 2                       	# Ask 2 nodes
-#SBATCH -n 4                       	# Total number of cores
-#SBATCH -c 1			   	# use 1 core per mpi job
-#SBATCH --tasks-per-node=2         	# Ask 2 cores per node
+#SBATCH -n 4                       	# Total number of mpi jobs
+#SBATCH -c 1			   	# use 1 core per mpi jobs
+#SBATCH --tasks-per-node=2         	# Ask 2 mpi jobs per node
 #SBATCH --mem-per-cpu=${MEM}	   	# See Memory ressources
 #SBATCH -t 01:00:00
 #SBATCH -o STDOUT_FILE.%j.o
@@ -242,10 +312,19 @@ Presentations about our program:
 
 1) Q: Is it a mandatory to have a power of 2 keys (reads) in my SAM files?
 
-   A: No it is not a mandatory. It is best case but in practice and most of the time it is impossible (you can think of the FFTW tool). The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much, around 9% in time with N=2^20 and N=2^21  (according to your computing infrastructure). Why? Because the algorithm works in O(log²) time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds are set and your sorting time is predictable (or real time). In conclusion each time the keys increase with a factor of 2 the time increases by (N/(N+1))². The counterpart is you will need more ressources.  
+   A: No it is not a mandatory. It is best case but in practice and most of the time it is impossible (you can think of the FFTW tool). The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much, around 9% in time with N=2^20 and N=2^21  (according to your computing infrastructure). Why? Because the algorithm works in O(log²) time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds sorting time are set and your sorting time is predictable (or real time). In conclusion each time the keys increase with a factor of 2 the time increases by (N/(N+1))². The counterpart is you will need more ressources.  
+   
+2) Q: Is it a mandatory to have a power of 2 number of CPU to use mpiSORT?
 
+   A: With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU ressources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it.     
+   
 
+3) Q: Where does this memory bounds (see benchmark) comes from?
 
-
-
+   A: This subject is under investigation it may comes from a limit of the message size in MPI or a limit in some MPI internal data structure (MPI_Type_Create_struct, MPI_Pack, MPI_Unpack...). A work around could be to send the messages in multiple times with fixed sizes. 
+   
+   
+   
+   
+   
 
