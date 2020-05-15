@@ -318,6 +318,12 @@ Presentations about our program:
 
    A: With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU ressources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it.     
    
+
+3) Q: Where does this [memory bounds](#bench) comes from?
+
+   A: This subject is under investigation it may comes from a limit of the message size in MPI or a limit in some MPI internal data structure (MPI_Type_Create_struct, MPI_Pack, MPI_Unpack...). A work around could be to send the messages in multiple times with packet of 2GB size each. 
+   
+   
    
    
    
