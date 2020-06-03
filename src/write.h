@@ -114,7 +114,15 @@ void bruckWrite3(
 		size_t ***dest_offset
 );
 
-
+void bruckWrite4(
+                int rank,
+                int num_proc,
+                size_t local_readNum,
+                size_t* number_of_reads_by_procs,
+                int *new_rank,
+                int *new_reads_size,
+                int ***read_size
+);
 
 
 void bruck_reads(int rank, int num_proc, size_t * buffs_by_procs, char** data2);

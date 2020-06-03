@@ -57,7 +57,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
-
+#include "malloc.h"
 #include "compat.h"
 
 #include "parallelBitonicSort.h"

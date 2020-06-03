@@ -46,7 +46,7 @@
 #include <mpi.h>
 
 #include "compat.h"
-
+#include "malloc.h"
 #include "mergeSort.h"
 #include "parser.h"
 #include "preWrite.h"
@@ -445,7 +445,8 @@ int main (int argc, char *argv[]){
 	}
 
 	MPI_Allreduce(&nb_reads_total, &nb_reads_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-
+	if (rank == 0)
+	 	fprintf(stderr, "rank %d ::::[MPISORT] total reads parsed = %zu \n", rank, nb_reads_global);
 	/*
 	 * We care for unmapped and discordants reads
 	 */
@@ -460,10 +461,10 @@ int main (int argc, char *argv[]){
 		MPI_Allreduce(&readNumberByChr[nbchr-s], &total_reads , 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 
 		if ((rank == 0) && (s == 1))
-			fprintf(stderr, "rank %d :::: total read to sort for unmapped = %zu \n", rank, total_reads);
+			fprintf(stderr, "rank %d ::::[MPISORT] total read to sort for unmapped = %zu \n", rank, total_reads);
 
 		if ((rank == 0) && (s == 2))
-			fprintf(stderr, "rank %d :::: total read to sort for discordant = %zu \n", rank, total_reads);
+			fprintf(stderr, "rank %d ::::[MPISORT] total read to sort for discordant = %zu \n", rank, total_reads);
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
@@ -775,7 +776,7 @@ int main (int argc, char *argv[]){
 				chosen_rank++;
 				i1++;
 			}
-			fprintf(stderr, "rank %d :::: Elected rank = %d \n", rank, chosen_rank);
+			fprintf(stderr, "rank %d ::::[MPISORT] Elected rank = %d \n", rank, chosen_rank);
 		}
 
 		//we broadcast the chosen rank
@@ -969,12 +970,12 @@ int main (int argc, char *argv[]){
 				size_t *local_reads_coordinates_unsorted 	= calloc(local_readNum, sizeof(size_t));
 				size_t *local_reads_coordinates_sorted 		= calloc(local_readNum, sizeof(size_t));
 				size_t *local_offset_source_unsorted 		= calloc(local_readNum, sizeof(size_t));
-				size_t *local_offset_source_sorted 			= calloc(local_readNum, sizeof(size_t));
-				int *local_dest_rank_sorted 				= calloc(local_readNum, sizeof(int));
-				int *local_reads_sizes_unsorted 			= calloc(local_readNum, sizeof(int));
-				int *local_reads_sizes_sorted 				= calloc(local_readNum, sizeof(int));
-				int *local_source_rank_unsorted 			= calloc(local_readNum, sizeof(int));
-				int *local_source_rank_sorted 				= calloc(local_readNum, sizeof(int));
+				size_t *local_offset_source_sorted 		= calloc(local_readNum, sizeof(size_t));
+				int *local_dest_rank_sorted 			= calloc(local_readNum, sizeof(int));
+				int *local_reads_sizes_unsorted 		= calloc(local_readNum, sizeof(int));
+				int *local_reads_sizes_sorted 			= calloc(local_readNum, sizeof(int));
+				int *local_source_rank_unsorted 		= calloc(local_readNum, sizeof(int));
+				int *local_source_rank_sorted 			= calloc(local_readNum, sizeof(int));
 
 				if (split_rank == chosen_split_rank)
 					fprintf(stderr,	"rank %d :::::[MPISORT][MALLOC 1] time spent = %f s\n", split_rank, MPI_Wtime() - time_count);
@@ -1048,13 +1049,13 @@ int main (int argc, char *argv[]){
 
 				/*
 				*   FOR DEBUG
-				*  
+				*/  
 					
 
 				for(j = 0; j < local_readNum - 1; j++){
-					assert( local_reads_coordinates_sorted[j] < local_reads_coordinates_sorted[j+1]);
+					assert( local_reads_coordinates_sorted[j] <= local_reads_coordinates_sorted[j+1]);
 				}
-				*/
+				
 
 				free(coord_index); 				 		//ok
 				free(local_source_rank_unsorted); 	    //ok
@@ -1121,6 +1122,7 @@ int main (int argc, char *argv[]){
 				for (k1 = 0; k1 <  max_num_read; k1++){
 					local_offset_dest_sorted[k1] = local_reads_sizes_sorted[k1];
 					local_total_offset += local_reads_sizes_sorted[k1];
+
 				}
 
 				//we make the cumulative sum of all offsets
@@ -1164,6 +1166,7 @@ int main (int argc, char *argv[]){
 				for (k1 = 0; k1 < max_num_read; k1++){
 					if (local_reads_sizes_sorted[k1] != 0)
 						local_offset_dest_sorted[k1] += offset_to_add;
+						//local_offset_dest_sorted[k1]=max_num_read*split_rank+k1+1;
 					else
 						local_offset_dest_sorted[k1] = 0;
 				}
@@ -1282,7 +1285,7 @@ int main (int argc, char *argv[]){
 						/*
 						 *
 						 * FOR DEBUG
-						 *
+						 */
 
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
@@ -1292,7 +1295,7 @@ int main (int argc, char *argv[]){
 							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 						}
-						*/
+						
 
 					}
 					else{
@@ -1333,7 +1336,7 @@ int main (int argc, char *argv[]){
 					/*
 					 *
 					 * FOR DEBUG
-					 *
+					 */
 					for(y = 0; y < num_read_for_bruck; y++){
 						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1342,7 +1345,7 @@ int main (int argc, char *argv[]){
 						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
-					*/
+					
 				}
 
 				free(local_reads_coordinates_sorted);
@@ -1501,7 +1504,7 @@ int main (int argc, char *argv[]){
 				/*
 				 *
 				 * FOR DEBUG
-				 *
+				 */
 				for ( j = 0; j < local_readNum; j++){
 					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
 					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
@@ -1510,7 +1513,7 @@ int main (int argc, char *argv[]){
 					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
 					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
 				}
-				*/
+				
 
 				free(local_reads_coordinates_sorted_trimmed);
 
