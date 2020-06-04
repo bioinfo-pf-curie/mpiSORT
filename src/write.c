@@ -1717,7 +1717,7 @@ void writeSam(
 		//MPI_Info_set(finfo,"cb_buffer_size","1610612736"); /* 128 MBytes (Optional) */
 		// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
-		ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+		ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 
 		if (ierr) {
 			fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", rank, path);
@@ -1773,7 +1773,6 @@ void writeSam(
 				if ( (compSize - tmp10) > tmp_size_buffer ) tmp_size_buffer2 = tmp_size_buffer;
 				else tmp_size_buffer2 = (compSize - tmp10);
 
-				MPI_Barrier(COMM_WORLD); 		
 			}
 		}
 
@@ -2149,7 +2148,8 @@ void writeSam_discordant_and_unmapped(
 	path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
 	sprintf(path, "%s/%s.gz", output_dir, chrName);
 
-	ierr = MPI_File_open(split_comm, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+	//ierr = MPI_File_open(split_comm, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+	ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 
 	if (ierr) {
 		fprintf(stderr, "Rank %d :::::[WRITE] failed to open %s.\nAborting.\n\n", split_rank, path);
@@ -2194,10 +2194,11 @@ void writeSam_discordant_and_unmapped(
 	        	block_tmp++;
 	        	if ( (compressed_size - tmp10) > tmp_size_buffer ) tmp_size_buffer2 = tmp_size_buffer;
 	        	else tmp_size_buffer2 = compressed_size - tmp10;
-	        	MPI_Barrier(COMM_WORLD);
+	        	
 		}
 	}
-	MPI_Barrier(COMM_WORLD);
+
+	MPI_Barrier(split_comm);
 	
 	if (split_rank == master_job)
 		fprintf(stderr, "Rank %d :::::[WRITE] Time for chromosome %s writing %f seconds\n", split_rank, chrName, MPI_Wtime()-time_count);
