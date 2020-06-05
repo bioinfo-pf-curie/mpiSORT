@@ -115,69 +115,64 @@ Due to the bitonic sorting, the algorithm is optimized for power of 2 number of 
 
 This section provides some guidelines to benchmark `mpiSORT` with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running `mpiSORT` on your cluster.
 
-`mpiSORT` is memory bounded. It means that there is a maximum amount of memory that a MPI job can use.
-
-This benchmark is different from that we provide for [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA). Indeed, the aim is to vary the sample size with a fixed number of jobs and figure out if the analysis can be successfully completed.
-
 The figures are from a the bench we did with Open MPI 3.1.4 on Intel Skylake.
 
-#### Assess the memory baseline with mpiSORT
+#### Assess the speed-up baseline with mpiSORT
 
-As a toy example, assume that you have a node with 2 cores and 16GB of RAM memory. Try to sort a file increasing its size at each step using 2 MPI jobs to use both cores of your node.
+In this section we are going to compute the baseline and the speed-up expected compare for instance with samtools.
+We start with 8 cores on a single node and a SAM of 70Gb big containing only 1 chromosom result of mpiBWAByChr.
 
-Take a small sample of 1GB (sample1.sam).
-
-```
-mpirun -N 1 -n 2 mpiSort sample1GB.sam -u -q 0
-echo $?
-0 ### it works!
-```
-
-Take a small sample of 2GB.
 
 ```
-mpirun -N 1 -n 2 mpiSort sample2GB.sam -u -q 0
-echo $?
-0 ### it works!
-```
+/usr/bin/time -v $SAMTOOLS sort -@ 8 -m 15G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
 
-Take a small sample of 3GB.
+Elapsed (wall clock) time (h:mm:ss or m:ss): 42:49.15
+Maximum resident set size (kbytes): 68843140
 
 ```
-mpirun -N 1 -n 2 mpiSort sample3GB.sam -u -q 0
-echo $?
-0 ### it works!
-```
 
-Take a small sample of 4GB.
 
 ```
-mpirun -N 1 -n 2 mpiSort sample4GB.sam -u -q 0
-echo $?
-0 ### it works!
-```
+/usr/bin/time -v mpirun -N 1 -n 8 mpiSort sample70GB.sam -u -q 0
 
-Take a small sample of 5GB.
+Elapsed (wall clock) time (h:mm:ss or m:ss): 6:46.56
+Maximum resident set size (kbytes): 20510832
 
 ```
-mpirun -N 1 -n 2 mpiSort sample5GB.sam -u -q 0
-echo $?
-! ### it fails!
-```
 
-Thus, a SAM file of 5GB can not be processed with `mpiSORT` on a single node with 2 jobs. This means that `mpiSort` reach its maximum memory allowed.
+now increase the number of jobs.
 
-Therefore, we need more cores. We increase the number of jobs to use 4 cores on 2 nodes.
 
 ```
-mpirun -N 2 -npernode 2 -n 4 mpiSort sample5GB.sam -u -q 0
-echo $?
-0 ### it works!
+/usr/bin/time -v $SAMTOOLS sort -@ 16 -m 10G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
+
+Elapsed (wall clock) time (h:mm:ss or m:ss): 39:58.98
+Maximum resident set size (kbytes): 68859352
+
 ```
+
+
+```
+/usr/bin/time -v mpirun -N 1 -n 16 mpiSort sample70GB.sam -u -q 0
+
+Elapsed (wall clock) time (h:mm:ss or m:ss): 3:38.76
+Maximum resident set size (kbytes): 10638528
+
+```
+
+You normaly notice the scalability. If not something is wrong with your setup.
+You also can compute the total memory needed for mpiSORT: 20GB * 8cores = 160GB. 
+
+Profiling different sample sizes with different configuration will tell what is the best configuration for dispatching your jobs.
+We can wonder: shall we take more CPU and less GB/CPU or the reverse...this is very dependant of your computing architecture.  
+
 
 #### Conclusion
 
-From this toy example, we conclude that the upper size limit of the SAM file we can give to a job is beetwen 2GB and 2.5GB. With further tests we see 2Gb is the upper limit. 2GB is the maximum SAM size we can give to 1 mpiSORT job and so the maximum amount of RAM of 1 MPI job will be 2 x 2.5 = 5GB (see [memory](#memory)). So according to this number, we can compute the minimum number of cores you need to process a SAM file. For instance and with the example above, sorting a 200GB SAM file will required at least 80 cores on 40 nodes and a total RAM of 500GB.
+Testing and constructing a baseline is very important if you want to take advantages of the MPI optimization. 
+Besides that there are a lots of MPI parameters we don't use like like job placement and numa control those are another subject.
+With this version we recommand you to take a power of 2 MPI jobs this way you don't have memory limitation per jobs.
+
 
 ## Examples
 
