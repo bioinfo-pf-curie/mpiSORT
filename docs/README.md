@@ -160,7 +160,17 @@ Maximum resident set size (kbytes): 10638528
 
 ```
 
-You normaly notice the scalability. If not something is wrong with your setup.
+finally add a new node
+
+```
+/usr/bin/time -v mpirun -N 2 -npernode 16 -n 32 mpiSort sample70GB.sam -u -q 0
+
+Elapsed (wall clock) time (h:mm:ss or m:ss): 1:55.31
+Maximum resident set size (kbytes): 5003808
+```
+
+
+You normaly notice the scalability. If not, something is wrong with your setup.
 You also can compute the total memory needed for mpiSORT: 20GB * 8cores = 160GB. 
 
 Profiling different sample sizes with different configuration will tell what is the best configuration for dispatching your jobs.
@@ -170,7 +180,7 @@ We can wonder: shall we take more CPU and less GB/CPU or the reverse...this is v
 #### Conclusion
 
 Testing and constructing a baseline is very important if you want to take advantages of the MPI optimization. 
-Besides that there are a lots of MPI parameters we don't use like like job placement and numa control those are another subject.
+Besides that there are a lots of MPI parameters we don't use like jobs placement, memory binding and numa control but those are another subjects.
 With this version we recommand you to take a power of 2 MPI jobs this way you don't have memory limitation per jobs.
 
 
@@ -311,12 +321,12 @@ Presentations about our program:
    
 2) Q: Is it a mandatory to have a power of 2 number of CPU to use mpiSORT?
 
-   A: With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU ressources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it.     
+   A: With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU ressources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it but be aware of the memory bound (see Q3)     
    
 
-3) Q: Where does this memory bounds (see benchmark) comes from?
+3) Q: Where does this memory bounds comes from?
 
-   A: This subject is under investigation it may comes from a limit of the message size in MPI or a limit in some MPI internal data structure (MPI_Type_Create_struct, MPI_Pack, MPI_Unpack...). A work around could be to send the messages in multiple times with fixed sizes. 
+   A: The memory bounds have been released for power of 2 cores but is still in place if you decided to use non-power of 2 cores. The work around is to send buffer by packets of 1GB during the shuffle of the reads.   
    
    
    
