@@ -321,7 +321,7 @@ No it is not a mandatory. It is best case but in practice and most of the time i
    
 ### Is it a mandatory to have a power of 2 number of CPU to use mpiSORT?
 
-With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU resources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it but be aware of the memory bound (see [Where does this memory bounds comes from?](where-does-this-memory-bounds-comes-from))
+With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU resources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it but be aware of the memory bound (see [Where does this memory bounds comes from?](#where-does-this-memory-bounds-comes-from))
 
 ### Where does this memory bounds comes from?
 
