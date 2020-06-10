@@ -60,10 +60,10 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 
 ### Options
 
-* `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept) (optionnal)
-* `-p` if the read are paired-end (by defaut reads are single-end) (optionnal)
-* `-n` sorts the read by their name (but it is not commonly used) (optionnal)
-* `-u` it the input SAM are results of mpiBWAByChr or if there is only one chromosome in the SAM file (optionnal)
+* `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept) (optional)
+* `-p` if the read are paired-end (by default reads are single-end) (optional)
+* `-n` sorts the read by their name (but it is not commonly used) (optional)
+* `-u` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
 
  
 
@@ -71,13 +71,13 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 
 The output consists of gz files:
 * one per chromosome (e.g. chr11.gz)
-* one for discordant reads (discordant.gz): discordants reads are reads where one pair aligns on a chromosome and the other pair aligns on another chromosome
+* one for discordant reads (discordant.gz): discordant reads are reads where one pair aligns on a chromosome and the other pair aligns on another chromosome
 * one for unmapped reads (unmapped.gz): unmapped reads are reads without coordinates on any chromosome
 * when `-u` is set the unmapped and discordant file are prefixed with the chromosome's name
 
 Note that:
 
-1. the discordant.sam file produced by `mpiSORT` is different from the `discordant.sam` produced by `mpiBWAByChr` ([mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA) documentation).
+1. the discordant.sam file produced by `mpiSORT` is different from the `discordant.sam` produced by `mpiBWAByChr` (see [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA) documentation).
 
 2. if you use `mpiSORT` with `-u` option on a chromosome sam file produced by `mpiBWAByChr` (e.g. chr1.sam), `mpiSORT` will produce a file named discordant.sam that will contain the supplementary discordant alignments produced by BWA (i.e the discordant fragments with a flag above 2048). All the primary alignments are sorted. In this case, the `unmapped.sam` will not be produced either by `mpiSORT` as the unmapped reads have already been filtered out by `mpiBWAByChr` in a dedicated file.
 
@@ -99,11 +99,11 @@ To uncompress:
 ### Memory
 
 When the SAM file to be sorted contains all the chromosomes, the total memory used during the sorting is around 1.5 times the size of the SAM file.
-For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and splitted over 512 MPI workers (i.e. cores) that corresponds to makes 3.3 Gb of memory per core. Note that when the SAM file contains several chromosomes, each chromosome is sorted successively: therefore, the upper memory bound depends on the size of the whole SAM file plus internals structures plus the size of the biggest chromosome.
+For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and split over 512 MPI workers (i.e. cores) that corresponds to 3.3 Gb of memory per core. Note that when the SAM file contains several chromosomes, each chromosome is sorted successively: therefore, the upper memory bound depends on the size of the whole SAM file plus some internal structures plus the size of the biggest chromosome.
 
 NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams
 
-To reduce further the memory required you can use as input a SAM file that contains the reads from only one chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 times the size of the individual SAM size. This method is also better for cluster jobs distribution.
+To reduce further the memory required you can use as input a SAM file that contains the reads from only one chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 times the size of the individual SAM size. This method also allows a better dispatch of the workload on the computing cluster.
 
 To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
 
@@ -115,16 +115,16 @@ Due to the bitonic sorting, the algorithm is optimized for power of 2 number of 
 
 This section provides some guidelines to benchmark `mpiSORT` with your infrastructure. It is intended to help the reader to assess what is the best use case and configuration to efficiently benefit from MPI parallelization depending on your computing cluster infrastructure. We strongly recommend that you read carefully this section before running `mpiSORT` on your cluster.
 
-The figures are from a the bench we did with Open MPI 3.1.4 on Intel Skylake.
+The figures have been obtained from a benchmark using Open MPI 3.1.4 on Intel Skylake architecture.
 
 #### Assess the speed-up baseline with mpiSORT
 
-In this section we are going to compute the baseline and the speed-up expected compare for instance with samtools.
-We start with 8 cores on a single node and a SAM of 70Gb big containing only 1 chromosom result of mpiBWAByChr.
+In this section we are going to compute the baseline walltime for the reference tool `samtools` and assess the speed-up obtained with `mpiSORT`.
+We start with 8 cores on a single node and a SAM of 70 Gb big containing only 1 chromosome after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
 
 
 ```
-/usr/bin/time -v $SAMTOOLS sort -@ 8 -m 15G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
+/usr/bin/time -v samtools sort -@ 8 -m 15G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
 
 Elapsed (wall clock) time (h:mm:ss or m:ss): 42:49.15
 Maximum resident set size (kbytes): 68843140
@@ -144,7 +144,7 @@ now increase the number of jobs.
 
 
 ```
-/usr/bin/time -v $SAMTOOLS sort -@ 16 -m 10G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
+/usr/bin/time -v samtools sort -@ 16 -m 10G -O BAM -o sample70GB.sort.bam -T /tmp/sample70G.prefix.bam sample70GB.sam
 
 Elapsed (wall clock) time (h:mm:ss or m:ss): 39:58.98
 Maximum resident set size (kbytes): 68859352
@@ -160,7 +160,7 @@ Maximum resident set size (kbytes): 10638528
 
 ```
 
-finally add a new node
+finally add a new node to run `mpiSORT`
 
 ```
 /usr/bin/time -v mpirun -N 2 -npernode 16 -n 32 mpiSort sample70GB.sam -u -q 0
@@ -170,18 +170,18 @@ Maximum resident set size (kbytes): 5003808
 ```
 
 
-You normaly notice the scalability. If not, something is wrong with your setup.
+You normally notice the scalability. If not, something is wrong with your setup.
 You also can compute the total memory needed for mpiSORT: 20GB * 8cores = 160GB. 
 
 Profiling different sample sizes with different configuration will tell what is the best configuration for dispatching your jobs.
-We can wonder: shall we take more CPU and less GB/CPU or the reverse...this is very dependant of your computing architecture.  
+We can wonder: shall we take more CPU and less GB/CPU or the reverse...this is very dependent of your computing architecture.
 
 
 #### Conclusion
 
 Testing and constructing a baseline is very important if you want to take advantages of the MPI optimization. 
-Besides that there are a lots of MPI parameters we don't use like jobs placement, memory binding and numa control but those are another subjects.
-With this version we recommand you to take a power of 2 MPI jobs this way you don't have memory limitation per jobs.
+Besides that there are a lots of MPI parameters we don't use like jobs placement, memory binding and NUMA control but those are another subjects.
+With this version we recommend you to take a power of 2 MPI jobs this way you don't have memory limitation per jobs.
 
 
 ## Examples
@@ -253,7 +253,7 @@ We don't recommend to use MPI with [NFS](https://en.wikipedia.org/wiki/Network_F
 
 ## Performance
 
-Obviously, the performance of `mpiSORT` depends on the computing infrastruture. Using the computing cluster provided by the [TGCC France Génomique](https://www.france-genomique.org/plateformes-et-equipements/plateforme-tgcc-arpajon/) (Broadwell architecture), we obtained the following performance sorting the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome:
+Obviously, the performance of `mpiSORT` depends on the computing infrastructure. Using the computing cluster provided by the [TGCC France Génomique](https://www.france-genomique.org/plateformes-et-equipements/plateforme-tgcc-arpajon/) (Broadwell architecture), we obtained the following performance sorting the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome:
 
 
 * **20 minutes** with 512 jobs and with an efficiency of 70% (30% time is spent in IO) with a [Lustre](http://lustre.org/) configuration :
@@ -264,15 +264,15 @@ Obviously, the performance of `mpiSORT` depends on the computing infrastruture. 
     * `lfs setstripe -c 12 -S 256m` (for input)
     * `lfs setstripe -c 12 -S 256m` (for output)
 
-Because of the development design the programm is optimized for HPC architecture. This program runs better on low latency network and parallel file system. 
+Because of the development design the program is optimized for HPC architecture. This program runs better on low latency network and parallel file system. 
 
 ## Algorithm
 
-Sorting a file is all about IO's and shuffling (or movements) of data. Therefore, we developed a program that capitalizes on parallel and distributed file system in order to overcome the bottlenecks encountered with traditionnal tools to sort large sequencing data. Our approach relies on message passing interface paradigm (MPI) and distributed memory available on high computing performance architecture.
+Sorting a file is all about IO's and shuffling (or movements) of data. Therefore, we developed a program that capitalizes on parallel and distributed file system in order to overcome the bottlenecks encountered with traditional tools to sort large sequencing data. Our approach relies on message passing interface paradigm (MPI) and distributed memory available on high computing performance architecture.
 
 The program we implemented in based on the major components: the bitonic-sort, the shuffling of the data and the distributed cache.
 
-The [bitonic sort](https://en.wikipedia.org/wiki/Bitonic_sorter) is a real parallel sorting algorithm that works on parallel architectures. The complexity of the bitonic is of n(log(n))^2. The bitonic sorter has been developped using MPI message passing primitives and is inspired from the book of [Peter S. Pacheco "Parallel programming with MPI".](https://www.cs.usfca.edu/~peter/ppmpi/).
+The [bitonic sort](https://en.wikipedia.org/wiki/Bitonic_sorter) is a real parallel sorting algorithm that works on parallel architectures. The complexity of the bitonic is of n(log(n))^2. The bitonic sorter has been developed using MPI message passing primitives and is inspired from the book of [Peter S. Pacheco "Parallel programming with MPI".](https://www.cs.usfca.edu/~peter/ppmpi/).
 
 
 ![Bitonic sort](https://upload.wikimedia.org/wikipedia/commons/b/bd/BitonicSort1.svg)
@@ -315,21 +315,15 @@ Presentations about our program:
 
 ## FAQ
 
-1) Q: Is it a mandatory to have a power of 2 keys (reads) in my SAM files?
+### Is it a mandatory to have a power of 2 keys (reads) in my SAM files?
 
-   A: No it is not a mandatory. It is best case but in practice and most of the time it is impossible (you can think of the FFTW tool). The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much, around 9% in time with N=2^20 and N=2^21  (according to your computing infrastructure). Why? Because the algorithm works in O(log²) time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds sorting time are set and your sorting time is predictable (or real time). In conclusion each time the keys increase with a factor of 2 the time increases by (N/(N+1))². The counterpart is you will need more ressources.  
+No it is not a mandatory. It is best case but in practice and most of the time it is impossible (you can think of the FFTW tool). The sorting ask for a power of 2 keys to work so internally we fill the coordinates vector to fit that power of 2. You may think this will occur an important overhead, but in fact not to much, around 9% in time with N=2^20 and N=2^21  (according to your computing infrastructure). Why? Because the algorithm works in O(log²) time complexity. So whether the number of keys is between 2^N and 2^(N+1) the lower and upper bounds sorting time are set and your sorting time is predictable (or real time). In conclusion each time the keys increase with a factor of 2 the time increases by (N/(N+1))^2. The counterpart is you will need more resources.  
    
-2) Q: Is it a mandatory to have a power of 2 number of CPU to use mpiSORT?
+### Is it a mandatory to have a power of 2 number of CPU to use mpiSORT?
 
-   A: With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU ressources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it but be aware of the memory bound (see Q3)     
-   
+With this actual version yes. If you really want to play with non power of 2 CPU no problem, in mpiSort.c comment from the lines 220 to 230 and recompile the source. Using non power of 2 CPU reduce the number of CPU resources needed but induce a memory overhead for the rank 0 job (some MB). Try it and if it works then use it but be aware of the memory bound (see [Where does this memory bounds comes from?](#where-does-this-memory-bounds-comes-from))
 
-3) Q: Where does this memory bounds comes from?
+### Where does this memory bounds comes from?
 
-   A: The memory bounds have been released for power of 2 cores but is still in place if you decided to use non-power of 2 cores. The work around is to send buffer by packets of 1GB during the shuffle of the reads.   
-   
-   
-   
-   
-   
+The memory bounds have been released for power of 2 cores but is still in place if you decided to use non-power of 2 cores. The work around is to send buffer by packets of 1GB during the shuffle of the reads.   
 
