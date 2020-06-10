@@ -99,7 +99,7 @@ To uncompress:
 ### Memory
 
 When the SAM file to be sorted contains all the chromosomes, the total memory used during the sorting is around 1.5 times the size of the SAM file.
-For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and split over 512 MPI workers (i.e. cores) that corresponds to 3.3 Gb of memory per core. Note that when the SAM file contains several chromosomes, each chromosome is sorted successively: therefore, the upper memory bound depends on the size of the whole SAM file plus some internal structures plus the size of the biggest chromosome.
+For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and split over 512 MPI workers (i.e. cores) that corresponds to 3.3 GB of memory per core. Note that when the SAM file contains several chromosomes, each chromosome is sorted successively: therefore, the upper memory bound depends on the size of the whole SAM file plus some internal structures plus the size of the biggest chromosome.
 
 NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams
 
@@ -120,7 +120,7 @@ The figures have been obtained from a benchmark using Open MPI 3.1.4 on Intel Sk
 #### Assess the speed-up baseline with mpiSORT
 
 In this section we are going to compute the baseline walltime for the reference tool `samtools` and assess the speed-up obtained with `mpiSORT`.
-We start with 8 cores on a single node and a SAM of 70 Gb big containing only 1 chromosome after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
+We start with 8 cores on a single node and a SAM of 70 GB big containing only 1 chromosome after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
 
 
 ```
@@ -131,6 +131,8 @@ Maximum resident set size (kbytes): 68843140
 
 ```
 
+The result of the `/usr/bin/time` command shows that `samtools` uses a maximum of ~69 GB of RAM memory (i.e. te resident set size).
+
 
 ```
 /usr/bin/time -v mpirun -N 1 -n 8 mpiSort sample70GB.sam -u -q 0
@@ -140,7 +142,10 @@ Maximum resident set size (kbytes): 20510832
 
 ```
 
-now increase the number of jobs.
+The result of the `/usr/bin/time` command shows that `mpiSORT` uses a maximum of ~ 20 GB of RAM memory per core (i.e. te resident set size).
+This means that the total RAM memory needed for mpiSORT 160 GB = 20 GB * 8 cores.
+
+Now, we increase the number of jobs:
 
 
 ```
@@ -151,6 +156,8 @@ Maximum resident set size (kbytes): 68859352
 
 ```
 
+`samtools` uses the same amout of RAM memory as the previous case.
+
 
 ```
 /usr/bin/time -v mpirun -N 1 -n 16 mpiSort sample70GB.sam -u -q 0
@@ -159,8 +166,9 @@ Elapsed (wall clock) time (h:mm:ss or m:ss): 3:38.76
 Maximum resident set size (kbytes): 10638528
 
 ```
+Doubling the number of cores decreases the maximum of RAM memory per core for `mpiSORT` as expected.
 
-finally add a new node to run `mpiSORT`
+Finally, we add a new node to run `mpiSORT`:
 
 ```
 /usr/bin/time -v mpirun -N 2 -npernode 16 -n 32 mpiSort sample70GB.sam -u -q 0
@@ -170,18 +178,17 @@ Maximum resident set size (kbytes): 5003808
 ```
 
 
-You normally notice the scalability. If not, something is wrong with your setup.
-You also can compute the total memory needed for mpiSORT: 20GB * 8cores = 160GB. 
+You normally notice the scalability otherwise something is wrong with your setup.
 
 Profiling different sample sizes with different configuration will tell what is the best configuration for dispatching your jobs.
-We can wonder: shall we take more CPU and less GB/CPU or the reverse...this is very dependent of your computing architecture.
+Using this can of benchmark can help to decide if you need to use more cores and less GB/core or the contrary. This is very dependent of your computing architecture and your aim.
 
 
 #### Conclusion
 
-Testing and constructing a baseline is very important if you want to take advantages of the MPI optimization. 
-Besides that there are a lots of MPI parameters we don't use like jobs placement, memory binding and NUMA control but those are another subjects.
-With this version we recommend you to take a power of 2 MPI jobs this way you don't have memory limitation per jobs.
+Testing and benchmarking `mpiSORT` with respect to a reference baseline is very important if you want to take advantages of the MPI optimization.
+Besides that there are may MPI parameters you can play with (such as job placement, memory binding and NUMA control).
+With this version we recommend you to take a power of 2 MPI jobs in order to avaoid memory limitation per jobs.
 
 
 ## Examples
