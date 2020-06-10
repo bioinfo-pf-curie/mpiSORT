@@ -1,9 +1,9 @@
 version-1.1 2020-06-09
     - release the memory bounds when sorting with power of 2 MPI jobs
     - fix unbalanced final collective writing
-    - add benchmark part in documentation 
+    - add benchmark part in documentation
 
-version-1.0
+version-1.0 2020-03-25
     - mpiSORT: sorts SAM files
 
 ----------------------------------------------------------------------
