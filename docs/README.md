@@ -117,7 +117,7 @@ This section provides some guidelines to benchmark `mpiSORT` with your infrastru
 
 The figures have been obtained from a benchmark using Open MPI 3.1.4 on Intel Skylake architecture.
 
-#### Assess the speed-up baseline with mpiSORT
+#### Assess the speed-up with respect to a reference baseline
 
 In this section we are going to compute the baseline walltime for the reference tool `samtools` and assess the speed-up obtained with `mpiSORT`.
 We start with 8 cores on a single node and a SAM of 70 GB big containing only 1 chromosome after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
@@ -131,7 +131,7 @@ Maximum resident set size (kbytes): 68843140
 
 ```
 
-The result of the `/usr/bin/time` command shows that `samtools` uses a maximum of ~69 GB of RAM memory (i.e. te resident set size).
+The result of the `/usr/bin/time` command shows that `samtools` uses a maximum of ~69 GB of RAM memory (i.e. the resident set size).
 
 
 ```
@@ -142,8 +142,10 @@ Maximum resident set size (kbytes): 20510832
 
 ```
 
-The result of the `/usr/bin/time` command shows that `mpiSORT` uses a maximum of ~ 20 GB of RAM memory per core (i.e. te resident set size).
-This means that the total RAM memory needed for mpiSORT 160 GB = 20 GB * 8 cores.
+The result of the `/usr/bin/time` command shows that `mpiSORT` uses a maximum of ~ 20 GB of RAM memory per core (i.e. the resident set size).
+This means that the total RAM memory needed for mpiSORT is 160 GB = 20 GB * 8 cores.
+`mpiSORT` offers a speed-up over 6 with respect to `samtools`.
+
 
 Now, we increase the number of jobs:
 
@@ -166,7 +168,7 @@ Elapsed (wall clock) time (h:mm:ss or m:ss): 3:38.76
 Maximum resident set size (kbytes): 10638528
 
 ```
-Doubling the number of cores decreases the maximum of RAM memory per core for `mpiSORT` as expected.
+Doubling the number of cores decreases by a factor 2 the maximum of RAM memory per core for `mpiSORT` as expected.
 
 Finally, we add a new node to run `mpiSORT`:
 
@@ -178,17 +180,17 @@ Maximum resident set size (kbytes): 5003808
 ```
 
 
-You normally notice the scalability otherwise something is wrong with your setup.
+You normally notice the scalability of `mpiSORT` when the number of cores increases otherwise something is wrong with your setup.
 
 Profiling different sample sizes with different configuration will tell what is the best configuration for dispatching your jobs.
-Using this can of benchmark can help to decide if you need to use more cores and less GB/core or the contrary. This is very dependent of your computing architecture and your aim.
+Using this approach can help to decide if you need to use more cores and less GB/core or the contrary. This is very dependent of your computing architecture and your aim.
 
 
 #### Conclusion
 
 Testing and benchmarking `mpiSORT` with respect to a reference baseline is very important if you want to take advantages of the MPI optimization.
-Besides that there are may MPI parameters you can play with (such as job placement, memory binding and NUMA control).
-With this version we recommend you to take a power of 2 MPI jobs in order to avaoid memory limitation per jobs.
+Besides that, there are may MPI parameters you can play with (such as job placement, memory binding and NUMA control).
+With this version we recommend you to take a power of 2 MPI jobs in order to avoid memory limitation per jobs.
 
 
 ## Examples
