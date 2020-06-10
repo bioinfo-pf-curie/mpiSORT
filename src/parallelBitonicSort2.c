@@ -59,7 +59,7 @@
 #include <mpi.h>
 
 #include "compat.h"
-
+#include "malloc.h"
 #include "parallelBitonicSort2.h"
 
 // we limit to 1gb per proc
