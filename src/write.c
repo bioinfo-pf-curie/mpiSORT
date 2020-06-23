@@ -1426,10 +1426,10 @@ void writeSam(
 		free(new_local_reads_sizes_sorted_bruck2);
 		free(new_local_offset_destination_bruck2);
 		free(new_local_reads_dest_rank_sorted_bruck2);
-
+		/*
 		for ( k = 0; k < previous_local_readNum; k++) 
 			assert(*data_reads_to_sort[k] == 'D');	
-
+		*/
 
 
 		if (data_offsets != NULL)
