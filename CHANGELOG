@@ -1,3 +1,6 @@
+version-1.2 2020-06-29
+    - fix a run time error 
+
 version-1.1 2020-06-09
     - release the memory bounds when sorting with power of 2 MPI jobs
     - fix unbalanced final collective writing
