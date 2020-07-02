@@ -24,10 +24,9 @@
 
 ## Before starting
 
-Before installing and using this tools you have to be aware of one thing.
-The speed-ups obtain with mpiSORT is at the price of the stability of the sorting.
-So if you need stable sort don't use mpiSORT.
-
+Before installing and using this tools you have to be aware of one thing.  
+The speed-up obtain with mpiSORT is at the price of the stability of the sorting (see FAQ).  
+If you need stable sort don't use mpiSORT.  
 
 ## Installation
 
