@@ -1,5 +1,6 @@
 # Documentation
 
+* [Before starting](#beforestarting)
 * [Installation](#installation)
 * [Prerequisites](#prerequisites)
 * [Usage](#usage)
@@ -19,6 +20,14 @@
 * [Algorithm](#algorithm)
 * [References](#references)
 * [FAQ](#faq)
+
+
+## Before starting
+
+Before installing and using this tools you have to be aware of one thing.
+The speed-ups obtain with mpiSORT is at the price of the stability of the sorting.
+So if you need stable sort don't use mpiSORT.
+
 
 ## Installation
 
