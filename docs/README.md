@@ -1,5 +1,6 @@
 # Documentation
 
+* [Before starting](#beforestarting)
 * [Installation](#installation)
 * [Prerequisites](#prerequisites)
 * [Usage](#usage)
@@ -19,6 +20,13 @@
 * [Algorithm](#algorithm)
 * [References](#references)
 * [FAQ](#faq)
+
+
+## Before starting
+
+Before installing and using this tools you have to be aware of one thing.  
+The speed-up obtain with mpiSORT is at the price of the stability of the sorting (see FAQ).  
+If you need stable sort don't use mpiSORT.  
 
 ## Installation
 
@@ -335,4 +343,10 @@ With this actual version yes. If you really want to play with non power of 2 CPU
 ### Where does this memory bounds comes from?
 
 The memory bounds have been released for power of 2 cores but is still in place if you decided to use non-power of 2 cores. The work around is to send buffer by packets of 1GB during the shuffle of the reads.   
+
+### Is the sorting stable?
+
+No the bitonic sort is not stable. It means the order of the reads with same coordinates may vary according to parallelization.   
+This is also why you cannot use md5 to test reproducibility with sorted files unless you take the same number of parallel process.   
+Stabilization could be done with adding a second key during the sorting, this will be an option in the future release.     
 
