@@ -346,5 +346,7 @@ The memory bounds have been released for power of 2 cores but is still in place 
 
 ### Is the sorting stable?
 
-No the bitonic sort is not stable. It means the order of the reads with same coordinates may vary according to parallelization. Does it really matter? well its a debate because the order of the reads in the fastq files is already a random process once you use parallelization during alignment. This is also why you cannot use md5 to test reproducibility with sorted files unless you take the same number of parallel process. Stabilization could be done with adding a second key during the sorting, this will be an option in the future release.     
+No the bitonic sort is not stable. It means the order of the reads with same coordinates may vary according to parallelization.   
+This is also why you cannot use md5 to test reproducibility with sorted files unless you take the same number of parallel process.   
+Stabilization could be done with adding a second key during the sorting, this will be an option in the future release.     
 
