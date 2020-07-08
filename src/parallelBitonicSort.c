@@ -59,7 +59,7 @@
 #include <mpi.h>
 #include "malloc.h"
 #include "compat.h"
-
+#include "mergeSort.h"
 #include "parallelBitonicSort.h"
 #include "parallelBitonicSort2.h"
 
@@ -129,14 +129,14 @@ void ParallelBitonicSort(
     		local_list[list_size - k - 1] = 0;
     	}
     }
-
+    
     Local_sort(list_size, local_list, local_index);
 
     //we check the local_list is sorted
     for (k = 0; k < (list_size - 1); k++){
     	assert(local_list[k] <= local_list[k + 1]);
     }
-
+    
     /* and_bit is a bitmask that, when "anded" with  */
     /* my_rank, tells us whether we're working on an */
     /* increasing or decreasing list                 */
@@ -194,8 +194,8 @@ void Local_sort(
 	}
 
 	base_arr2 = local_keys;
-	bitonic_qksort(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t);
-
+	//bitonic_qksort(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t);
+	MergeSortMain(index_vector, list_size);
 	//then we apply loac index to local_keys
 	for(j = 0; j < list_size; j++){
 		local_keys_temp[j]  = local_keys[index_vector[j]];

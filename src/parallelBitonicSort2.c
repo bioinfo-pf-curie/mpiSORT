@@ -61,7 +61,7 @@
 #include "compat.h"
 #include "malloc.h"
 #include "parallelBitonicSort2.h"
-
+#include "mergeSort.h"
 // we limit to 1gb per proc
 
 #define LOW 0
@@ -123,13 +123,14 @@ void ParallelBitonicSort2(
     size_t k = 0;
     COMM_WORLD = split_comm;
 
+    	
     Local_sort2(list_size, local_list, local_list1, local_list2, local_list3, local_list4);
 
     //we check the local_list is sorted
     for (k = 0; k < (list_size - 1); k++){
     	assert(local_list[k] <= local_list[k + 1]);
     }
-
+    
     /* and_bit is a bitmask that, when "anded" with  */
     /* my_rank, tells us whether we're working on an */
     /* increasing or decreasing list                 */
@@ -200,8 +201,8 @@ void Local_sort2(
 	}
 
 	base_arr2 = local_keys;
-	bitonic_qksort2(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t);
-
+	//bitonic_qksort2(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t);
+	MergeSortMain(index_vector, list_size);
 	//then we apply loac index to local_keys
 	for(j = 0; j < list_size; j++){
 		local_keys_temp[j]  = local_keys[index_vector[j]];

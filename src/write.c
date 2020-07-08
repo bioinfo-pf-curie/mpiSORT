@@ -38,6 +38,7 @@
 #include "bgzf.c"
 #include "mpiSortUtils.h"
 #include "parallelBitonicSort2.h"
+#include "mergeSort.h"
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum)
 {
@@ -884,7 +885,10 @@ void writeSam(
 		}
 
 		base_arr2 = new_local_offset_source_sorted_bruck;
-		qksort(coord_index, previous_local_readNum, sizeof(size_t), 0, previous_local_readNum - 1, compare_size_t);
+
+		// Replace qksort with merge sort for stability
+		//qksort(coord_index, previous_local_readNum, sizeof(size_t), 0, previous_local_readNum - 1, compare_size_t);
+		MergeSortMain( coord_index, previous_local_readNum);
 
 		int *new_local_reads_sizes_sorted_bruck2 		= malloc(previous_local_readNum * sizeof(int));
 		int *new_local_reads_dest_rank_sorted_bruck2   	= malloc(previous_local_readNum * sizeof(int));
@@ -1454,7 +1458,11 @@ void writeSam(
 
 
 		base_arr2 = data_offsets_to_sort;
-		qksort(new_offset_dest_index_phase3, previous_local_readNum, sizeof(size_t), 0, previous_local_readNum - 1, compare_size_t);
+
+		//replace qksort with mergesort
+		//qksort(new_offset_dest_index_phase3, previous_local_readNum, sizeof(size_t), 0, previous_local_readNum - 1, compare_size_t);
+		MergeSortMain( new_offset_dest_index_phase3, previous_local_readNum );		
+
 
 		free(data_offsets_to_sort);
 
@@ -1929,7 +1937,9 @@ void writeSam_discordant_and_unmapped(
 	//previous version of local sort with output of permutation
 	base_arr2 = offset_source_unsorted;
 	//new version of the local sort
-	qksort(offset_source_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
+	//replacement of qksort with stable merge sort
+	//qksort(offset_source_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
+	MergeSortMain( offset_source_index, local_readNum);
 
 	/*
 	 * reorder the offset and the size
