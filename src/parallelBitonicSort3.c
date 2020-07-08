@@ -57,7 +57,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mpi.h>
-
+#include "mergeSort.h"
 #include "compat.h"
 #include "malloc.h"
 #include "parallelBitonicSort3.h"
@@ -188,8 +188,8 @@ void Local_sort3(
 	}
 
 	base_arr2 = local_keys;
-	bitonic_qksort3(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t3);
-
+	//bitonic_qksort3(index_vector, list_size, sizeof(size_t), 0, list_size - 1, compare_size_t3);
+	MergeSortMain(index_vector, list_size);
 	//then we apply loac index to local_keys
 	for(j = 0; j < list_size; j++){
 		local_keys_temp[j]  = local_keys[index_vector[j]];

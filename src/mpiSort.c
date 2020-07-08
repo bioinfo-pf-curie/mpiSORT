@@ -1033,7 +1033,10 @@ int main (int argc, char *argv[]){
 				time_count = MPI_Wtime();
 
 				base_arr2 = local_reads_coordinates_unsorted;
-				qksort(coord_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
+				
+				// For stabilization we replace the qksort with a merge sort
+				//qksort(coord_index, local_readNum, sizeof(size_t), 0, local_readNum - 1, compare_size_t);
+				MergeSortMain(coord_index, local_readNum);
 
 				if (split_rank == chosen_split_rank)
 						fprintf(stderr,	"rank %d :::::[MPISORT][LOCAL SORT] time spent = %f s\n", split_rank, MPI_Wtime() - time_count);
