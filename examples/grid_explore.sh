@@ -10,6 +10,30 @@ function usage()
         exit 0
 }
 
+function compute_required_cpus()
+{
+	TotalCPUperNode=$1
+	CPURequired=1
+        while  [[ ${CPURequired} -lt ${TotalCPUperNode} ]]; do
+                CPURequired=$(echo $((${CPURequired}*2)))
+        done
+        CPURequired=$((CPURequired/2))
+	echo ${CPURequired}
+}
+
+function total_ram_1_chr(){
+	TMP=$((5*$1/2))
+	echo ${TMP}
+}
+
+function total_ram_all_chr(){
+	echo $((3*$1/2))
+}
+
+function ceil(){
+	RES=`echo $1 $2 | awk 'function ceil(x){return (x == int(x) ? x : int(x) + 1)}{ x=$2/$1; print ceil(x) }'`
+	echo ${RES}
+}
 
 function explore_partition()
 {
@@ -27,7 +51,6 @@ function explore_partition()
 	MaxMemoryPerNode=${MaxMemoryPerNodeTMP#*=}
 	NodesNameTMP=$(scontrol show partition ${PARTITION} | grep ' Nodes=')
 	NodesName=${NodesNameTMP#*=}
-
 	
 	echo "After exploration of the partition " ${PARTITION}
 	echo "Total number of nodes = " ${TotalNodes}
@@ -61,34 +84,46 @@ function explore_node()
 	echo "Memory per Nodes = " ${TotalRAMperNode}
 	echo "Number of sockets per node = " ${TotalSocketPerNode}
 	echo "Number of CPUS per socket = " ${CPUPerSocket}
-	echo "Memory per CPU = " ${MemPerCPU} "GB"
+	echo "Average memory per CPU = " ${MemPerCPU} "GB"
 	echo "########"
 	echo " " 
 	echo "Here are some examples of commande lines mpiSORT:"
 	echo ""
-	echo "Assuming RAM per gpu is "${MemPerCPU}" GB."
-	TotalRAMNeeded=`awk 'BEGIN { x=2.5*50;print x }'`
+	
+	TotalRAMNeeded=$(total_ram_1_chr 50)
+	NodesRequired=$(ceil ${TotalRAMperNode} ${TotalRAMNeeded})
+	CPURequiredPerNode=$(compute_required_cpus ${TotalCPUperNode})
+	
 	echo "For instance if your SAM is 50gb and contains 1 chromosoms you will need around 2.5*50 = " ${TotalRAMNeeded}  "GB"  
-
-	NodesRequired=`echo ${TotalRAMperNode} | awk 'function ceil(x){return (x == int(x) ? x : int(x) + 1)}{ x=(2.5*50)/$1;print ceil(x) }'`
-	CPURequired=1
-	while  [[ ${CPURequired} -lt ${TotalCPUperNode} ]]; do
-		CPURequired=$(echo $((${CPURequired}*2)))
-	done
-	CPURequired=$((CPURequired/2))
-
-	echo "So you need at least ${NodesRequired} nodes and from 2 to ${CPURequired} CPUS"
+	echo "So you need at least ${NodesRequired} nodes and from 2 to ${CPURequiredPerNode} CPUS per node"
 	echo ""	
 	echo "your PBS script could look like this"
 	
 	echo "#SBATCH -J JOB_NAME"
 	echo "#SBATCH -N" ${NodesRequired}
-	echo "#SBATCH -n" ${CPURequired}
+	echo "#SBATCH -n" $((${CPURequiredPerNode}*${NodesRequired}))
 	echo "#SBATCH -c 1"
-	echo "#SBATCH --tasks-per-node=" $((${CPURequired}/${NodesRequired}))
-	echo "#SBATCH --mem-per-cpu=" $(((${NodesRequired}*${TotalRAMperNode})/${CPURequired}))
+	echo "#SBATCH --tasks-per-node="${CPURequiredPerNode}
+	echo "#SBATCH --mem-per-cpu="$(((${NodesRequired}*${TotalRAMperNode})/(${CPURequiredPerNode}*${NodesRequired})))
+	echo ""
+	
+	TotalRAMNeeded=$(total_ram_all_chr 500)
+        NodesRequired=$(ceil ${TotalRAMperNode} ${TotalRAMNeeded})
+        CPURequiredPerNode=$(compute_required_cpus ${TotalCPUperNode})
 
-	echo "For instance if your SAM is 50gb and contains all chromosoms from HG19 you will need around 1.5*50 = " `awk 'BEGIN { x=1.5*50;print x }'` "GB"		
+
+	echo "For instance if your SAM is 500gb and contains all chromosoms from HG19 you will need around 1.5*50 = " ${TotalRAMNeeded}  "GB"		
+	echo "So you need at least ${NodesRequired} nodes and from 2 to ${CPURequiredPerNode} CPUS per node"
+        echo "" 
+        echo "your PBS script could look like this"
+
+        echo "#SBATCH -J JOB_NAME"
+        echo "#SBATCH -N" ${NodesRequired}
+        echo "#SBATCH -n" $((${CPURequiredPerNode}*${NodesRequired}))
+        echo "#SBATCH -c 1"
+        echo "#SBATCH --tasks-per-node="${CPURequiredPerNode}
+        echo "#SBATCH --mem-per-cpu="$(((${NodesRequired}*${TotalRAMperNode})/(${CPURequiredPerNode}*${NodesRequired})))
+        echo ""
 	
 }
 
