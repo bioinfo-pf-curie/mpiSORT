@@ -153,6 +153,18 @@ function explore_all_partition()
 	echo "Number of partition = "${PartitionNumber}
 }
 
+################################
+## Test if slurm is installed ##
+################################
+
+type scontrol
+
+if [[ ! $? -eq 0 ]]
+then
+    echo "ERROR: Slurm not found in your PATH. please check its installation."
+    exit 1
+fi
+
 while getopts ":h" option; do 
 	case "$option" in
 		h) usage;;
@@ -160,13 +172,16 @@ while getopts ":h" option; do
 done
 
 if [[ $# -eq 0  ]]; then
+	echo "Slurm is installed we are going to check all the partitions present on your cluster."
 	explore_all_partition
 	exit 0
 elif [[ ( $# -eq 1 ) && ( ( $# != "--help" ) || ( $# != "-h") ) ]]; then
+	echo "Slurm is installed we are going to check the partitions $1 on your cluster."
 	explore_partition $1
 	exit 0
 elif [[ $# -eq 2 ]]; then
 	echo "########"
+	echo "Slurm is installed we are going to check the partitions $1 and node $2 on your cluster."
 	explore_partition $1
 	explore_node $2
 	exit 0
