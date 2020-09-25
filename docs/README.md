@@ -252,6 +252,23 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p -q
 
 You can go in the [examples](../examples) directory and submit the job with `qsub` command using the [pbs.sh](../examples/pbs.sh) script to test the program.
 
+To help you in the process writing your scripts we add 2 tools in the [examples](../examples). The first script [grid_explore.sh](../examples/grid_explore.sh) gives you information about your Slurm cluster (only Slurm is supported). 
+
+To see usage:
+
+```shell 
+bash grid_explore.sh -h 
+```
+
+The second script [informaticResources.py](../examples/informaticsResources.py) helps you choosing the amount of memory, CPU and nodes according to the file you want to sort. 
+
+To see usage:
+
+```shell
+python informaticResources.py -h
+```
+
+
 ## Parallel filesystems
 
 As the `mpiSORT` program uses MPI functions for reading and writing you can take advantage of a parallel file system to tackle the IOs bottleneck and speed-up the sorting of a SAM file. Using a parallel filesystem such as [Lustre](http://lustre.org/) or [BeeGFS](https://www.beegfs.io/) will be mandatory as long as the SAM file to sort is bigger and bigger.
