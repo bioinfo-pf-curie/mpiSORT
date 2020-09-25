@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description = 'Estimate informatic resources fo
 
 parser.add_argument('-c','--cores', dest = 'cores', help = 'Number of cores in a node', type = int, required = True)
 parser.add_argument('-m','--memory', dest = 'memory', help = 'Maximum RAM memory available in a node in GB', type = float, required = True)
-parser.add_argument('-s','--size', dest = 'size', help = 'Size of the FASTQ file in GB', type = float, required = True)
+parser.add_argument('-s','--size', dest = 'size', help = 'Size of the SAM file in GB', type = float, required = True)
 
 args = parser.parse_args()
 
@@ -48,7 +48,7 @@ print("\n")
 print("Your setting is:")
 print("\tA node has {} cores".format(args.cores))
 print("\tA node has {} GB of RAM memory".format(args.memory))
-print("\tThe size of the FASTQ file is {} GB of RAM memory cores".format(args.size))
+print("\tThe size of the SAM file is {} GB".format(args.size))
 
 ### Print informatic resources
 printResources(resourceAllChr, "If your FASTQ file contains all the chromosomes")
