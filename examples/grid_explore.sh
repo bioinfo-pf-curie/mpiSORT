@@ -55,7 +55,7 @@ function explore_partition()
 	echo "After exploration of the partition " ${PARTITION}
 	echo "Total number of nodes = " ${TotalNodes}
 	echo "Total Number of CPUS  = " ${TotalCPUS}
-	echo "Maximum Memory per Nodes = " ${MaxMemoryPerNode}
+	echo "Maximum Memory per Node available = " ${MaxMemoryPerNode}
 	echo "NODE names list = " ${NodesName}
 	echo "########"
 	
