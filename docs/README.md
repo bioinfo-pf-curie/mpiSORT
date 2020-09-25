@@ -254,10 +254,29 @@ You can go in the [examples](../examples) directory and submit the job with `qsu
 
 To help you in the process writing your scripts we add 2 tools in the [examples](../examples). The first script [grid_explore.sh](../examples/grid_explore.sh) gives you information about your Slurm cluster (only Slurm is supported). 
 
-To see usage:
+Examples:
 
 ```shell 
-bash grid_explore.sh -h 
+bash grid_explore.sh
+
+########
+Partition 1 name : batch
+After exploration of the partition  batch
+Total number of nodes =  18
+Total Number of CPUS  =  720
+Maximum Memory per Nodes =  UNLIMITED
+NODE names list =  node[01-04],node[07-20]
+########
+########
+Partition 2 name : dev
+After exploration of the partition  dev
+Total number of nodes =  16
+Total Number of CPUS  =  640
+Maximum Memory per Nodes =  UNLIMITED
+NODE names list =  node[05-06],node[07-20]
+########
+
+
 ```
 
 The second script [informaticResources.py](../examples/informaticsResources.py) helps you choosing the amount of memory, CPU and nodes according to the file you want to sort. 
@@ -265,7 +284,25 @@ The second script [informaticResources.py](../examples/informaticsResources.py) 
 To see usage:
 
 ```shell
-python informaticResources.py -h
+python informaticResources.py -c 40 -m 191 -s 1300
+
+Your setting is:
+	A node has 40 cores
+	A node has 191.0 GB of RAM memory
+	The size of the SAM file is 1300.0 GB
+
+
+If your FASTQ file contains all the chromosomes, the informatic resources required are:
+	Memory: 1950.0 GB
+	Number of nodes: 11.0
+	Number of cores: 409.0
+
+
+If your FASTQ file contains only one chromosome, the informatic resources required are:
+	Memory: 3250.0 GB
+	Number of nodes: 18.0
+	Number of cores: 681.0
+
 ```
 
 
