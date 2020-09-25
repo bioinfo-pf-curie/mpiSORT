@@ -259,12 +259,11 @@ Examples:
 ```shell 
 bash grid_explore.sh
 
-########
 Partition 1 name : batch
 After exploration of the partition  batch
 Total number of nodes =  18
 Total Number of CPUS  =  720
-Maximum Memory per Nodes =  UNLIMITED
+Maximum Memory per Node available =  UNLIMITED
 NODE names list =  node[01-04],node[07-20]
 ########
 ########
@@ -272,9 +271,44 @@ Partition 2 name : dev
 After exploration of the partition  dev
 Total number of nodes =  16
 Total Number of CPUS  =  640
-Maximum Memory per Nodes =  UNLIMITED
+Maximum Memory per Node available =  UNLIMITED
 NODE names list =  node[05-06],node[07-20]
 ########
+
+bash grid_explore.sh batch node01
+
+########
+After exploration of the node  node01
+Number of CPUS per node  =  40
+Memory per Nodes =  191
+Number of sockets per node =  2
+Number of CPUS per socket =  20
+Average memory per CPU =  4 GB
+########
+ 
+Here are some examples of commande lines mpiSORT:
+
+For instance if your SAM is 50gb and contains 1 chromosoms you will need around 2.5*50 =  125 GB
+So you need at least 1 nodes and from 2 to 32 CPUS per node
+
+your PBS script could look like this
+#SBATCH -J JOB_NAME
+#SBATCH -N 1
+#SBATCH -n 32
+#SBATCH -c 1
+#SBATCH --tasks-per-node=32
+#SBATCH --mem-per-cpu=5
+
+For instance if your SAM is 500gb and contains all chromosoms from HG19 you will need around 1.5*50 =  750 GB
+So you need at least 4 nodes and from 2 to 32 CPUS per node
+
+your PBS script could look like this
+#SBATCH -J JOB_NAME
+#SBATCH -N 4
+#SBATCH -n 128
+#SBATCH -c 1
+#SBATCH --tasks-per-node=32
+#SBATCH --mem-per-cpu=5
 
 
 ```
