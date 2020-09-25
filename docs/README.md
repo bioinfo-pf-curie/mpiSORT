@@ -14,7 +14,7 @@
     * [Standard](#standard)
     * [Slurm](#slurm)
     * [PBS/Torque](#pbstorque)
-    * [Set number of nodes and cores](#set-number-of-cores-and-nodes)
+    * [Set the number of nodes and cores](#set-the-number-of-cores-and-nodes)
 * [Performance](#performance)
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
@@ -110,6 +110,8 @@ To reduce further the memory required you can use as input a SAM file that conta
 
 To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
 
+
+The section [Set the number of nodes and cores](#set-the-number-of-cores-and-nodes) provides guidelines and utilities to set the informatic resources.
 ### Cpu
 
 Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is mandatory to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
@@ -253,14 +255,11 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p -q
 
 You can go in the [examples](../examples) directory and submit the job with `qsub` command using the [pbs.sh](../examples/pbs.sh) script to test the program.
 
-### Set number of nodes and cores
+### Set the number of nodes and cores
 
 Two scripts can help you to define the number of RAM memory, nodes and cores needed to launch `mpiSORT` depending on the size of input SAM file and the configuration of the computing cluster.
 
-The first script [getSlurmNodesInfo.sh](../examples/getSlurmNodesInfo.sh) provides information about the Slurm cluster (only Slurm is supported). Log on the submission node of the Slurm cluster.
-
-
-To have the list and properties of the different queues (partitions) available on the Slurm cluster, type:
+The first script [getSlurmNodesInfo.sh](../examples/getSlurmNodesInfo.sh) provides information about the Slurm cluster (only Slurm is supported). Log on the submission node of the Slurm cluster. To have the list and properties of the different queues (partitions) available on the Slurm cluster, type:
 
 ```shell
 bash getSlurmNodesInfo.sh
@@ -319,33 +318,6 @@ Average memory per CPU = 4 GB
 
 The second script [informaticResources.py](../examples/informaticsResources.py) helps to choose the amount of RAM memory, cores and nodes according to the SAM file you want to sort. I can be used as follows:
 
-```shell
-python informaticResources.py -c 40 -m 191 -s 1300
- 
-Your setting is:
-	A node has 40 cores
-	A node has 191.0 GB of RAM memory
-	The size of the SAM file is 1300.0 GB
-
-
-If your SAM file contains all the chromosomes, the informatic resources required are:
-	Memory: 1950.0 GB
-	Number of nodes: 11
-	Number of cores: 409
-
-
-If your SAM file contains only one chromosome, the informatic resources required are:
-	Memory: 3250.0 GB
-	Number of nodes: 18
-	Number of cores: 681
-
-```
-
-
-
-The second script [informaticResources.py](../examples/informaticsResources.py) helps to choose the amount of RAM memory, cores and nodes according to the SAM file you want to sort.
-
-To see usage:
 
 ```shell
 
@@ -376,8 +348,7 @@ If your SAM file contains only one chromosome, the informatic resources required
 	Number of cores by node (with power of 2 constraint): 29
 ```
 
-Let's apply what we have explained to two examples.
-
+Let's apply what we have explained in two examples.
 
 If your SAM file is 50 GB and contains 1 chromosome, `python informaticResources.py -c 40 -m 191 -s 50` tells you that you need 1 node with 2.5x50 = 125 GB of RAM memory and 16 cores (although 32 cores could also fit in this case). Write your Slurm script as follows:
 
