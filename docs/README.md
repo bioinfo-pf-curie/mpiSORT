@@ -14,6 +14,7 @@
     * [Standard](#standard)
     * [Slurm](#slurm)
     * [PBS/Torque](#pbstorque)
+    * [Set number of nodes and cores](#set-number-of-cores-and-nodes)
 * [Performance](#performance)
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
@@ -252,73 +253,104 @@ mpirun mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -p -q
 
 You can go in the [examples](../examples) directory and submit the job with `qsub` command using the [pbs.sh](../examples/pbs.sh) script to test the program.
 
-To help you in the process writing your scripts we add 2 tools in the [examples](../examples). The first script [grid_explore.sh](../examples/grid_explore.sh) gives you information about your Slurm cluster (only Slurm is supported). 
+### Set number of nodes and cores
 
-Examples:
+Two scripts can help you to define the number of RAM memory, nodes and cores needed to launch `mpiSORT` depending on the size of input SAM file and the configuration of the computing cluster.
 
-```shell 
-bash grid_explore.sh
+The first script [getSlurmNodesInfo.sh](../examples/getSlurmNodesInfo.sh) provides information about the Slurm cluster (only Slurm is supported). Log on the submission node of the Slurm cluster.
 
+
+To have the list and properties of the different queues (partitions) available on the Slurm cluster, type:
+
+```shell
+bash getSlurmNodesInfo.sh
+
+########
 Partition 1 name : batch
-After exploration of the partition  batch
-Total number of nodes =  18
-Total Number of CPUS  =  720
-Maximum Memory per Node available =  UNLIMITED
-NODE names list =  node[01-04],node[07-20]
+After exploration of the partition batch
+Total number of nodes = 18
+Total Number of CPUS = 720
+Maximum Memory per Node available = UNLIMITED
+NODE names list = node[01-04],node[07-20]
 ########
 ########
 Partition 2 name : dev
-After exploration of the partition  dev
-Total number of nodes =  16
-Total Number of CPUS  =  640
-Maximum Memory per Node available =  UNLIMITED
-NODE names list =  node[05-06],node[07-20]
+After exploration of the partition dev
+Total number of nodes = 16
+Total Number of CPUS = 640
+Maximum Memory per Node available = UNLIMITED
+NODE names list = node[05-06],node[07-20]
 ########
-
-bash grid_explore.sh batch node01
-
-########
-After exploration of the node  node01
-Number of CPUS per node  =  40
-Memory per Nodes =  191
-Number of sockets per node =  2
-Number of CPUS per socket =  20
-Average memory per CPU =  4 GB
-########
- 
-Here are some examples of commande lines mpiSORT:
-
-For instance if your SAM is 50gb and contains 1 chromosoms you will need around 2.5*50 =  125 GB
-So you need at least 1 nodes and from 2 to 32 CPUS per node
-
-your PBS script could look like this
-#SBATCH -J JOB_NAME
-#SBATCH -N 1
-#SBATCH -n 32
-#SBATCH -c 1
-#SBATCH --tasks-per-node=32
-#SBATCH --mem-per-cpu=5
-
-For instance if your SAM is 500gb and contains all chromosoms from HG19 you will need around 1.5*50 =  750 GB
-So you need at least 4 nodes and from 2 to 32 CPUS per node
-
-your PBS script could look like this
-#SBATCH -J JOB_NAME
-#SBATCH -N 4
-#SBATCH -n 128
-#SBATCH -c 1
-#SBATCH --tasks-per-node=32
-#SBATCH --mem-per-cpu=5
-
 
 ```
 
-The second script [informaticResources.py](../examples/informaticsResources.py) helps you choosing the amount of memory, CPU and nodes according to the file you want to sort. 
+
+To have the properties of a specific queue (partition), type:
+
+```shelL
+bash getSlurmNodesInfo.sh batch
+
+########
+After exploration of the partition batch
+Total number of nodes = 18
+Total Number of CPUS = 720
+Maximum Memory per Node available = UNLIMITED
+NODE names list = node[01-04],node[07-20]
+########
+
+```
+
+To have the properties of a specific node on a specific queue (partition), type:
+
+```shell
+
+bash getSlurmNodesInfo.sh batch node01
+
+########
+After exploration of the node node01
+Number of CPUS per node = 40
+Memory per Nodes = 191
+Number of sockets per node = 2
+Number of CPUS per socket = 20
+Average memory per CPU = 4 GB
+########
+
+```
+
+The second script [informaticResources.py](../examples/informaticsResources.py) helps to choose the amount of RAM memory, cores and nodes according to the SAM file you want to sort. I can be used as follows:
+
+```shell
+python informaticResources.py -c 40 -m 191 -s 1300
+ 
+Your setting is:
+	A node has 40 cores
+	A node has 191.0 GB of RAM memory
+	The size of the SAM file is 1300.0 GB
+
+
+If your SAM file contains all the chromosomes, the informatic resources required are:
+	Memory: 1950.0 GB
+	Number of nodes: 11
+	Number of cores: 409
+
+
+If your SAM file contains only one chromosome, the informatic resources required are:
+	Memory: 3250.0 GB
+	Number of nodes: 18
+	Number of cores: 681
+
+```
+
+
+
+The second script [informaticResources.py](../examples/informaticsResources.py) helps to choose the amount of RAM memory, cores and nodes according to the SAM file you want to sort.
 
 To see usage:
 
 ```shell
+
 python informaticResources.py -c 40 -m 191 -s 1300
+
 
 Your setting is:
 	A node has 40 cores
@@ -326,19 +358,50 @@ Your setting is:
 	The size of the SAM file is 1300.0 GB
 
 
-If your FASTQ file contains all the chromosomes, the informatic resources required are:
+If your SAM file contains all the chromosomes, the informatic resources required are:
 	Memory: 1950.0 GB
-	Number of nodes: 11.0
-	Number of cores: 409.0
+	Number of cores: 409
+	Number of nodes: 11
+	Number of cores (with power of 2 constraint): 256
+	Memory per of core (with power of 2 constraint): 7.6
+	Number of cores by node (with power of 2 constraint): 24
 
 
-If your FASTQ file contains only one chromosome, the informatic resources required are:
+If your SAM file contains only one chromosome, the informatic resources required are:
 	Memory: 3250.0 GB
-	Number of nodes: 18.0
-	Number of cores: 681.0
-
+	Number of cores: 681
+	Number of nodes: 18
+	Number of cores (with power of 2 constraint): 512
+	Memory per of core (with power of 2 constraint): 6.3
+	Number of cores by node (with power of 2 constraint): 29
 ```
 
+Let's apply what we have explained to two examples.
+
+
+If your SAM file is 50 GB and contains 1 chromosome, `python informaticResources.py -c 40 -m 191 -s 50` tells you that you need 1 node with 2.5x50 = 125 GB of RAM memory and 16 cores (although 32 cores could also fit in this case). Write your Slurm script as follows:
+
+
+```shell
+#SBATCH -J JOB_NAME
+#SBATCH -N 1
+#SBATCH -n 16
+#SBATCH -c 1
+#SBATCH --tasks-per-node=16
+#SBATCH --mem-per-cpu=8
+```
+
+
+If your SAM file is 500 GB and contains all chromosomes from HG19, `python informaticResources.py -c 40 -m 191 -s 500` tells you that you need 4 nodes with 1.5x500 = 750 GB of RAM memory and 128 cores. Write your Slurm script as follows:
+
+```shell
+#SBATCH -J JOB_NAME
+#SBATCH -N 4
+#SBATCH -n 128
+#SBATCH -c 1
+#SBATCH --tasks-per-node=32
+#SBATCH --mem-per-cpu=6
+```
 
 ## Parallel filesystems
 

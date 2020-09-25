@@ -80,7 +80,7 @@ function explore_node()
 	MemPerCPU=$(echo $(( TotalRAMperNode / TotalCPUperNode )))
 		
 	echo "After exploration of the node " ${NODE_NAME}
-	echo "Number of CPUS per node  = " ${TotalCPUperNode}
+	echo "Number of CPUS per node = " ${TotalCPUperNode}
 	echo "Memory per Nodes = " ${TotalRAMperNode}
 	echo "Number of sockets per node = " ${TotalSocketPerNode}
 	echo "Number of CPUS per socket = " ${CPUPerSocket}
@@ -94,7 +94,7 @@ function explore_node()
 	NodesRequired=$(ceil ${TotalRAMperNode} ${TotalRAMNeeded})
 	CPURequiredPerNode=$(compute_required_cpus ${TotalCPUperNode})
 	
-	echo "For instance if your SAM is 50gb and contains 1 chromosoms you will need around 2.5*50 = " ${TotalRAMNeeded}  "GB"  
+	echo "For instance if your SAM is 50gb and contains 1 chromosoms you will need around 2.5*50 = " ${TotalRAMNeeded} "GB"
 	echo "So you need at least ${NodesRequired} nodes and from 2 to ${CPURequiredPerNode} CPUS per node"
 	echo ""	
 	echo "your PBS script could look like this"
@@ -112,7 +112,7 @@ function explore_node()
         CPURequiredPerNode=$(compute_required_cpus ${TotalCPUperNode})
 
 
-	echo "For instance if your SAM is 500gb and contains all chromosoms from HG19 you will need around 1.5*50 = " ${TotalRAMNeeded}  "GB"		
+	echo "For instance if your SAM is 500gb and contains all chromosoms from HG19 you will need around 1.5*50 = " ${TotalRAMNeeded} "GB"
 	echo "So you need at least ${NodesRequired} nodes and from 2 to ${CPURequiredPerNode} CPUS per node"
         echo "" 
         echo "your PBS script could look like this"
@@ -171,7 +171,7 @@ while getopts ":h" option; do
 	esac
 done
 
-if [[ $# -eq 0  ]]; then
+if [[ $# -eq 0 ]]; then
 	echo "Slurm is installed we are going to check all the partitions present on your cluster."
 	explore_all_partition
 	exit 0
