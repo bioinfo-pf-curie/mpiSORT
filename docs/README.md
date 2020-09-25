@@ -14,14 +14,12 @@
     * [Standard](#standard)
     * [Slurm](#slurm)
     * [PBS/Torque](#pbstorque)
-    * [Set the number of nodes and cores](#set-the-number-of-cores-and-nodes)
+    * [Set the number of nodes and cores](#set-the-number-of-nores-and-codes)
 * [Performance](#performance)
 * [Parallel filesystems](#parallel-filesystems)
 * [Algorithm](#algorithm)
 * [References](#references)
 * [FAQ](#faq)
-
-
 
 ## Installation
 
@@ -111,7 +109,7 @@ To reduce further the memory required you can use as input a SAM file that conta
 To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
 
 
-The section [Set the number of nodes and cores](#set-the-number-of-cores-and-nodes) provides guidelines and utilities to set the informatic resources.
+The section [Set the number of nodes and cores](#set-the-number-of-nores-and-codes) provides guidelines and utilities to set the informatic resources.
 ### Cpu
 
 Due to the bitonic sorting, the algorithm is optimized for power of 2 number of CPU. Therefore, it is mandatory to set the `-n` parameter of `mpirun` to 2, 4, 8, 16, 32, etc. in order to ensure for optimal performance. For example, `mpirun -n 4 mpiSORT examples/data/HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample`
