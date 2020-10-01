@@ -2,7 +2,7 @@ version-1.4 2020-09-25
     - utilities scripts for informatic resources (getSlurmNodesInfo.sh and informaticResources.py)
 
 version-1.3 2020-07-08
-    - sorting is now stable
+    - in case the case of duplicate keys, the sorting algorithm is now stable (i.e two objects with equal keys appear in the same order in sorted output as they appear in the input to be sorted.)
 
 version-1.2 2020-06-29
     - fix a run time error
