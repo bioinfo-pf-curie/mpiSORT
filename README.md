@@ -8,7 +8,7 @@ Before going further don't use this tool unless you know what you are doing!
 * [Documentation](docs/README.md)
 * [Credits](#credits)
 * [Acknowledgements](#acknowledgements)
-* [Release notes](CHANGELOG.md)
+* [Release notes](CHANGELOG)
 * [Citation](#citation)
 
 ## Credits
