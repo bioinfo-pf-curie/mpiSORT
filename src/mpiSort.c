@@ -157,7 +157,7 @@ int main (int argc, char *argv[]){
 	threshold = 0;
 	write_sam = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpuq:")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpuq:s")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -177,6 +177,9 @@ int main (int argc, char *argv[]){
                                 break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
+				break;
+			case 's':
+				write_sam = 1;
 				break;
 			default:
 				usage(basename(*argv));
@@ -1575,7 +1578,8 @@ int main (int argc, char *argv[]){
 					local_data,
 					goff[rank],
 					first_local_readNum,
-					uniq_chr
+					uniq_chr,
+					write_sam
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1677,8 +1681,10 @@ static void usage(const char *prg) {
         "\t     filters the reads according to their quality. Reads quality under the\n"
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"
         "\n\t-n\n"
-        "\t     sorts the read by their name (but it is not commonly used).\n"
-        "\ninput: input file is a sam file of paired reads\n"
+        "\t     sorts the read by their query name.\n"
+	"\n\t-s\n"
+	"\t	write the output in sam format.\n"
+        "\ninput: input file is a sam file of paired or single reads\n"
         "\noutput: set of gz files with\n"
         "\t* one per chromosome (e.g. chr11.gz)\n"
         "\t* one for discordant reads (discordant.gz): discordants reads are reads \n"

@@ -62,7 +62,8 @@ void writeSam(
 		char* data,
 		size_t offset_data_in_file,
 		size_t original_local_readNum,
-		int uniq_chr
+		int uniq_chr,
+		int write_sam
 		);
 
 
