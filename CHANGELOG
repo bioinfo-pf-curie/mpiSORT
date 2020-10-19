@@ -1,6 +1,7 @@
 version-1.5
 
     - Replace the existing SO: in the header file (isuue #44) usefull when first sorting by query and then sorting by coordinates.
+    - Repair link in the README.md (issue #43)
 
 version-1.4 2020-10-01
     - utilities scripts for informatic resources (getSlurmNodesInfo.sh and informaticResources.py)
