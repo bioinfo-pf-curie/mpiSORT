@@ -112,7 +112,7 @@ static void usage(const char *);
 
 int main (int argc, char *argv[]){
 
-	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
+	char *x, *x1, *y, *y1, *z, *z1, *xbuf, *hbuf, *chrNames[MAXNBCHR];
 	int fd;
 	off_t hsiz;
 	struct stat st;
@@ -245,10 +245,35 @@ int main (int argc, char *argv[]){
 	assert(fstat(fd, &st) != -1);
 	xbuf = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
 	assert(xbuf != MAP_FAILED);
+	/* we get the size of the original header */
+	x = xbuf;
+	size_t orig_hsiz = 0;
+	while (*x == '@') {
+                y = strchr(x, '\n');
+                z = x; x = y + 1;
+              
+        }
+	orig_hsiz = x - xbuf;
 
+	/* ignore the first line if equal to @HD     VN:1.0  SO:  */
+        char *xbuf1;
+        x1 = xbuf;
+	xbuf1 = xbuf;
+	char *y2;
+	
+	if (*x1 == '@'){
+		y1 = strchr(x1, '\n');		
+		z1 = x1; x1 = y1 + 1;
+		if (strncmp(z1, "@HD", 3) == 0) {
+			y2 = strstr(z1, "SO:");
+			if (y2 != NULL) xbuf1 = x1;	
+		}					
+	}
+	
 	/* Parse SAM header */
 	memset(chrNames, 0, sizeof(chrNames));
-	x = xbuf; nbchr = 0;
+	x = xbuf1; nbchr = 0;
+	assert(*x == '@');
 	while (*x == '@') {
 		y = strchr(x, '\n');
 		z = x; x = y + 1;
@@ -261,7 +286,7 @@ int main (int argc, char *argv[]){
 		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
 	}
-	
+	assert(*x != '@');
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
@@ -273,8 +298,8 @@ int main (int argc, char *argv[]){
 		chrNames[nbchr++] = strdup(UNMAPPED);
 	}
 
-	hsiz = x - xbuf;
-	hbuf = strndup(xbuf, hsiz);
+	hsiz = x - xbuf1;
+	hbuf = strndup(xbuf1, hsiz);
 
 	if (rank == 0) {
 		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
@@ -338,7 +363,7 @@ int main (int argc, char *argv[]){
 
 	//We place file offset of each process to the begining of one read's line
 	size_t *goff =(size_t*)calloc((size_t)(num_proc+1), sizeof(size_t));
-	init_goff(mpi_filed,hsiz,input_file_size,num_proc,rank,goff);
+	init_goff(mpi_filed,orig_hsiz,input_file_size,num_proc,rank,goff);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
