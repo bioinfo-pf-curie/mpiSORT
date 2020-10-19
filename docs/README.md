@@ -65,7 +65,7 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-p` if the read are paired-end (by default reads are single-end) (optional)
 * `-n` sorts the read by their name (but it is not commonly used) (optional)
 * `-u` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
-
+* `-s` to write the output in SAM format (by default the output is in bgzf format)
  
 
 ### Output
