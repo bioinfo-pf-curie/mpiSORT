@@ -122,7 +122,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired, uniq_chr, write_sam;
+	int res, nbchr, i, paired, uniq_chr, write_format;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -155,9 +155,9 @@ int main (int argc, char *argv[]){
 	paired = 0; /* by default reads are considered single*/
 	uniq_chr = 0; 
 	threshold = 0;
-	write_sam = 0;
+	write_format = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpuq:s")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpuq:gsb")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -178,9 +178,15 @@ int main (int argc, char *argv[]){
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
 				break;
-			case 's':
-				write_sam = 1;
+			case 'g':
+				write_format = 0;
 				break;
+			case 'b':
+                                write_format = 1;
+                                break;
+			case 's':
+                                write_format = 2;
+                                break;
 			default:
 				usage(basename(*argv));
 				return 1;
@@ -661,7 +667,7 @@ int main (int argc, char *argv[]){
 							compression_level,
 							local_data,
 							goff[rank],
-							write_sam);
+							write_format);
 
 					if (split_rank == chosen_rank){
 							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds \n\n\n", split_rank,
@@ -699,7 +705,7 @@ int main (int argc, char *argv[]){
 							compression_level,
 							local_data,
 							goff[rank],
-							write_sam
+							write_format
 							);
 
 
@@ -1579,7 +1585,7 @@ int main (int argc, char *argv[]){
 					goff[rank],
 					first_local_readNum,
 					uniq_chr,
-					write_sam
+					write_format
 				);
 
 				if (split_rank == chosen_split_rank){

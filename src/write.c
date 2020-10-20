@@ -510,7 +510,7 @@ void writeSam(
 		size_t start_offset_in_file,
 		size_t previous_local_readNum,
 		int uniq_chr,
-		int write_sam
+		int write_format
 		){
 
 
@@ -1511,7 +1511,7 @@ void writeSam(
 
 
 
-		if (write_sam == 1){
+		if (write_format == 2){
 			
 			/*
                          * We write result in SAM format
@@ -1707,7 +1707,14 @@ void writeSam(
 				m6++;
 			}
 
-
+				
+			//the last rank add the magic number
+			//to be compatible with BAM 
+			if ( (write_format == 1) && (rank == num_proc - 1)){
+                        	static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+				memcpy(compressed_buff + compressed_size, magic, 28);
+				compressed_size += 28;
+			}	
 
 			BGZF *fp_header;
 			fp_header = calloc(1, sizeof(BGZF));
@@ -1815,8 +1822,11 @@ void writeSam(
 			MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
 			// we create the path where to write for collective write
 			path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-			sprintf(path, "%s/%s.gz", output_dir, chrName);
+			
 
+			// we set the extension of the output
+			if (write_format == 0) sprintf(path, "%s/%s.gz", output_dir, chrName);
+			if (write_format == 1) sprintf(path, "%s/%s.bam", output_dir, chrName);
 
 			// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 			//MPI_Info_set(finfo,"striping_factor","12");
@@ -1842,19 +1852,9 @@ void writeSam(
 			time_count = MPI_Wtime();
 
 			if (rank == master_job_phase_2 ) {
-				//static uint8_t magic_bam[4] = "\x1f\x8b\x08\x04";
-                        	//MPI_File_seek(out,0,MPI_SEEK_END);
-                        	//MPI_File_write(out, magic_bam, 4, MPI_BYTE, MPI_STATUS_IGNORE);
-				//MPI_File_seek(out,0,MPI_SEEK_END);
-				//static uint8_t magic_header[16]="\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00";
-				//MPI_File_write(out, magic_header, 16, MPI_BYTE, MPI_STATUS_IGNORE);
-                        	//MPI_File_seek(out,0,MPI_SEEK_END);
 				MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 			}
 			free(compressed_header);
-	
-			//MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                	//MPI_File_write_all(out, compressed_buff, compSize, MPI_BYTE, &status);
 			time_count=MPI_Wtime();
 		
 			//we write by block of 1gb
@@ -1902,20 +1902,8 @@ void writeSam(
 			//MPI_Info_set(finfo,"cb_block_size","2684354560"); /* 4194304 MBytes - should match FS block size */
 			//MPI_Info_set(finfo,"cb_buffer_size","2684354560"); /* 128 MBytes (Optional) */
 	
-			/*		
-			if (rank == master_job_phase_2 ) {
-				static uint8_t magic[28] = "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0";
-				MPI_File_seek(out,0,MPI_SEEK_END);
-				MPI_File_write(out, magic, 28, MPI_BYTE, MPI_STATUS_IGNORE);
-	
-			}	
-			*/
-
-
-
 			MPI_File_close(&out);	
-			//free(compressed_buff);
-
+			
 			if (rank == master_job_phase_2)
 				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BGZF] Time for chromosome %s writing %f seconds\n",
 					rank, chrName, MPI_Wtime()-time_count);
@@ -1960,7 +1948,7 @@ void writeSam_discordant_and_unmapped(
 		int compression_level,
 		char* data,
 		size_t start_offset_in_file,
-		int write_sam
+		int write_format
 		){
 
 	/*
@@ -2113,7 +2101,7 @@ void writeSam_discordant_and_unmapped(
         free(offset_source_index);
         free(offset_source_sorted);
 
-	if ( write_sam == 1 ){
+	if ( write_format == 2 ){
 		
 		time_count = MPI_Wtime();
                 size_t write_offset = 0;
