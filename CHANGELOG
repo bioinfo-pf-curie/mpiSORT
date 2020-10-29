@@ -2,7 +2,8 @@ version-1.5
     - add utility script (getSlurmOpt.py) in examples/ to get sbatch option (issue#46)
     - add option (-t [uniq, all]) in informaticResources.py (issue#46)   
     - update mpiSort.c to fit mpiBWAByChr output version-1.3 (issue#47)
-    - update parser.c (issue#47) 
+    - update parser.c with parser_paired_uniq function (issue#47) 
+    - option -u of mpiSort takes the chrID as argument (issue#47)
     
 version-1.4 2020-10-01
     - utilities scripts for informatic resources (getSlurmNodesInfo.sh and informaticResources.py)
