@@ -146,6 +146,7 @@ int main (int argc, char *argv[]){
 	int compression_level;
 	size_t fsiz, lsiz, loff;
 	const char *sort_name;
+        char *chr_name_u; //use is case of uniq chromosom. Must be the name of the chromosom, it gives also the name of output file 
 	MPI_Info finfo;
 
 	/* Set default values */
@@ -157,7 +158,7 @@ int main (int argc, char *argv[]){
 	threshold = 0;
 	write_format = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpuq:gsb")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpu:q:gsb")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -174,6 +175,7 @@ int main (int argc, char *argv[]){
 				break;
 			case 'u': /* We say we have only one chromosome in the file */
                                 uniq_chr = 1;
+				asprintf(&chr_name_u,"%s", optarg);
                                 break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
@@ -291,9 +293,10 @@ int main (int argc, char *argv[]){
 	
 	if (uniq_chr){
 
-		char *tmp_str = filename;
-		const char *dot = strrchr(filename, '.');
-		chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
+		//char *tmp_str = filename;
+		//const char *dot = strrchr(filename, '.');
+		//chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
+		chrNames[nbchr++] = strdup(chr_name_u);
 	}
 	
 	assert(*x == '@');
@@ -316,8 +319,8 @@ int main (int argc, char *argv[]){
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
-		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], DISCORDANT);
-		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], UNMAPPED);
+		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, DISCORDANT);
+		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, UNMAPPED);
 	}
 	else {
 		chrNames[nbchr++] = strdup(DISCORDANT);
@@ -460,7 +463,8 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		if (paired == 1) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 1 && uniq_chr == 0) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 1 && uniq_chr == 1) parser_paired_uniq(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
