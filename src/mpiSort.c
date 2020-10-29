@@ -282,6 +282,20 @@ int main (int argc, char *argv[]){
 	/* Parse SAM header */
 	memset(chrNames, 0, sizeof(chrNames));
 	x = xbuf1; nbchr = 0;
+	
+	char* ts1 = strdup(file_name);
+	char* ts2 = strdup(file_name);
+
+        char* dir = dirname(ts1);
+        char* filename = basename(ts2);
+	
+	if (uniq_chr){
+
+		char *tmp_str = filename;
+		const char *dot = strrchr(filename, '.');
+		chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
+	}
+	
 	assert(*x == '@');
 	while (*x == '@') {
 		y = strchr(x, '\n');
@@ -292,10 +306,13 @@ int main (int argc, char *argv[]){
 		assert(y != NULL);
 		z = y + 3;
 		while (*z && !isspace((unsigned char)*z)) z++;
-		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
+		if (!uniq_chr) chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
-	}
-	assert(*x != '@');
+	}	
+	assert(*x != '@');	
+	
+	
+	
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
@@ -1322,7 +1339,7 @@ int main (int argc, char *argv[]){
 						/*
 						 *
 						 * FOR DEBUG
-						 */
+						 
 
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
@@ -1332,7 +1349,7 @@ int main (int argc, char *argv[]){
 							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 						}
-						
+						*/
 
 					}
 					else{
@@ -1373,7 +1390,7 @@ int main (int argc, char *argv[]){
 					/*
 					 *
 					 * FOR DEBUG
-					 */
+					 
 					for(y = 0; y < num_read_for_bruck; y++){
 						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1382,6 +1399,7 @@ int main (int argc, char *argv[]){
 						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
+					*/
 					
 				}
 
@@ -1541,7 +1559,7 @@ int main (int argc, char *argv[]){
 				/*
 				 *
 				 * FOR DEBUG
-				 */
+				 
 				for ( j = 0; j < local_readNum; j++){
 					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
 					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
@@ -1550,7 +1568,7 @@ int main (int argc, char *argv[]){
 					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
 					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
 				}
-				
+				*/
 
 				free(local_reads_coordinates_sorted_trimmed);
 

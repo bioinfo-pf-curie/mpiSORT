@@ -55,6 +55,14 @@ size_t hash_name(char * line, int max)
  	return result;
  }
 
+/*
+size_t hash_name(char *s, int max){
+	khint_t h = (khint_t)*s;
+	if (h) for (++s ; *s; ++s) h = (h << 5) - h + (khint_t)*s;
+	return h;
+}
+*/
+
 void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank, size_t *goff){
 
 
@@ -136,6 +144,7 @@ void parser_single(char *localData, int rank, size_t start_offset, unsigned char
 			if (parse_mode == MODE_NAME) {
                                 coord = strtoull(currentLine, NULL, strlen(currentLine));
 				coord = hash_name(currentLine, 16);
+				assert(coord != 0);
 				strtoull(currentCarac, &currentCarac, 10);
 	                }
 			else {
@@ -303,6 +312,17 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 					reads[nbchr-2] = reads[nbchr-2]->next;
 					readNumberByChr[nbchr-2]++;
 
+					if(quality >= threshold){
+
+                                                reads[chr]->next = malloc(sizeof(Read));
+                                                reads[chr]->next->coord = coord;
+                                                reads[chr]->next->quality = quality;
+                                                reads[chr]->next->offset_source_file=offset_read_in_source_file;
+                                                reads[chr]->next->offset = lineSize;
+                                                reads[chr] = reads[chr]->next;
+                                                readNumberByChr[chr]++;
+                                        }
+
 			}
 			else if ((chr == '*') && ( mchr < (nbchr -2))){
 
@@ -312,6 +332,20 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 					reads[nbchr-2]->next->offset = lineSize;
 					reads[nbchr-2] = reads[nbchr-2]->next;
 					readNumberByChr[nbchr-2]++;
+
+					if(quality >= threshold){
+
+                                                reads[mchr]->next = malloc(sizeof(Read));
+                                                reads[mchr]->next->coord = coord;
+                                                reads[mchr]->next->quality = quality;
+                                                reads[mchr]->next->offset_source_file=offset_read_in_source_file;
+                                                reads[mchr]->next->offset = lineSize;
+                                                reads[mchr] = reads[mchr]->next;
+                                                readNumberByChr[mchr]++;
+                                        }
+
+
+
 			}
 			else if ((mchr == '*') && ( chr < (nbchr -2))){
 
@@ -321,6 +355,20 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
 					reads[nbchr-2]->next->offset = lineSize;
 					reads[nbchr-2] = reads[nbchr-2]->next;
 					readNumberByChr[nbchr-2]++;
+
+					
+					if(quality >= threshold){
+
+                                                reads[chr]->next = malloc(sizeof(Read));
+                                                reads[chr]->next->coord = coord;
+                                                reads[chr]->next->quality = quality;
+                                                reads[chr]->next->offset_source_file=offset_read_in_source_file;
+                                                reads[chr]->next->offset = lineSize;
+                                                reads[chr] = reads[chr]->next;
+                                                readNumberByChr[chr]++;
+                                        }
+
+
 			}
 			else if ((mchr == 65535) && ( chr == 65535)){
 
@@ -337,7 +385,20 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
                                         reads[nbchr-2]->next->offset = lineSize;
                                         reads[nbchr-2] = reads[nbchr-2]->next;
                                         readNumberByChr[nbchr-2]++;
-                        }
+        
+					if(quality >= threshold){
+
+                                                reads[chr]->next = malloc(sizeof(Read));
+                                                reads[chr]->next->coord = coord;
+                                                reads[chr]->next->quality = quality;
+                                                reads[chr]->next->offset_source_file=offset_read_in_source_file;
+                                                reads[chr]->next->offset = lineSize;
+                                                reads[chr] = reads[chr]->next;
+                                                readNumberByChr[chr]++;
+                                        }
+		
+       
+	         	}
                         else if ((chr == 65535) && ( mchr < (nbchr - 1))){
 
                                         reads[nbchr-2]->next = malloc(sizeof(Read));
@@ -345,6 +406,19 @@ void parser_paired(char *localData, int rank, size_t start_offset, unsigned char
                                         reads[nbchr-2]->next->offset = lineSize;
                                         reads[nbchr-2] = reads[nbchr-2]->next;
                                         readNumberByChr[nbchr-2]++;
+
+					if(quality >= threshold){
+
+                                                reads[mchr]->next = malloc(sizeof(Read));
+                                                reads[mchr]->next->coord = coord;
+                                                reads[mchr]->next->quality = quality;
+                                                reads[mchr]->next->offset_source_file=offset_read_in_source_file;
+                                                reads[mchr]->next->offset = lineSize;
+                                                reads[mchr] = reads[mchr]->next;
+                                                readNumberByChr[mchr]++;
+                                        }
+
+
                         }                                                       
 			else{
 					//we found unmapped pairs reads
