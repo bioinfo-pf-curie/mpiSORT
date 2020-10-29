@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser(description = 'Estimate informatic resources fo
 parser.add_argument('-c','--cores', dest = 'cores', help = 'Number of cores in a node', type = int, required = True)
 parser.add_argument('-m','--memory', dest = 'memory', help = 'Maximum RAM memory available in a node in GB', type = float, required = True)
 parser.add_argument('-s','--size', dest = 'size', help = 'Size of the SAM file in GB', type = float, required = True)
+parser.add_argument('-t','--type', dest = 'type', help = 'Type of SAM (uniq or all)', type = str, required = True)
 
 args = parser.parse_args()
 
@@ -17,7 +18,7 @@ scaleFactorAllChr = 1.5
 
 ### When the FASTQ file contains only one chromosome,
 ### the memory needed is the size of the FASTQ file multiplied by scaleFactorOneChr
-scaleFactorOneChr = 2.5
+scaleFactorOneChr = 3.5
 
 
 ### Functions
@@ -42,22 +43,23 @@ def printResources(resources, message):
     print("\tNumber of cores: {}".format(resources[0]))
     print("\tNumber of nodes: {}".format(resources[2]))
     print("\tNumber of cores (with power of 2 constraint): {}".format(resources[3]))
-    print("\tMemory per of core (with power of 2 constraint): {}".format(resources[4]))
+    print("\tMemory per of core : {}".format(resources[4]))
     print("\tNumber of cores by node (with power of 2 constraint): {}".format(resources[5]))
 
+def printCommandLine(resources):
+    print("\t-N {} -n {} -c 1 --tasks-per-node={} --mem-per-cpu={}GB\t".format(int(resources[2]), int(resources[3]), int(resources[5]),int(resources[4]) + 1))
 
 
 ### Compute informatic resources
-resourceAllChr = computeInformaticResources(args.cores, args.size, args.memory, scaleFactorAllChr)
-resourceOneChr = computeInformaticResources(args.cores, args.size, args.memory, scaleFactorOneChr)
+if type in ['all']:
+	resourceAllChr = computeInformaticResources(args.cores, args.size, args.memory, scaleFactorAllChr)
+        printCommandLine(resourceAllChr)
+else:
+	resourceOneChr = computeInformaticResources(args.cores, args.size, args.memory, scaleFactorOneChr)
+        printCommandLine(resourceOneChr)
 
-### Print the setting
-print("\n")
-print("Your setting is:")
-print("\tA node has {} cores".format(args.cores))
-print("\tA node has {} GB of RAM memory".format(args.memory))
-print("\tThe size of the SAM file is {} GB".format(args.size))
 
-### Print informatic resources
-printResources(resourceAllChr, "If your SAM file contains all the chromosomes")
-printResources(resourceOneChr, "If your SAM file contains only one chromosome")
+
+
+
+ 
