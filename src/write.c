@@ -1021,24 +1021,28 @@ void writeSam(
 		//#define STRIPING_UNIT "2147483648"  // 2GB
 
 		//size_t pack_size = 2147483648;
-		size_t pack_size = 1024*1024*1024; //1GB
-		int chunk_data_number = 0;
-		size_t tmp_2 = 0;
-				
-		 for (k = 0; k < previous_local_readNum; k++){
+		size_t pack_size_tmp = 1024*1024*1024; //1GB
+                int chunk_data_number = 0;
+                size_t tmp_2 = 0;
+
+                 for (k = 0; k < previous_local_readNum; k++){
                         assert (new_local_reads_sizes_sorted_bruck2[k] != 0);
                         tmp_2 += new_local_reads_sizes_sorted_bruck2[k];
                 }
 
-		int pack_number = (tmp_2 / pack_size) + 1;
-		
-		size_t **data_offsets 	= malloc(sizeof(size_t *) * num_proc);
-		int **data_size 	= malloc(sizeof(int *) * num_proc);
-		
-
-		if ( rank == 0)
-			fprintf (stderr, "Rank %d :::: [WRITE][COMPUTE PACKs] Number of packs buffer = %d \n", rank, pack_number);
-		
+                int pack_number = (tmp_2 / pack_size_tmp) + 1;
+                int max_number_of_packs = 0;
+                //due to load balancing all ranks must have the same number of pack 
+                MPI_Allreduce(&pack_number, &max_number_of_packs, 1, MPI_LONG_LONG_INT, MPI_MAX, split_comm);
+                pack_number = max_number_of_packs;
+                //according to the max number we compute a new pack_size per rank
+                size_t pack_size = 0;
+                pack_size = tmp_2 / max_number_of_packs;
+                size_t **data_offsets   = malloc(sizeof(size_t *) * num_proc);
+                int **data_size         = malloc(sizeof(int *) * num_proc);
+                if (rank == master_job_phase_2)
+                	fprintf (stderr, "Rank %d :::: [WRITE][COMPUTE PACKs] Number of packs buffer = %d \n", rank, pack_number);
+                //
 		//hold the index of each reads in data_reads_to_sort 
 		char **data_reads_to_sort      = calloc(previous_local_readNum, sizeof(char *));		
 		char **data2 = malloc(( pack_number * num_proc) * sizeof(char *));
