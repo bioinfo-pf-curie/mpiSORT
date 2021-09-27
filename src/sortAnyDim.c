@@ -72,7 +72,7 @@ void parallel_sort_any_dim(
 		size_t headerSize,
 		char* header,
 		char *chrNames,
-		MPI_File mpi_file_split_comm,
+		int mpi_file_split_comm,
 		int uniq_chr
 		){
 

@@ -75,8 +75,6 @@ static MPI_Comm COMM_WORLD;
 
 /********************************************************************/
 
-size_t *base_arr2;
-
 static int compare_size_t_V2(const void *a, const void *b){
 
 	if (*(const size_t *)a > *(const size_t *)b)

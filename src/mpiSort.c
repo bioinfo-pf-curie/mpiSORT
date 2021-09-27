@@ -31,6 +31,8 @@
 
 #define _GNU_SOURCE
 
+#include <getopt.h>
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <assert.h>
@@ -112,17 +114,17 @@ static void usage(const char *);
 
 int main (int argc, char *argv[]){
 
-	char *x, *x1, *y, *y1, *z, *z1, *xbuf, *hbuf, *chrNames[MAXNBCHR];
+	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
 	int fd;
 	off_t hsiz;
 	struct stat st;
 
-	MPI_File mpi_filed;
-	MPI_File mpi_file_split_comm;
+	int mpi_file_descriptor;
+	int mpi_file_split_descriptor;
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired, uniq_chr, write_format;
+	int res, nbchr, i, paired, uniq_chr, write_sam;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -146,7 +148,6 @@ int main (int argc, char *argv[]){
 	int compression_level;
 	size_t fsiz, lsiz, loff;
 	const char *sort_name;
-        char *chr_name_u; //use is case of uniq chromosom. Must be the name of the chromosom, it gives also the name of output file 
 	MPI_Info finfo;
 
 	/* Set default values */
@@ -156,9 +157,9 @@ int main (int argc, char *argv[]){
 	paired = 0; /* by default reads are considered single*/
 	uniq_chr = 0; 
 	threshold = 0;
-	write_format = 0;
+	write_sam = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpu:q:gsb")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpuq:")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -175,20 +176,10 @@ int main (int argc, char *argv[]){
 				break;
 			case 'u': /* We say we have only one chromosome in the file */
                                 uniq_chr = 1;
-				asprintf(&chr_name_u,"%s", optarg);
                                 break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
 				break;
-			case 'g':
-				write_format = 0;
-				break;
-			case 'b':
-                                write_format = 1;
-                                break;
-			case 's':
-                                write_format = 2;
-                                break;
 			default:
 				usage(basename(*argv));
 				return 1;
@@ -256,50 +247,10 @@ int main (int argc, char *argv[]){
 	assert(fstat(fd, &st) != -1);
 	xbuf = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
 	assert(xbuf != MAP_FAILED);
-	/* we get the size of the original header */
-	x = xbuf;
-	size_t orig_hsiz = 0;
-	while (*x == '@') {
-                y = strchr(x, '\n');
-                z = x; x = y + 1;
-              
-        }
-	orig_hsiz = x - xbuf;
 
-	/* ignore the first line if equal to @HD     VN:1.0  SO:  */
-        char *xbuf1;
-        x1 = xbuf;
-	xbuf1 = xbuf;
-	char *y2;
-	
-	if (*x1 == '@'){
-		y1 = strchr(x1, '\n');		
-		z1 = x1; x1 = y1 + 1;
-		if (strncmp(z1, "@HD", 3) == 0) {
-			y2 = strstr(z1, "SO:");
-			if (y2 != NULL) xbuf1 = x1;	
-		}					
-	}
-	
 	/* Parse SAM header */
 	memset(chrNames, 0, sizeof(chrNames));
-	x = xbuf1; nbchr = 0;
-	
-	char* ts1 = strdup(file_name);
-	char* ts2 = strdup(file_name);
-
-        char* dir = dirname(ts1);
-        char* filename = basename(ts2);
-	
-	if (uniq_chr){
-
-		//char *tmp_str = filename;
-		//const char *dot = strrchr(filename, '.');
-		//chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
-		chrNames[nbchr++] = strdup(chr_name_u);
-	}
-	
-	assert(*x == '@');
+	x = xbuf; nbchr = 0;
 	while (*x == '@') {
 		y = strchr(x, '\n');
 		z = x; x = y + 1;
@@ -309,26 +260,23 @@ int main (int argc, char *argv[]){
 		assert(y != NULL);
 		z = y + 3;
 		while (*z && !isspace((unsigned char)*z)) z++;
-		if (!uniq_chr) chrNames[nbchr++] = strndup(y + 3, z - y - 3);
+		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
-	}	
-	assert(*x != '@');	
-	
-	
+	}
 	
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
-		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, DISCORDANT);
-		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, UNMAPPED);
+		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], DISCORDANT);
+		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], UNMAPPED);
 	}
 	else {
 		chrNames[nbchr++] = strdup(DISCORDANT);
 		chrNames[nbchr++] = strdup(UNMAPPED);
 	}
 
-	hsiz = x - xbuf1;
-	hbuf = strndup(xbuf1, hsiz);
+	hsiz = x - xbuf;
+	hbuf = strndup(xbuf, hsiz);
 
 	if (rank == 0) {
 		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
@@ -342,44 +290,16 @@ int main (int argc, char *argv[]){
 	assert(close(fd) != -1);
 
 
-    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
-
-	MPI_Info_create(&finfo);
-	/*
-	 * In this part you shall adjust the striping factor and unit according
-	 * to the underlying filesystem.
-	 * Harmless for other file system.
-	 *
-	 */
-	MPI_Info_set(finfo,"striping_factor", STRIPING_FACTOR);
-	MPI_Info_set(finfo,"striping_unit", STRIPING_UNIT); //2G striping
-	MPI_Info_set(finfo,"ind_rd_buffer_size", STRIPING_UNIT); //2gb buffer
-	MPI_Info_set(finfo,"romio_ds_read",DATA_SIEVING_READ);
-
-	/*
-	 * for collective reading and writing
-	 * should be adapted too and tested according to the file system
-	 * Harmless for other file system.
-	 */
-	MPI_Info_set(finfo,"nb_proc", NB_PROC);
-	MPI_Info_set(finfo,"cb_nodes", CB_NODES);
-	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
-	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
-    
-    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
-
-
 	//we open the input file
-	ierr = MPI_File_open(MPI_COMM_WORLD, file_name,  MPI_MODE_RDONLY , finfo, &mpi_filed);
-	//assert(in != -1);
-	if (ierr){
+	mpi_file_descriptor = open(file_name, O_RDONLY );
+
+	if (mpi_file_descriptor == -1){
 		if (rank == 0) fprintf(stderr, "%s: Failed to open file in process 0 %s\n", argv[0], argv[1]);
-		MPI_Abort(MPI_COMM_WORLD, errorcode);
+		perror("open");
 		exit(2);
 	}
-	ierr = MPI_File_get_size(mpi_filed, &fileSize);
-	assert(ierr == MPI_SUCCESS);
-	input_file_size = (long long)fileSize;
+
+	input_file_size = file_get_size(file_name);
 
 	/* Get chunk offset and size */
 	fsiz = input_file_size;
@@ -392,7 +312,7 @@ int main (int argc, char *argv[]){
 
 	//We place file offset of each process to the begining of one read's line
 	size_t *goff =(size_t*)calloc((size_t)(num_proc+1), sizeof(size_t));
-	init_goff(mpi_filed,orig_hsiz,input_file_size,num_proc,rank,goff);
+	init_goff(mpi_file_descriptor,hsiz,input_file_size,num_proc,rank,goff);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
@@ -436,14 +356,20 @@ int main (int argc, char *argv[]){
 
 		// we load the buffer
 		//hold temporary size of SAM
-		//due to limitation in MPI_File_read_at
 		local_data_tmp =(char*)realloc(local_data_tmp, (size_to_read+1)*sizeof(char));
 		local_data_tmp[size_to_read]=0;
 
 		// Original reading part is before 18/09/2015
-		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data_tmp, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
+		int size_read = pread(mpi_file_descriptor, local_data_tmp, size_to_read, poffset);
+		
+		if(size_read < 0)
+		{
+			perror("pread");
+			exit(2);
+		}
+		
 		size_t local_offset=0;
-		assert(strlen(local_data_tmp) == size_to_read);
+		assert(size_read == size_to_read);
 
 		//we look where is the last line read for updating next poffset
 		size_t offset_last_line = size_to_read-1;
@@ -455,7 +381,7 @@ int main (int argc, char *argv[]){
 		}
 
 		local_data_tmp[size_to_read - extra_char]=0;
-		size_t local_data_tmp_sz = strlen(local_data_tmp);
+		size_t local_data_tmp_sz = size_read;
 
 		//If it s the last line of file, we place a last '\n' for the function tokenizer
 		if(rank == num_proc-1 && ((poffset+size_to_read) == goff[num_proc])){
@@ -463,8 +389,7 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		if (paired == 1 && uniq_chr == 0) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-		if (paired == 1 && uniq_chr == 1) parser_paired_uniq(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 1) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
@@ -508,8 +433,6 @@ int main (int argc, char *argv[]){
 
 	int s = 0;
 	for (s = 1; s < 3; s++){
-
-		MPI_File mpi_file_split_comm2;
 		double time_count;
 
 		size_t total_reads = 0;
@@ -635,15 +558,12 @@ int main (int argc, char *argv[]){
 			if (local_color == 0){
 
 				MPI_Comm_split( MPI_COMM_WORLD, local_color, local_key, &split_comm);
-				ierr = MPI_File_open(split_comm, file_name,  MPI_MODE_RDONLY , finfo, &mpi_file_split_comm2);
-				//we ask to liberate file pointer
-				file_pointer_to_free = 1;
+
 				//we ask to liberate the split_comm
 				split_comm_to_free = 1;
 			}
 			else{
 				MPI_Comm_split( MPI_COMM_WORLD, MPI_UNDEFINED, local_key, &split_comm);
-				mpi_file_split_comm2 = mpi_filed;
 			}
 
 			//now we change the rank in the reads structure
@@ -683,12 +603,11 @@ int main (int argc, char *argv[]){
 							split_size,
 							split_comm,
 							file_name,
-							mpi_file_split_comm2,
 							finfo,
 							compression_level,
 							local_data,
 							goff[rank],
-							write_format);
+							write_sam);
 
 					if (split_rank == chosen_rank){
 							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds \n\n\n", split_rank,
@@ -721,12 +640,11 @@ int main (int argc, char *argv[]){
 							g_size,
 							split_comm,
 							file_name,
-							mpi_file_split_comm2,
 							finfo,
 							compression_level,
 							local_data,
 							goff[rank],
-							write_format
+							write_sam
 							);
 
 
@@ -749,10 +667,6 @@ int main (int argc, char *argv[]){
 
 			//we put a barrier before freeing pointers
 			MPI_Barrier(MPI_COMM_WORLD);
-			//we free the file pointer
-
-			if  (file_pointer_to_free)
-				MPI_File_close(&mpi_file_split_comm2);
 
 			//we free the split_comm
 			if (split_comm_to_free)
@@ -913,7 +827,15 @@ int main (int argc, char *argv[]){
 		// with color of zero
 		if (local_color == 0){
 			MPI_Comm_split( MPI_COMM_WORLD, local_color, local_key, &split_comm);
-			ierr = MPI_File_open(split_comm, file_name,  MPI_MODE_RDONLY, finfo, &mpi_file_split_comm);
+
+			mpi_file_split_descriptor = open(file_name, O_RDONLY );
+
+			if (mpi_file_split_descriptor == -1){
+				if (rank == 0) fprintf(stderr, "%s: Failed to open file in process 0 %s\n", argv[0], argv[1]);
+				perror("open");
+				exit(2);
+			}
+
 			//we ask to liberate file pointer
 			file_pointer_to_free = 1;
 			//we ask to liberate the split_comm
@@ -921,7 +843,7 @@ int main (int argc, char *argv[]){
 		}
 		else{
 			MPI_Comm_split( MPI_COMM_WORLD, MPI_UNDEFINED, local_key, &split_comm);
-			mpi_file_split_comm = mpi_filed;
+			mpi_file_split_descriptor = mpi_file_descriptor;
 		}
 
 		//now we change the rank in the reads structure
@@ -1273,7 +1195,7 @@ int main (int argc, char *argv[]){
 				// the reads sorted by offset destination
 				size_t h = 0;
 
-
+				
 				pos_ref0 = max_num_read*split_rank - N0;
 				for(j = 0; j < max_num_read; j++) {
 					if ( local_reads_sizes_sorted[j] != 0){
@@ -1293,7 +1215,7 @@ int main (int argc, char *argv[]){
 						}
 					}
 				}
-
+				
 				MPI_Barrier(split_comm);
 
 				size_t offset  = 0;
@@ -1343,7 +1265,7 @@ int main (int argc, char *argv[]){
 						/*
 						 *
 						 * FOR DEBUG
-						 
+						 */
 
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
@@ -1353,7 +1275,7 @@ int main (int argc, char *argv[]){
 							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 						}
-						*/
+						
 
 					}
 					else{
@@ -1394,7 +1316,7 @@ int main (int argc, char *argv[]){
 					/*
 					 *
 					 * FOR DEBUG
-					 
+					 */
 					for(y = 0; y < num_read_for_bruck; y++){
 						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1403,7 +1325,6 @@ int main (int argc, char *argv[]){
 						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
-					*/
 					
 				}
 
@@ -1563,7 +1484,7 @@ int main (int argc, char *argv[]){
 				/*
 				 *
 				 * FOR DEBUG
-				 
+				 */
 				for ( j = 0; j < local_readNum; j++){
 					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
 					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
@@ -1572,7 +1493,7 @@ int main (int argc, char *argv[]){
 					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
 					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
 				}
-				*/
+				
 
 				free(local_reads_coordinates_sorted_trimmed);
 
@@ -1595,7 +1516,7 @@ int main (int argc, char *argv[]){
 					split_comm,
 					chosen_split_rank,
 					file_name,
-					mpi_file_split_comm,
+					mpi_file_split_descriptor,
 					finfo,
 					compression_level,
 					local_offset_dest_sorted_trimmed,
@@ -1606,8 +1527,7 @@ int main (int argc, char *argv[]){
 					local_data,
 					goff[rank],
 					first_local_readNum,
-					uniq_chr,
-					write_format
+					uniq_chr
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1645,7 +1565,7 @@ int main (int argc, char *argv[]){
 						headerSize,
 						header,
 						chrNames[i],
-						mpi_file_split_comm,
+						mpi_file_split_descriptor,
 						uniq_chr
 					);
 
@@ -1660,7 +1580,7 @@ int main (int argc, char *argv[]){
 		MPI_Barrier(MPI_COMM_WORLD);
 		//we free the file pointer
 		if  (file_pointer_to_free)
-			MPI_File_close(&mpi_file_split_comm);
+			close(mpi_file_split_descriptor);
 		//we free the split_comm
 		if (split_comm_to_free){
 			MPI_Comm_free(&split_comm);
@@ -1709,10 +1629,8 @@ static void usage(const char *prg) {
         "\t     filters the reads according to their quality. Reads quality under the\n"
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"
         "\n\t-n\n"
-        "\t     sorts the read by their query name.\n"
-	"\n\t-s\n"
-	"\t	write the output in sam format.\n"
-        "\ninput: input file is a sam file of paired or single reads\n"
+        "\t     sorts the read by their name (but it is not commonly used).\n"
+        "\ninput: input file is a sam file of paired reads\n"
         "\noutput: set of gz files with\n"
         "\t* one per chromosome (e.g. chr11.gz)\n"
         "\t* one for discordant reads (discordant.gz): discordants reads are reads \n"

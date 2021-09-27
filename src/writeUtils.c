@@ -31,11 +31,28 @@
 
 #include "writeUtils.h"
 
+	#include <sys/types.h>
+	#include <sys/stat.h>
+	#include <unistd.h>
+
+
 size_t g_wu_readNum;
 size_t g_wu_totalReadNum;
 size_t g_wu_master;
 MPI_Comm COMM_WORLD;
 MPI_Status status;
+
+size_t file_get_size(char * path)
+{
+	struct stat st;
+	if(stat(path, &st) != -1)
+	{
+		return st.st_size;
+	}
+
+	return 0;
+}
+
 
 void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data, MPI_Datatype* dt, size_t readNum)
  {
@@ -130,8 +147,26 @@ void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data,
 
  }
 
-int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs, int **dest_size,
-		int k, MPI_Datatype* dt, int** recv_index)
+static inline void * pack_buffer(int count, void **indices, int *blocklens, size_t elem_size, size_t total_size)
+{
+	int i;
+	void * ret = malloc(elem_size*total_size);
+	assert(ret != NULL);
+
+	size_t curr_off = 0;
+	for( i = 0; i < count; i++)
+	{
+		memcpy(ret + curr_off, indices[i], blocklens[i] * elem_size);
+		curr_off += blocklens[i] * elem_size;
+	}
+
+	assert(curr_off <= total_size * elem_size);
+
+	return ret;
+}
+
+void * create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs, int **dest_size,
+		int k, size_t* pack_size, int** recv_index)
 {
 
 	/*
@@ -143,9 +178,8 @@ int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs
 	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
-	MPI_Aint indices[count];
+	void * indices[count];
 	int blocklens[count];
-	MPI_Datatype oldtypes[count];
 
 	int *stride = (int *)calloc(k*2, sizeof(int));
 	i = 0;
@@ -168,15 +202,16 @@ int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs
 	{
 		if (vect[i] != 0){
 			//MPI_Get_address(dest_size[(i+rank)%size], &indices[j]);
-			indices[j] = (MPI_Aint)dest_size[(i+rank)%size];
+			indices[j] = dest_size[(i+rank)%size];
 			(*recv_index)[j] = (i+rank)%size;
 			blocklens[j] = (int)(num_reads_by_procs[(i+rank)%size]);
 			total += blocklens[j];
-			oldtypes[j] = MPI_INT;
 
 			j++;
 		}
 	}
+
+	*pack_size = total;
 
 	//fprintf(stderr, "ran %d ::: indices[0] = %p // dest_offsets[0] = %p \n", rank, indices[0], dest_offsets[(1 + rank)%size]);
 	//fprintf(stderr, "ran %d ::: indices[1] = %p // dest_offsets[1] = %p \n", rank, indices[1], dest_offsets[(3 + rank)%size]);
@@ -189,13 +224,11 @@ int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs
 	free(stride);
 	free(vect);
 
-	MPI_Type_create_struct(count, blocklens, indices, oldtypes, dt);
-
-	return count;
+	return pack_buffer(count, indices, blocklens, sizeof(int), total);
 }
 
-int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_procs, size_t **dest_offsets,
-		int k, MPI_Datatype* dt, int** recv_index)
+void * create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_procs, size_t **dest_offsets,
+		int k, size_t* packed_size, int** recv_index)
 {
 
 	/*
@@ -206,9 +239,8 @@ int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_pr
 	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
-	MPI_Aint indices[count];
+	void * indices[count];
 	int blocklens[count];
-	MPI_Datatype oldtypes[count];
 
 	int *stride = (int *)calloc(k*2, sizeof(int));
 	i = 0;
@@ -230,16 +262,16 @@ int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_pr
 	for(i = 0; i<size; i++)
 	{
 		if (vect[i] != 0){
-			MPI_Get_address(dest_offsets[(i+rank)%size], &indices[j]);
+			indices[j] = dest_offsets[(i+rank)%size];
 			//indices[j] = dest_offsets[(i+rank)%size];
 			(*recv_index)[j] = (i+rank)%size;
 			blocklens[j] = (int)(num_reads_by_procs[(i+rank)%size]);
 			total += blocklens[j];
-			oldtypes[j] = MPI_LONG_LONG_INT;
-
 			j++;
 		}
 	}
+
+	*packed_size = total;
 
 	//fprintf(stderr, "ran %d ::: indices[0] = %p // dest_offsets[0] = %p \n", rank, indices[0], dest_offsets[(1 + rank)%size]);
 	//fprintf(stderr, "ran %d ::: indices[1] = %p // dest_offsets[1] = %p \n", rank, indices[1], dest_offsets[(3 + rank)%size]);
@@ -252,12 +284,11 @@ int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_pr
 	free(stride);
 	free(vect);
 
-	MPI_Type_create_struct(count, blocklens, indices, oldtypes, dt);
 
-	return count;
+	return pack_buffer(count, indices, blocklens, sizeof(size_t), total);
 }
 
-int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** data, int k, MPI_Datatype* dt, int** recv_index)
+void * create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** data, int k, size_t* packed_size, int** recv_index)
 {
 
 	/*
@@ -270,9 +301,8 @@ int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** dat
 	//*recv_index = (int*)malloc(sizeof(int) * count);
 
 	//Variable for datatype struct almost classic
-	MPI_Aint indices[count];
+	void * indices[count];
 	int blocklens[count];
-	MPI_Datatype oldtypes[count];
 
 	int *stride = (int *)calloc(k*2, sizeof(int));
 	i = 0;
@@ -293,22 +323,20 @@ int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** dat
 	for(i = 0; i<size; i++)
 	{
 		if (vect[i] != 0){
-			MPI_Get_address(data[(i+rank)%size], &indices[j]);
+			indices[j] = data[(i+rank)%size];
 			(*recv_index)[j] = (i+rank)%size;
 			blocklens[j] = (int)buffs[(i+rank)%size];
 			total += blocklens[j];
-			oldtypes[j] = MPI_CHAR;
-
 			j++;
 		}
 	}
 
+	*packed_size = total;
+
 	free(stride);
 	free(vect);
 
-	MPI_Type_create_struct(count, blocklens, indices, oldtypes, dt);
-
-	return count;
+	return pack_buffer(count, indices, blocklens, sizeof(char), total);
 }
 
 size_t get_send_size(int rank, int size, size_t* buffs, size_t** send_size, int count, int k)

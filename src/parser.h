@@ -80,16 +80,16 @@ typedef struct Read_chain
 /**
  * \brief Initialize the start offset for each process
  *
- * \fn size_t * init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank)
- * \param mpi_filed File to read
+ * \fn size_t * init_goff(int mpi_file_descriptor,unsigned int headerSize,size_t fsize,int numproc,int rank)
+ * \param mpi_file_descriptor File to read
  * \param headerSize The size of the header
- * \param fsize The size of the mpi_filed
+ * \param fsize The size of the mpi_file_descriptor
  * \param numproc The number of process
  * \param rank Rank of the process
  *
- * \return An array of "numproc" cells with the first offset to read for each process (last cell is the last offset of mpi_filed = fsize)
+ * \return An array of "numproc" cells with the first offset to read for each process (last cell is the last offset of mpi_file_descriptor = fsize)
  */
-void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numproc,int rank, size_t *goff);
+void init_goff(int mpi_file_descriptor,unsigned int headerSize,size_t fsize,int numproc,int rank, size_t *goff);
 
 /**
  * \brief Parse localData to reads. This functions takes care of the mate of each read.
@@ -104,7 +104,6 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
  * \param chrNames Reference array to the chromosomes names.
  * \param preads The reads linked list. Will be set in this function.
  */
-void parser_paired_uniq(char *localData, int rank, size_t start_offset, unsigned char threshold, int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 /**

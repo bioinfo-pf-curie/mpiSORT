@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "parser.h"
 
@@ -39,15 +40,32 @@ extern size_t g_wu_master;
 extern MPI_Comm COMM_WORLD;
 extern MPI_Status status;
 
+size_t file_get_size(char * path);
+
+
+static inline void unpack_buffer(void * dest, void * src, int count, void **indices, int *blocklens, size_t elem_size)
+{
+	int i;
+
+	size_t curr_off = 0;
+	for( i = 0; i < count; i++)
+	{
+		memcpy(dest + (size_t)indices[i], src + curr_off, blocklens[i] * elem_size);
+		curr_off += blocklens[i] * elem_size;
+	}
+
+}
+
+
 void create_read_dt(int rank, int num_proc, int *ranks, int* buffs, char** data, MPI_Datatype* dt, size_t readNum);
 
-int create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs, int **dest_size,
-		int k, MPI_Datatype* dt, int** recv_index);
+void * create_send_datatype_for_size(int rank, int size, size_t *num_reads_by_procs, int **dest_size,
+		int k, size_t* pack_size, int** recv_index);
 
-int create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_procs, size_t **dest_offsets,
-		int k, MPI_Datatype* dt, int** recv_index);
+void * create_send_datatype_for_offsets(int rank, int size, size_t *num_reads_by_procs, size_t **dest_offsets,
+		int k, size_t* packed_size, int** recv_index);
 
-int create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** data, int k, MPI_Datatype* dt, int** recv_index);
+void * create_send_datatype_for_reads(int rank, int size, size_t *buffs, char** data, int k, size_t* packed_size, int** recv_index);
 
 size_t get_send_size(int rank, int size, size_t* buffs, size_t** send_size, int count, int k);
 
