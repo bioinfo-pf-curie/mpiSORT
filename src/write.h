@@ -63,7 +63,9 @@ void writeSam(
 		size_t offset_data_in_file,
 		size_t original_local_readNum,
 		int uniq_chr,
-		int write_sam
+		int write_sam,
+		int merge,
+		char file_name_merge[]
 		);
 
 
@@ -158,7 +160,11 @@ void writeSam_any_dim(
 		int* new_rank,
 		char *data,
 		size_t start_offset_in_file,
-		int uniq_chr);
+		int uniq_chr,
+		int write_format,
+                int merge,
+                char file_name_sorted[]
+		);
 
 
 

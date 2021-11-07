@@ -106,7 +106,7 @@
 #define DEFAULT_INBUF_SIZE  (1024*1024*1024)
 
 /* Maximum chromosome number */
-#define MAXNBCHR 256
+#define MAXNBCHR 512
 
 static void usage(const char *);
 
@@ -144,6 +144,7 @@ int main (int argc, char *argv[]){
 	int split_rank, split_size; //after split communication we update the rank and the size
 	double tic, toc;
 	int compression_level;
+	int merge;
 	size_t fsiz, lsiz, loff;
 	const char *sort_name;
         char *chr_name_u; //use is case of uniq chromosom. Must be the name of the chromosom, it gives also the name of output file 
@@ -157,8 +158,9 @@ int main (int argc, char *argv[]){
 	uniq_chr = 0; 
 	threshold = 0;
 	write_format = 0;
+	merge = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpu:q:gsb")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpu:q:gsbm")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -189,6 +191,9 @@ int main (int argc, char *argv[]){
 			case 's':
                                 write_format = 2;
                                 break;
+			case 'm':
+				merge = 1;
+				break;
 			default:
 				usage(basename(*argv));
 				return 1;
@@ -208,6 +213,19 @@ int main (int argc, char *argv[]){
 	res = access(output_dir, F_OK|W_OK);
 	if (res == -1)
 		err(1, "%s", output_dir);
+
+	char *file_name_tmp;
+        char file_name_merge[256];
+        char *dot;
+	char *slash = strdup(file_name);
+        //in case of merge we create a file from file_name
+        if (merge){
+
+	   	file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.sam", file_name_tmp);
+        }
 
 	/* MPI inits */
 	res = MPI_Init(&argc, &argv);
@@ -774,7 +792,6 @@ int main (int argc, char *argv[]){
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	for(i = 0; i < (nbchr-2); i++){
-
 		/*
 		 * First Part of the algorithm
 		 *
@@ -1607,7 +1624,9 @@ int main (int argc, char *argv[]){
 					goff[rank],
 					first_local_readNum,
 					uniq_chr,
-					write_format
+					write_format,
+					merge,
+					file_name_merge
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1646,7 +1665,10 @@ int main (int argc, char *argv[]){
 						header,
 						chrNames[i],
 						mpi_file_split_comm,
-						uniq_chr
+						uniq_chr,
+						write_format,
+                				merge,
+                				file_name_merge
 					);
 
 			} //end if dimensions < split_rank

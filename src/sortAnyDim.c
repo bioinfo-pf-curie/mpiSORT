@@ -73,7 +73,10 @@ void parallel_sort_any_dim(
 		char* header,
 		char *chrNames,
 		MPI_File mpi_file_split_comm,
-		int uniq_chr
+		int uniq_chr,
+		int write_format,
+                int merge,
+                char file_name_sorted[]
 		){
 
 	size_t j;
@@ -745,7 +748,10 @@ void parallel_sort_any_dim(
 			local_rank_sorted,
 			local_data,
 			start_offset_in_file,
-			uniq_chr
+			uniq_chr,
+			write_format,
+                	merge,
+                	file_name_sorted
 			);
 
 }
