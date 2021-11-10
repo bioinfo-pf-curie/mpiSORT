@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2020
+   Copyright Institut Curie 2021
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -1733,7 +1733,16 @@ static void usage(const char *prg) {
         "\n\t-n\n"
         "\t     sorts the read by their query name.\n"
 	"\n\t-s\n"
-	"\t	write the output in sam format.\n"
+	"\t	write the output in SAM format.\n"
+ 	"\n\t-m\n"
+        "\t     merge the output in one sam file.\n"
+	"\t     name of the merge output: (inputfile_name)_merged.sam\n"
+	"\t     this fonction only works for sam output format.\n"
+	"\t     discordant and unmapped are written in separate files.\n"
+	"\n\t-g\n"
+        "\t     write the output in gz format.\n"
+	"\n\t-b\n"
+        "\t     write the output in BAM compatible format.\n"
         "\ninput: input file is a sam file of paired or single reads\n"
         "\noutput: set of gz files with\n"
         "\t* one per chromosome (e.g. chr11.gz)\n"
@@ -1745,7 +1754,7 @@ static void usage(const char *prg) {
 		"\nexample : mpirun -n 4 %s  HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0 -n \n"
         "\nFor more detailed documentation visit:\n"
         "\thttps://github.com/bioinfo-pf-curie/mpiSORT\n"
-        "\nCopyright (C) 2020  Institut Curie <http://www.curie.fr> \n"
+        "\nCopyright (C) 2021  Institut Curie <http://www.curie.fr> \n"
         "\nThis program comes with ABSOLUTELY NO WARRANTY. \n"
         "This is free software, and you are welcome to redistribute it \n"
         "under the terms of the CeCILL License. \n"

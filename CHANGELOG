@@ -5,6 +5,7 @@ version-1.5
     - update parser.c with parser_paired_uniq function (issue#47) 
     - option -u of mpiSort takes the chrID as argument (issue#47)
     - option -g, -b, -s to generate gzip, bam, sam output 
+    - option -m to produce one sam output file (issue#52) 	
     
 version-1.4 2020-10-01
     - utilities scripts for informatic resources (getSlurmNodesInfo.sh and informaticResources.py)
