@@ -4154,6 +4154,15 @@ void writeSam_any_dim(
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Time for compressing %f seconds :::: uncompressed size = %d ::: compression size = %d \n",
 				rank, MPI_Wtime() - time_count, length, compressed_size);
 
+
+		//the last rank add the magic number
+		//to be compatible with BAM 
+		if ( (write_format == 1) && (rank == master_job_phase_2)) {
+			static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+			memcpy(compressed_buff + compressed_size, magic, 28);
+			compressed_size += 28;
+		}	
+
 		//we compress the neader
 
 		BGZF *fp_header;
@@ -4254,7 +4263,10 @@ void writeSam_any_dim(
 		MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
 		// we create the path where to write for collective write
 		path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-		sprintf(path, "%s/%s.gz", output_dir, chrName);
+
+		// we set the extension of the output
+		if (write_format == 0) sprintf(path, "%s/%s.gz", output_dir, chrName);
+		if (write_format == 1) sprintf(path, "%s/%s.bam", output_dir, chrName);
 
 		if( rank == master_job_phase_2)
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Opening the file %s \n", rank, path );
