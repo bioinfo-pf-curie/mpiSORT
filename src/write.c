@@ -1779,7 +1779,7 @@ void writeSam(
 				input = (void *)header;
 				block_length = fp_header->uncompressed_block_size;
 				bytes_written = 0;
-				compressed_header =  malloc(strlen(char_buff_uncompressed) * sizeof(uint8_t));
+				compressed_header =  malloc(strlen(header) * sizeof(uint8_t));
 
 				//fprintf(stderr, "rank %d :::: start loop compression \n", rank);
 
@@ -4088,6 +4088,7 @@ void writeSam_any_dim(
 
 	}
 	else{
+
 		time_count = MPI_Wtime();
 
 		BGZF *fp;
@@ -4120,6 +4121,7 @@ void writeSam_any_dim(
 		block_length = fp->uncompressed_block_size;
 		bytes_written = 0;
 		uint8_t *compressed_buff =  malloc(strlen(char_buff_uncompressed) * sizeof(uint8_t));
+		assert(compressed_buff);		
 
 		if (rank == master_job_phase_2)
 			fprintf(stderr, "rank %d :::: start loop compression \n", rank);
@@ -4159,7 +4161,7 @@ void writeSam_any_dim(
 		uint8_t *compressed_header = NULL;
 		int compressed_size_header = 0;
 
-		if (rank == 0) {
+		if (rank == master_job_phase_2) {
 
 			int block_length = MAX_BLOCK_SIZE;
 			int bytes_written;
@@ -4186,8 +4188,9 @@ void writeSam_any_dim(
 			input = (void *)header;
 			block_length = fp_header->uncompressed_block_size;
 			bytes_written = 0;
-			compressed_header =  malloc(strlen(char_buff_uncompressed) * sizeof(uint8_t));
-
+			compressed_header =  malloc((strlen(header)+1) * sizeof(uint8_t));
+			compressed_header[strlen(header)] = 0;
+			
 			while (bytes_written < length) {
 				int copy_length = bgzf_min(block_length - fp_header->block_offset, length - bytes_written);
 				bgzf_byte_t* buffer = fp_header->uncompressed_block;
@@ -4233,7 +4236,7 @@ void writeSam_any_dim(
 		//now we make a cumulative sum
 		int i1 = 0;
 
-		if (rank ==0){
+		if (rank == master_job_phase_2){
 			for (i1 = 1; i1 < (num_proc + 1); i1++) {
 				y2[i1] = y[i1-1];
 				}
@@ -4253,7 +4256,7 @@ void writeSam_any_dim(
 		path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
 		sprintf(path, "%s/%s.gz", output_dir, chrName);
 
-		if(!rank)
+		if( rank == master_job_phase_2)
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Opening the file %s \n", rank, path );
 
 
@@ -4268,7 +4271,7 @@ void writeSam_any_dim(
 		*/
     		// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
-		ierr = MPI_File_open(COMM_WORLD, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+		ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
 
 		if (ierr) {
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] failed to open %s.\nAborting.\n\n", rank, path);
@@ -4284,12 +4287,14 @@ void writeSam_any_dim(
 		if (rank == master_job_phase_2 ) {
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] we write the header \n", rank);
 			MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
+			
 		}
-		free(compressed_header);
-
+		
+		free(compressed_header);		
+			
 		MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
 		MPI_File_write_all(out, compressed_buff, (size_t)compSize, MPI_BYTE, &status);
-
+		
 		//task FINE TUNING FINFO BACK TO READING OPERATIONS
 		/*
 		MPI_Info_set(finfo,"striping_factor","128");
@@ -4311,7 +4316,7 @@ void writeSam_any_dim(
 		free_cache(fp);
 		free(fp);
 
-		if (rank == 0){
+		if (rank == master_job_phase_2){
 			free(fp_header->uncompressed_block);
 			free(fp_header->compressed_block);
 			free_cache(fp_header);
