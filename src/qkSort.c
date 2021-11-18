@@ -31,7 +31,7 @@
 
 #include "qkSort.h"
 
-size_t *base_arr2;
+//size_t *base_arr2;
 
 int compare_size_t(const void *a, const void *b){
 
