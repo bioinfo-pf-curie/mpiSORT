@@ -81,8 +81,8 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
 
 	for(i=1;i<numproc;i++)
 	{
-		current_line =(char*)calloc(1000,sizeof(char));
-		MPI_File_read_at(mpi_filed, (MPI_Offset)goff[i], current_line, 1000, MPI_CHAR, &status);
+		current_line =(char*)calloc(1024*1024,sizeof(char));
+		MPI_File_read_at(mpi_filed, (MPI_Offset)goff[i], current_line, 1024*1024, MPI_CHAR, &status);
 		assert(strlen(current_line) != 0);
 		j=0;
 		while(j<fsize && current_line[j] != '\n'){j++;}

@@ -38,7 +38,7 @@
 #include "tokenizer.h"
 #include "time.h"
 
-#define MAX_LINE_SIZE 2048
+#define MAX_LINE_SIZE 1024*1024
 #define UNMAPPED "unmapped"
 #define DISCORDANT "discordant"
 typedef struct Flags Flags;
