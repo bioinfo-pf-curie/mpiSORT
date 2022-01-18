@@ -108,6 +108,15 @@
 /* Maximum chromosome number */
 #define MAXNBCHR 512
 
+#ifndef HAVE_HTSLIB
+#define HTSLIB_PRESENT 0
+#else
+#define HTSLIB_PRESENT 1
+#endif
+
+
+
+
 static void usage(const char *);
 
 int main (int argc, char *argv[]){
@@ -219,13 +228,30 @@ int main (int argc, char *argv[]){
         char *dot;
 	char *slash = strdup(file_name);
         //in case of merge we create a file from file_name
-        if (merge){
+        if (merge && (write_format == 2)){
 
 	   	file_name_tmp = basename(slash);
                 dot = strrchr(file_name_tmp, '.');
                 if (dot) dot[0] = '\0';
                 sprintf(file_name_merge, "%s_sorted.sam", file_name_tmp);
         }
+
+	if (merge && (write_format == 1)){
+
+                file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.bam", file_name_tmp);
+        }
+
+	if (merge && (write_format == 0)){
+
+                file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.gz", file_name_tmp);
+        }
+
 
 	/* MPI inits */
 	res = MPI_Init(&argc, &argv);
@@ -242,7 +268,7 @@ int main (int argc, char *argv[]){
 		res = MPI_Finalize();
                 assert(res == MPI_SUCCESS);
                 exit(2);
-                //err(1, "You ask for 0 cpu this is not possible !!\n");	
+                
 	}
 
 	
@@ -253,9 +279,16 @@ int main (int argc, char *argv[]){
                 res = MPI_Finalize();
                 assert(res == MPI_SUCCESS);
                 exit(2);
-                //err(1, "Number of processes must be power of two \n");
+                
 	}
 
+	if ( (write_format == 1) && (!HTSLIB_PRESENT) ){
+                fprintf(stderr, "You want BAM output but you didn't link with htslib \n");
+                res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+        }
+        
 	g_rank = rank;
 	g_size = num_proc;
 

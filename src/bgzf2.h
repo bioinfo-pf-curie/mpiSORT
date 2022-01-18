@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef __BGZF_H
-#define __BGZF_H
+#ifndef __BGZF2_H
+#define __BGZF2_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -55,7 +55,7 @@ typedef struct {
 	int cache_size;
     const char* error;
 	void *cache; // a pointer to a hash table
-} BGZF;
+} BGZF2;
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,21 +67,21 @@ extern "C" {
  * A subsequent bgzf_close will not close the file descriptor.
  * Returns null on error.
  */
-BGZF* bgzf_fdopen(int fd, const char* __restrict mode);
+BGZF2* bgzf2_fdopen(int fd, const char* __restrict mode);
 
 /*
  * Open the specified file for reading or writing.
  * Mode must be either "r" or "w".
  * Returns null on error.
  */
-BGZF* bgzf_open(const char* path, const char* __restrict mode);
+BGZF2* bgzf2_open(const char* path, const char* __restrict mode);
 
 /*
  * Close the BGZ file and free all associated resources.
  * Does not close the underlying file descriptor if created with bgzf_fdopen.
  * Returns zero on success, -1 on error.
  */
-int bgzf_close(BGZF* fp);
+int bgzf2_close(BGZF2* fp);
 
 /*
  * Read up to length bytes from the file storing into data.
@@ -89,14 +89,14 @@ int bgzf_close(BGZF* fp);
  * Returns zero on end of file.
  * Returns -1 on error.
  */
-int bgzf_read(BGZF* fp, void* data, int length);
+int bgzf2_read(BGZF2* fp, void* data, int length);
 
 /*
  * Write length bytes from data to the file.
  * Returns the number of bytes written.
  * Returns -1 on error.
  */
-int bgzf_write(BGZF* fp, const void* data, int length);
+int bgzf2_write(BGZF2* fp, const void* data, int length);
 
 /*
  * Return a virtual file pointer to the current location in the file.
@@ -115,30 +115,30 @@ int bgzf_write(BGZF* fp, const void* data, int length);
  * Seeking on a file opened for write is not supported.
  * Returns zero on success, -1 on error.
  */
-int64_t bgzf_seek(BGZF* fp, int64_t pos, int where);
+int64_t bgzf2_seek(BGZF2* fp, int64_t pos, int where);
 
 /*
  * Set the cache size. Zero to disable. By default, caching is
  * disabled. The recommended cache size for frequent random access is
  * about 8M bytes.
  */
-void bgzf_set_cache_size(BGZF *fp, int cache_size);
+void bgzf2_set_cache_size(BGZF2 *fp, int cache_size);
 
-int bgzf_check_EOF(BGZF *fp);
-int bgzf_read_block(BGZF* fp);
-int bgzf_flush(BGZF* fp);
-int bgzf_flush_try(BGZF *fp, int size);
-int bgzf_check_bgzf(const char *fn);
+int bgzf2_check_EOF(BGZF2 *fp);
+int bgzf2_read_block(BGZF2* fp);
+int bgzf2_flush(BGZF2* fp);
+int bgzf2_flush_try(BGZF2 *fp, int size);
+int bgzf2_check_bgzf(const char *fn);
 
 #ifdef __cplusplus
 }
 #endif
 
-static inline int bgzf_getc(BGZF *fp)
+static inline int bgzf2_getc(BGZF2 *fp)
 {
 	int c;
 	if (fp->block_offset >= fp->block_length) {
-		if (bgzf_read_block(fp) != 0) return -2; /* error */
+		if (bgzf2_read_block(fp) != 0) return -2; /* error */
 		if (fp->block_length == 0) return -1; /* end-of-file */
 	}
 	c = ((unsigned char*)fp->uncompressed_block)[fp->block_offset++];

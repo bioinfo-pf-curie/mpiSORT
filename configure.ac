@@ -3,6 +3,8 @@ AC_PREREQ([2.69])
 AC_INIT([mpiSORT], [1.5])
 AC_CONFIG_HEADERS([src/config.h])
 AM_INIT_AUTOMAKE([1.13 foreign -Wall])
+AC_PROG_RANLIB
+AM_PROG_AR
 
 # Checks for programs.
 AC_PROG_CC([mpicc])
@@ -41,6 +43,14 @@ AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T 
 AC_TYPE_UINT32_T 
 AC_TYPE_UINT8_T 
+
+AC_ARG_WITH([libhts], [AS_HELP_STRING( [--with-libhts=DIR], [htslib installation location])], [with_libhts_path=$with_libhts] , [libhts_present="no"] )
+AC_SUBST([LIBHTSDIR], $with_libhts_path)
+AM_CONDITIONAL([HAVE_HTSLIB], [test "x$libhts_present" != "xno" ])
+AM_COND_IF([HAVE_HTSLIB], [echo "compile with htslib"])
+
+#AC_ARG_WITH([header],  [AS_HELP_STRING( [--with-header=DIR], [htslib header location])], [with_header_path=$with_header], [] )
+#AC_SUBST([HEADERDIR], $with_header_path)
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
