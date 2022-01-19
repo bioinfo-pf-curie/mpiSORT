@@ -68,7 +68,7 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-s` to write the output in SAM format (by default the output is in bgzf format)
 * `-b` to write the output in BAM format
 * `-g` to write the output in BGZF format
-* `-m` to merge all chromosoms in a single file 
+* `-m` to merge all chromosoms in a single file (-s -m produce a single SAM output, suffixed with input_name_sorted.sam)
 
 ### Output
 
