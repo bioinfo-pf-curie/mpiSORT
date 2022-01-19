@@ -2000,7 +2000,8 @@ void writeSam(
                         #ifdef HAVE_HTSLIB
 
 				//we make a copy of the header because we modify it
-				char *header_tmp = malloc(strlen(header));
+				char *header_tmp = malloc(strlen(header) + 1);
+				header_tmp[strlen(header)]=0;
 				header_tmp = strcpy(header_tmp, header);
 
                                 int file_exist = 1;
@@ -2094,7 +2095,7 @@ void writeSam(
 				BGZF *bfp_h = out_header_bam->fp.bgzf;
 				BGZF *bfp_b = out_bam->fp.bgzf;
 
-                                switch (hts_get_format(in_sam)->category) {
+				switch (hts_get_format(in_sam)->category) {
                                 	case sequence_data:
                                         	if ( rank == master_job_phase_2)
                                                 	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] we have SAM format in buffer\n", rank);
@@ -2247,6 +2248,12 @@ void writeSam(
                                 ret = hts_close(in_header);
 				/*normally it's enough because other fd point to the same buffer*/
 
+				//free((out_header_bam->fp.bgzf)->uncompressed_block);
+				//free(out_bam->fp.bgzf->uncompressed_block);
+				bgzf_close(bfp_h);
+				bgzf_close(bfp_b);
+				free(hf_out_header);
+				free(hf_out_sam);
 				//ret = hts_close(out_header_bam); //no ok
 				//ret = hts_close(out_bam); //no ok
 				//ret = hclose(hf_in_sam); //no ok
