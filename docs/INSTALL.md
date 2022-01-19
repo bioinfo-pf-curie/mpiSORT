@@ -7,6 +7,8 @@
 * [autoconf 2.69](https://www.gnu.org/software/autoconf/)
 * [automake 1.13](https://www.gnu.org/software/automake/)
 * [make](https://www.gnu.org/software/make/)
+* [htslib](https://github.com/samtools/htslib)(optionnal, needed to produce BAM output)
+
 
 The MPI compiler but be available in your PATH or set with the CC environment variable.
 
@@ -39,6 +41,8 @@ automake --add-missing
 # using the CC environment variable, for example:
 #./configure CC=/usr/lib64/mpich/bin/mpicc
 ./configure --prefix=${HOME}/local/mpiSORT
+# If you want to link with htslib
+./configure --prefix=${HOME}/local/mpiSORT --with-libhts=${HOME}/htslib 
 make
 make install
 ```
