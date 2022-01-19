@@ -67,8 +67,8 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-u` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
 * `-s` to write the output in SAM format (by default the output is in bgzf format)
 * `-b` to write the output in BAM format
-*  -g  to write the output in BGZF format
-*  -m  to merge all chromosoms in a single BAM 
+* `-g` to write the output in BGZF format
+* `-m` to merge all chromosoms in a single file 
 
 ### Output
 
@@ -86,6 +86,7 @@ Note that:
 
 3. if you use `mpiSORT` on a sam file produced by `mpiBWA`, the discordant.sam contains all primary and secondary discordant alignments. The unmapped.gz file is generally not empty.
 
+4. we don't index the BAM output yet use Samtools to do it.
 
 To index the SAM:
 `tabix -p sam chr11.gz`
@@ -96,6 +97,8 @@ To uncompress:
 `bgzip -d chr11.gz -c > chr11.sam`
 
 `bgzip` is available from [Samtools](http://www.htslib.org/doc/bgzip.html)
+
+
 
 ## Informatic resources
 
