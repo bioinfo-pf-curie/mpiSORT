@@ -2250,8 +2250,8 @@ void writeSam(
 
 				//free((out_header_bam->fp.bgzf)->uncompressed_block);
 				//free(out_bam->fp.bgzf->uncompressed_block);
-				bgzf_close(bfp_h);
-				bgzf_close(bfp_b);
+				//bgzf_close(bfp_h);
+				//bgzf_close(bfp_b);
 				free(hf_out_header);
 				free(hf_out_sam);
 				//ret = hts_close(out_header_bam); //no ok
