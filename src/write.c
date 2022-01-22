@@ -2090,10 +2090,20 @@ void writeSam(
                                 hts_opt_apply(in_sam, in_opts);
 				hts_opt_apply(out_header_bam, out_opts);
                                 hts_opt_apply(out_bam, out_opts);
-	
+
 				//BAM pointer fd
 				BGZF *bfp_h = out_header_bam->fp.bgzf;
 				BGZF *bfp_b = out_bam->fp.bgzf;
+				/*
+ 				 * we have warning with bgzf_open 
+ 				 * 
+				BGZF *bfp_h = NULL;
+				bfp_h = (BGZF *)bgzf_hopen(hf_out_header, "w");
+				assert(bfp_h);
+				BGZF *bfp_b = NULL; 
+				bfp_b = (BGZF *)bgzf_hopen(hf_out_sam, "w");
+				assert(bfp_b);
+				*/
 
 				switch (hts_get_format(in_sam)->category) {
                                 	case sequence_data:
@@ -2131,7 +2141,7 @@ void writeSam(
                                 	while (comp_header_size < ( header_size - 30 )){
                                         	memcpy(buff, memptr_h + comp_header_size , 28);
                                         	if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-                                                	fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] Header commpression size %zu.\n", rank, comp_header_size);
+                                                	//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] Header commpression size %zu.\n", rank, comp_header_size);
                                                 	break;
                                         	}
                                         	comp_header_size++;
@@ -2156,7 +2166,7 @@ void writeSam(
     				while (comp_bam_size < (sam_size - 30)){
         				memcpy(buff, memptr_b + comp_bam_size, 28);
         				if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-						fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] BAM commpression size %zu.\n", rank, comp_bam_size);                				
+						//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] BAM commpression size %zu.\n", rank, comp_bam_size);                				
                 				break;
         				}
        					comp_bam_size++;
@@ -2239,26 +2249,22 @@ void writeSam(
 
                                 if (rank == master_job_phase_2)
                                 	MPI_File_close(&out);
-				//clean up
-				bam_destroy1(b);
-				// header_tmp should be freed with sam_hdr_destroy
-                                sam_hdr_destroy(h);
-				//char_buff_uncompressed shoud be freed with hts_close	
-                                ret = hts_close(in_sam);
-                                ret = hts_close(in_header);
-				/*normally it's enough because other fd point to the same buffer*/
 
-				//free((out_header_bam->fp.bgzf)->uncompressed_block);
-				//free(out_bam->fp.bgzf->uncompressed_block);
-				//bgzf_close(bfp_h);
-				//bgzf_close(bfp_b);
+				/*
+ 				 *  Seems ok with valgrind 
+ 				 */ 				
+				bgzf_flush(bfp_b);
+				bgzf_flush(bfp_h);
+				bam_destroy1(b);
+				sam_hdr_destroy(h);
+				ret = hts_close(in_sam);
+                                ret = hts_close(in_header);
 				free(hf_out_header);
-				free(hf_out_sam);
-				//ret = hts_close(out_header_bam); //no ok
-				//ret = hts_close(out_bam); //no ok
-				//ret = hclose(hf_in_sam); //no ok
-				//ret = hclose(hf_out_sam); //no ok
-				//ret = hclose(hf_out_header); //no ok
+                                free(hf_out_sam);
+				free(bfp_h);
+				free(bfp_b);
+                                //
+				//end
                                
                                 fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
  
