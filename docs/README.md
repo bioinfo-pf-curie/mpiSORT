@@ -65,8 +65,10 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-p` if the read are paired-end (by default reads are single-end) (optional)
 * `-n` sorts the read by their name (but it is not commonly used) (optional)
 * `-u` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
-
- 
+* `-s` to write the output in SAM format (by default the output is in bgzf format)
+* `-b` to write the output in BAM format
+* `-g` to write the output in BGZF format
+* `-m` to merge all chromosoms in a single file (-s -m produce a single SAM output, suffixed with input_name_sorted.sam)
 
 ### Output
 
@@ -84,6 +86,7 @@ Note that:
 
 3. if you use `mpiSORT` on a sam file produced by `mpiBWA`, the discordant.sam contains all primary and secondary discordant alignments. The unmapped.gz file is generally not empty.
 
+4. we don't index the BAM output yet use Samtools to do it.
 
 To index the SAM:
 `tabix -p sam chr11.gz`
@@ -95,11 +98,13 @@ To uncompress:
 
 `bgzip` is available from [Samtools](http://www.htslib.org/doc/bgzip.html)
 
+
+
 ## Informatic resources
 
 ### Memory
 
-When the SAM file to be sorted contains all the chromosomes, the total memory used during the sorting is around 1.5 times the size of the SAM file.
+When the SAM file to be sorted contains all the chromosomes, (from experiments and when the input is balanced) the total memory used during the sorting is around 1.5 times the size of the SAM file.
 For example, to sort a 1.3TB SAM file (such as the [NA24631](ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams/) from [GIAB](https://github.com/genome-in-a-bottle/about_GIAB) which is a 300X Whole Genome (2x150-base) paired reads that we aligned with [mpiBWA](https://github.com/bioinfo-pf-curie/mpiBWA)), 1.7 TB of memory are required and split over 512 MPI workers (i.e. cores) that corresponds to 3.3 GB of memory per core. Note that when the SAM file contains several chromosomes, each chromosome is sorted successively: therefore, the upper memory bound depends on the size of the whole SAM file plus some internal structures plus the size of the biggest chromosome.
 
 NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/ChineseTrio/HG005_NA24631_son/HG005_NA24631_son_HiSeq_300x/NHGRI_Illumina300X_Chinesetrio_novoalign_bams
@@ -107,7 +112,6 @@ NA24631 sample is available here: ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamp
 To reduce further the memory required you can use as input a SAM file that contains the reads from only one chromosome (as those provided with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)) and pass it with the option `-u` to `mpiSORT`. The total memory needed in this case is around 2.5 times the size of the individual SAM size. This method also allows a better dispatch of the workload on the computing cluster.
 
 To get a good understanding of the memory management with mpiSORT read with attention the [Benchmark](#benchmark)
-
 
 The section [Set the number of nodes and cores](#set-the-number-of-nodes-and-cores) provides guidelines and utilities to set the informatic resources.
 ### Cpu
@@ -464,4 +468,11 @@ Yes the sort is stable for coordinates sorting (not tested for QNAME but it shou
 It means the order of the reads with same coordinates does not vary according to parallelization and according to the original order. 
 To test reproducibility md5sum the uncompressed sorted sam files.  
      
+### What is the roadmap of mpiSORT?
+
+The main bottleneck of mpiSORT is IO. For large samples half of run time is spent in reading the input.
+This is why in the next releases mpiSORT will be merged with mpiBWA (and mpiMarkdup also).
+I hope this will make the sorting and markdup almost desappear...we'll see.    
+
+
 

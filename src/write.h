@@ -39,6 +39,31 @@
 #include "writeUtils.h"
 #include "parallelBitonicSort.h"
 
+struct opts {
+    char *fn_ref;
+    int flag;
+    int clevel;
+    int ignore_sam_err;
+    int nreads;
+    int extra_hdr_nuls;
+    int benchmark;
+    int nthreads;
+    int multi_reg;
+    char *index;
+    int min_shift;
+};
+
+enum test_op {
+    READ_COMPRESSED    = 1,
+    WRITE_BINARY_COMP  = 2, // eg bam, bcf
+    READ_CRAM          = 4,
+    WRITE_CRAM         = 8,
+    WRITE_UNCOMPRESSED = 16,
+    WRITE_COMPRESSED   = 32, // eg vcf.gz, sam.gz, fastq.gz
+    WRITE_FASTQ        = 64,
+    WRITE_FASTA        = 128,
+};
+
 void writeSam(
 		int rank,
 		char* output_dir,
@@ -62,7 +87,10 @@ void writeSam(
 		char* data,
 		size_t offset_data_in_file,
 		size_t original_local_readNum,
-		int uniq_chr
+		int uniq_chr,
+		int write_sam,
+		int merge,
+		char file_name_merge[]
 		);
 
 
@@ -157,7 +185,11 @@ void writeSam_any_dim(
 		int* new_rank,
 		char *data,
 		size_t start_offset_in_file,
-		int uniq_chr);
+		int uniq_chr,
+		int write_format,
+                int merge,
+                char file_name_sorted[]
+		);
 
 
 

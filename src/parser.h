@@ -38,7 +38,7 @@
 #include "tokenizer.h"
 #include "time.h"
 
-#define MAX_LINE_SIZE 2048
+#define MAX_LINE_SIZE 1024*1024
 #define UNMAPPED "unmapped"
 #define DISCORDANT "discordant"
 typedef struct Flags Flags;
@@ -104,6 +104,7 @@ void init_goff(MPI_File mpi_filed,unsigned int headerSize,size_t fsize,int numpr
  * \param chrNames Reference array to the chromosomes names.
  * \param preads The reads linked list. Will be set in this function.
  */
+void parser_paired_uniq(char *localData, int rank, size_t start_offset, unsigned char threshold, int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 void parser_paired(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 void parser_single(char *localData, int rank, size_t start_offset, unsigned char threshold,int nbchrom, size_t **preadNumberByChr, char ** chrNames, Read ***preads);
 /**

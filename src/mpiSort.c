@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2020
+   Copyright Institut Curie 2021
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -106,13 +106,22 @@
 #define DEFAULT_INBUF_SIZE  (1024*1024*1024)
 
 /* Maximum chromosome number */
-#define MAXNBCHR 256
+#define MAXNBCHR 512
+
+#ifndef HAVE_HTSLIB
+#define HTSLIB_PRESENT 0
+#else
+#define HTSLIB_PRESENT 1
+#endif
+
+
+
 
 static void usage(const char *);
 
 int main (int argc, char *argv[]){
 
-	char *x, *y, *z, *xbuf, *hbuf, *chrNames[MAXNBCHR];
+	char *x, *x1, *y, *y1, *z, *z1, *xbuf, *hbuf, *chrNames[MAXNBCHR];
 	int fd;
 	off_t hsiz;
 	struct stat st;
@@ -122,7 +131,7 @@ int main (int argc, char *argv[]){
 
 	MPI_Offset fileSize, unmapped_start, discordant_start;
 	int num_proc, rank;
-	int res, nbchr, i, paired, uniq_chr, write_sam;
+	int res, nbchr, i, paired, uniq_chr, write_format;
 	int ierr, errorcode = MPI_ERR_OTHER;
 	char *file_name, *output_dir;
 
@@ -144,8 +153,10 @@ int main (int argc, char *argv[]){
 	int split_rank, split_size; //after split communication we update the rank and the size
 	double tic, toc;
 	int compression_level;
+	int merge;
 	size_t fsiz, lsiz, loff;
 	const char *sort_name;
+        char *chr_name_u; //use is case of uniq chromosom. Must be the name of the chromosom, it gives also the name of output file 
 	MPI_Info finfo;
 
 	/* Set default values */
@@ -155,9 +166,10 @@ int main (int argc, char *argv[]){
 	paired = 0; /* by default reads are considered single*/
 	uniq_chr = 0; 
 	threshold = 0;
-	write_sam = 0;
+	write_format = 0;
+	merge = 0;
 	/* Check command line */
-	while ((i = getopt(argc, argv, "c:hnpuq:")) != -1) {
+	while ((i = getopt(argc, argv, "c:hnpu:q:gsbm")) != -1) {
 		switch(i) {
 			case 'c': /* Compression level */
 				compression_level = atoi(optarg);
@@ -174,9 +186,22 @@ int main (int argc, char *argv[]){
 				break;
 			case 'u': /* We say we have only one chromosome in the file */
                                 uniq_chr = 1;
+				asprintf(&chr_name_u,"%s", optarg);
                                 break;
 			case 'q': /* Quality threshold */
 				threshold = atoi(optarg);
+				break;
+			case 'g':
+				write_format = 0;
+				break;
+			case 'b':
+                                write_format = 1;
+                                break;
+			case 's':
+                                write_format = 2;
+                                break;
+			case 'm':
+				merge = 1;
 				break;
 			default:
 				usage(basename(*argv));
@@ -198,6 +223,36 @@ int main (int argc, char *argv[]){
 	if (res == -1)
 		err(1, "%s", output_dir);
 
+	char *file_name_tmp;
+        char file_name_merge[256];
+        char *dot;
+	char *slash = strdup(file_name);
+        //in case of merge we create a file from file_name
+        if (merge && (write_format == 2)){
+
+	   	file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.sam", file_name_tmp);
+        }
+
+	if (merge && (write_format == 1)){
+
+                file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.bam", file_name_tmp);
+        }
+
+	if (merge && (write_format == 0)){
+
+                file_name_tmp = basename(slash);
+                dot = strrchr(file_name_tmp, '.');
+                if (dot) dot[0] = '\0';
+                sprintf(file_name_merge, "%s_sorted.gz", file_name_tmp);
+        }
+
+
 	/* MPI inits */
 	res = MPI_Init(&argc, &argv);
 	assert(res == MPI_SUCCESS);
@@ -213,7 +268,7 @@ int main (int argc, char *argv[]){
 		res = MPI_Finalize();
                 assert(res == MPI_SUCCESS);
                 exit(2);
-                //err(1, "You ask for 0 cpu this is not possible !!\n");	
+                
 	}
 
 	
@@ -224,9 +279,16 @@ int main (int argc, char *argv[]){
                 res = MPI_Finalize();
                 assert(res == MPI_SUCCESS);
                 exit(2);
-                //err(1, "Number of processes must be power of two \n");
+                
 	}
 
+	if ( (write_format == 1) && (!HTSLIB_PRESENT) ){
+                fprintf(stderr, "You want BAM output but you didn't link with htslib \n");
+                res = MPI_Finalize();
+                assert(res == MPI_SUCCESS);
+                exit(2);
+        }
+        
 	g_rank = rank;
 	g_size = num_proc;
 
@@ -245,10 +307,50 @@ int main (int argc, char *argv[]){
 	assert(fstat(fd, &st) != -1);
 	xbuf = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
 	assert(xbuf != MAP_FAILED);
+	/* we get the size of the original header */
+	x = xbuf;
+	size_t orig_hsiz = 0;
+	while (*x == '@') {
+                y = strchr(x, '\n');
+                z = x; x = y + 1;
+              
+        }
+	orig_hsiz = x - xbuf;
 
+	/* ignore the first line if equal to @HD     VN:1.0  SO:  */
+        char *xbuf1;
+        x1 = xbuf;
+	xbuf1 = xbuf;
+	char *y2;
+	
+	if (*x1 == '@'){
+		y1 = strchr(x1, '\n');		
+		z1 = x1; x1 = y1 + 1;
+		if (strncmp(z1, "@HD", 3) == 0) {
+			y2 = strstr(z1, "SO:");
+			if (y2 != NULL) xbuf1 = x1;	
+		}					
+	}
+	
 	/* Parse SAM header */
 	memset(chrNames, 0, sizeof(chrNames));
-	x = xbuf; nbchr = 0;
+	x = xbuf1; nbchr = 0;
+	
+	char* ts1 = strdup(file_name);
+	char* ts2 = strdup(file_name);
+
+        char* dir = dirname(ts1);
+        char* filename = basename(ts2);
+	
+	if (uniq_chr){
+
+		//char *tmp_str = filename;
+		//const char *dot = strrchr(filename, '.');
+		//chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
+		chrNames[nbchr++] = strdup(chr_name_u);
+	}
+	
+	assert(*x == '@');
 	while (*x == '@') {
 		y = strchr(x, '\n');
 		z = x; x = y + 1;
@@ -258,23 +360,26 @@ int main (int argc, char *argv[]){
 		assert(y != NULL);
 		z = y + 3;
 		while (*z && !isspace((unsigned char)*z)) z++;
-		chrNames[nbchr++] = strndup(y + 3, z - y - 3);
+		if (!uniq_chr) chrNames[nbchr++] = strndup(y + 3, z - y - 3);
 		assert(nbchr < MAXNBCHR - 2);
-	}
+	}	
+	assert(*x != '@');	
+	
+	
 	
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
-		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], DISCORDANT);
-		asprintf(&chrNames[nbchr++],"%s_%s", chrNames[nbchr - 1], UNMAPPED);
+		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, DISCORDANT);
+		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, UNMAPPED);
 	}
 	else {
 		chrNames[nbchr++] = strdup(DISCORDANT);
 		chrNames[nbchr++] = strdup(UNMAPPED);
 	}
 
-	hsiz = x - xbuf;
-	hbuf = strndup(xbuf, hsiz);
+	hsiz = x - xbuf1;
+	hbuf = strndup(xbuf1, hsiz);
 
 	if (rank == 0) {
 		fprintf(stderr, "The size of the file is %zu bytes\n", (size_t)st.st_size);
@@ -338,7 +443,7 @@ int main (int argc, char *argv[]){
 
 	//We place file offset of each process to the begining of one read's line
 	size_t *goff =(size_t*)calloc((size_t)(num_proc+1), sizeof(size_t));
-	init_goff(mpi_filed,hsiz,input_file_size,num_proc,rank,goff);
+	init_goff(mpi_filed,orig_hsiz,input_file_size,num_proc,rank,goff);
 
 	//We calculate the size to read for each process
 	lsiz = goff[rank+1]-goff[rank];
@@ -409,7 +514,8 @@ int main (int argc, char *argv[]){
 		}
 
 		//Now we parse Read in local_data
-		if (paired == 1) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 1 && uniq_chr == 0) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
+		if (paired == 1 && uniq_chr == 1) parser_paired_uniq(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
 		//now we copy local_data_tmp in local_data
 		char *p = local_data_tmp;
@@ -633,7 +739,7 @@ int main (int argc, char *argv[]){
 							compression_level,
 							local_data,
 							goff[rank],
-							write_sam);
+							write_format);
 
 					if (split_rank == chosen_rank){
 							fprintf(stderr,	"rank %d :::::[MPISORT] Time to write chromosom %s ,  %f seconds \n\n\n", split_rank,
@@ -671,7 +777,7 @@ int main (int argc, char *argv[]){
 							compression_level,
 							local_data,
 							goff[rank],
-							write_sam
+							write_format
 							);
 
 
@@ -719,7 +825,6 @@ int main (int argc, char *argv[]){
 
 	MPI_Barrier(MPI_COMM_WORLD);
 	for(i = 0; i < (nbchr-2); i++){
-
 		/*
 		 * First Part of the algorithm
 		 *
@@ -1288,7 +1393,7 @@ int main (int argc, char *argv[]){
 						/*
 						 *
 						 * FOR DEBUG
-						 */
+						 
 
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
@@ -1298,7 +1403,7 @@ int main (int argc, char *argv[]){
 							assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 							assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 						}
-						
+						*/
 
 					}
 					else{
@@ -1339,7 +1444,7 @@ int main (int argc, char *argv[]){
 					/*
 					 *
 					 * FOR DEBUG
-					 */
+					 
 					for(y = 0; y < num_read_for_bruck; y++){
 						assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 						assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1348,6 +1453,7 @@ int main (int argc, char *argv[]){
 						assert( local_offset_dest_sorted_trimmed_for_bruck[y] 	    != 0);
 						assert( local_reads_coordinates_sorted_trimmed_for_bruck[y] != 0);
 					}
+					*/
 					
 				}
 
@@ -1507,7 +1613,7 @@ int main (int argc, char *argv[]){
 				/*
 				 *
 				 * FOR DEBUG
-				 */
+				 
 				for ( j = 0; j < local_readNum; j++){
 					assert ( local_reads_coordinates_sorted_trimmed[j]    != 0 );
 					assert ( local_offset_source_sorted_trimmed[j]        != 0 );
@@ -1516,7 +1622,7 @@ int main (int argc, char *argv[]){
 					assert ( local_dest_rank_sorted_trimmed[j]            < split_size );
 					assert ( local_source_rank_sorted_trimmed[j] 		  < split_size );
 				}
-				
+				*/
 
 				free(local_reads_coordinates_sorted_trimmed);
 
@@ -1550,7 +1656,10 @@ int main (int argc, char *argv[]){
 					local_data,
 					goff[rank],
 					first_local_readNum,
-					uniq_chr
+					uniq_chr,
+					write_format,
+					merge,
+					file_name_merge
 				);
 
 				if (split_rank == chosen_split_rank){
@@ -1589,7 +1698,10 @@ int main (int argc, char *argv[]){
 						header,
 						chrNames[i],
 						mpi_file_split_comm,
-						uniq_chr
+						uniq_chr,
+						write_format,
+                				merge,
+                				file_name_merge
 					);
 
 			} //end if dimensions < split_rank
@@ -1652,8 +1764,19 @@ static void usage(const char *prg) {
         "\t     filters the reads according to their quality. Reads quality under the\n"
         "\t     threshold are ignored in the sorting results. Default is 0 (all reads are kept).\n"
         "\n\t-n\n"
-        "\t     sorts the read by their name (but it is not commonly used).\n"
-        "\ninput: input file is a sam file of paired reads\n"
+        "\t     sorts the read by their query name.\n"
+	"\n\t-s\n"
+	"\t	write the output in SAM format.\n"
+ 	"\n\t-m\n"
+        "\t     merge the output in one sam file.\n"
+	"\t     name of the merge output: (inputfile_name)_merged.sam\n"
+	"\t     this fonction only works for sam output format.\n"
+	"\t     discordant and unmapped are written in separate files.\n"
+	"\n\t-g\n"
+        "\t     write the output in gz format.\n"
+	"\n\t-b\n"
+        "\t     write the output in BAM compatible format.\n"
+        "\ninput: input file is a sam file of paired or single reads\n"
         "\noutput: set of gz files with\n"
         "\t* one per chromosome (e.g. chr11.gz)\n"
         "\t* one for discordant reads (discordant.gz): discordants reads are reads \n"
@@ -1664,7 +1787,7 @@ static void usage(const char *prg) {
 		"\nexample : mpirun -n 4 %s  HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0 -n \n"
         "\nFor more detailed documentation visit:\n"
         "\thttps://github.com/bioinfo-pf-curie/mpiSORT\n"
-        "\nCopyright (C) 2020  Institut Curie <http://www.curie.fr> \n"
+        "\nCopyright (C) 2021  Institut Curie <http://www.curie.fr> \n"
         "\nThis program comes with ABSOLUTELY NO WARRANTY. \n"
         "This is free software, and you are welcome to redistribute it \n"
         "under the terms of the CeCILL License. \n"
