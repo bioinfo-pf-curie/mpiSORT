@@ -1,4 +1,5 @@
 version-1.5
+    - add option in configure for htslib support in order to generate a BAM (issue#45)
     - add utility script (getSlurmOpt.py) in examples/ to get sbatch option (issue#46)
     - add option (-t [uniq, all]) in informaticResources.py (issue#46)   
     - update mpiSort.c to fit mpiBWAByChr output version-1.3 (issue#47)
