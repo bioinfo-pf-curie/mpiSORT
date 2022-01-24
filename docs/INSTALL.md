@@ -34,18 +34,26 @@ cd mpiSORT
 # Checkout the branch of the version you want to install, for example:
 # git checkout version-1.0
 aclocal
-autoconf
 automake --add-missing
 # If not yet in your PATH, you can provide the PATH to `mpicc`
 # or your favourite MPI compiler at the configure stage
 # using the CC environment variable, for example:
 #./configure CC=/usr/lib64/mpich/bin/mpicc
+autoconf
 ./configure --prefix=${HOME}/local/mpiSORT
 # If you want to link with htslib
+# replace autoconf with autoreconf -i
+# and give the full path of htslib to --with-libhts
+# the libhts must be compiled and libhts.a be present
+# in the htslib directory with all the headers
+autoreconf -i
 ./configure --prefix=${HOME}/local/mpiSORT --with-libhts=${HOME}/htslib 
+# finally 
 make
 make install
 ```
+
+
 
 
 
