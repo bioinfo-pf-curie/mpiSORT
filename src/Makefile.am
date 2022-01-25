@@ -7,7 +7,7 @@ mpiSORT_SOURCES =
 
 if HAVE_HTSLIB
 AM_CPPFLAGS = -I@LIBHTSDIR@/htslib -I@LIBHTSDIR@ -DHAVE_HTSLIB
-AM_LDFLAGS = -lhts -lrt
+AM_LDFLAGS = -lhts -lrt -lpthread
 mpiSORT_SOURCES += $(SRC)
 mpiSORT_LDADD = @LIBHTSDIR@/libhts.a
 mpiSORT_LDFLAGS = -I@LIBHTSDIR@/htslib -I@LIBHTSDIR@
