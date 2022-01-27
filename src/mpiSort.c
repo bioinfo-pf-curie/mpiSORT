@@ -252,6 +252,7 @@ int main (int argc, char *argv[]){
                 sprintf(file_name_merge, "%s_sorted.gz", file_name_tmp);
         }
 
+	free(slash);
 
 	/* MPI inits */
 	res = MPI_Init(&argc, &argv);
@@ -336,11 +337,11 @@ int main (int argc, char *argv[]){
 	memset(chrNames, 0, sizeof(chrNames));
 	x = xbuf1; nbchr = 0;
 	
-	char* ts1 = strdup(file_name);
-	char* ts2 = strdup(file_name);
+	//char* ts1 = strdup(file_name);
+	//char* ts2 = strdup(file_name);
 
-        char* dir = dirname(ts1);
-        char* filename = basename(ts2);
+        //char* dir = dirname(ts1);
+        //char* filename = basename(ts2);
 	
 	if (uniq_chr){
 
@@ -612,13 +613,15 @@ int main (int argc, char *argv[]){
 			//task: replace the broadcast with a sendrecieve
 			MPI_Bcast( &chosen_rank, 1, MPI_INT, 0, MPI_COMM_WORLD);
 			MPI_Barrier(MPI_COMM_WORLD);
-
+		        /*	
 			//we must chose which rank is going to split the communication
 			if (((rank == chosen_rank) || rank == 0) && (chosen_rank != 0)){
 				//the rank 0 will recieve the key_vec_to_send and colorvec_to_send
 				//first we exchange the size o
 				if (rank == chosen_rank){
+					if (header) free(header);
 					header=(char *)malloc((headerSize + 1)*sizeof(char));
+					header[headerSize] = '\0';
 					MPI_Recv(header, headerSize + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 				}
 				if (rank == 0){
@@ -628,7 +631,7 @@ int main (int argc, char *argv[]){
 			else {
 				//we do nothing here
 			}
-
+			*/
 			if (rank == chosen_rank) {
 
 				int counter = 0;
@@ -888,11 +891,12 @@ int main (int argc, char *argv[]){
 		//task: replace the broadcast with a sendrecieve
 		MPI_Bcast( &chosen_rank, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Barrier(MPI_COMM_WORLD);
-
+		/*
 		if (((rank == chosen_rank) || rank == 0) && (chosen_rank != 0)){
 
 			//first we exchange the size o
 			if (rank == chosen_rank){
+				if (header) free(header);
 				header = malloc((headerSize + 1)*sizeof(char));
 				header[headerSize] = '\0';
 				MPI_Recv(header, headerSize + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -904,9 +908,9 @@ int main (int argc, char *argv[]){
 		else {
 			//we do nothing here
 		}
-
+		
 		MPI_Barrier(MPI_COMM_WORLD);
-
+		*/
 		if (rank == chosen_rank) {
 			int counter = 0;
 			//we compute the number of 0 in the localReadsNum_vec
@@ -1726,7 +1730,8 @@ int main (int argc, char *argv[]){
 
 	}// end loop upon chromosoms (line 665)
 
-
+	MPI_Info_free(&finfo);
+        MPI_File_close(&mpi_filed);
 	free(goff);
 	if (!uniq_chr)	free(local_data);
 

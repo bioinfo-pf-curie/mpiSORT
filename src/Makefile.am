@@ -6,11 +6,24 @@ mpiSORT_SOURCES =
 
 
 if HAVE_HTSLIB
-AM_CPPFLAGS = -I@LIBHTSDIR@/htslib -I@LIBHTSDIR@ -DHAVE_HTSLIB
-AM_LDFLAGS = -lhts -lrt
+AM_CPPFLAGS = -I@LIBHTSDIR@/lib -I@LIBHTSDIR@/include/htslib -DHAVE_HTSLIB
+AM_LDFLAGS = -lhts -lrt -lpthread
 mpiSORT_SOURCES += $(SRC)
-mpiSORT_LDADD = @LIBHTSDIR@/libhts.a
-mpiSORT_LDFLAGS = -I@LIBHTSDIR@/htslib -I@LIBHTSDIR@
+mpiSORT_LDADD = @LIBHTSDIR@/lib/libhts.a
+mpiSORT_LDFLAGS = -I@LIBHTSDIR@/lib -I@LIBHTSDIR@/include/htslib  
+
+if ENABLE_CURL
+mpiSORT_LDADD += -lcurl
+endif
+
+if ENABLE_LZMA
+mpiSORT_LDADD += -llzma
+endif
+
+if ENABLE_BZ2
+mpiSORT_LDADD += -lbz2
+endif
+
 else
 mpiSORT_SOURCES += $(SRC)
 endif
@@ -24,7 +37,4 @@ HDR = mpiSortUtils.h mergeSort.h parallelBitonicSort.h \
         parser.h tokenizer.h preWrite.h write.h writeUtils.h \
         bgzf2.c bgzf2.h khash.h sortAnyDim.h \
         compat.h
-
-
-
 
