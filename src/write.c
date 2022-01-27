@@ -42,7 +42,6 @@
 #ifdef HAVE_HTSLIB
 #include "sam.h"
 #include "hfile.h"
-#include "hfile.c"
 #include "hts.h"
 #endif
 
@@ -1144,7 +1143,8 @@ void writeSam(
 					assert( new_local_reads_sizes_sorted_bruck3[k] != 0);
 					assert ((new_local_offset_source_sorted_bruck3[k] - start_offset_in_file) < sz_orig_data);
 				}
-				
+			
+					
 				start_index = k1;
 				/*
 				*new_local_reads_sizes_sorted_bruck3[0] = (new_local_reads_sizes_sorted_bruck2 + start_index);
@@ -1440,6 +1440,7 @@ void writeSam(
 		free(number_of_reads_by_procs2);	
 		if (uniq_chr) free(data);
 
+		free(new_local_offset_source_sorted_bruck2);
 		free(new_local_reads_sizes_sorted_bruck2);
 		free(new_local_offset_destination_bruck2);
 		free(new_local_reads_dest_rank_sorted_bruck2);
@@ -2064,25 +2065,24 @@ void writeSam(
                                 strcat(modew, "b");
 
 				//file descriptor for reading part
-                                hFILE *hf_in_header = create_hfile_mem(header_tmp, moder, header_size, header_size);
-                                assert(hf_in_header);
+                                hFILE *hf_in_header = hopen("mem:", "r:", header_tmp, header_size);
+				assert(hf_in_header);
                                 in_header = hts_hopen(hf_in_header ,"", moder);
 				in_header->format.format = sam;	
 
-                                hFILE *hf_in_sam = create_hfile_mem(char_buff_uncompressed, moder, sam_size, sam_size);
+                                hFILE *hf_in_sam = hopen("mem:", "r:", char_buff_uncompressed, sam_size);
                                 assert(hf_in_sam);
                                 in_sam = hts_hopen(hf_in_sam ,"", moder);
 				in_sam->format.format = sam;
 
 				//hfile descriptors for writing part
-     				hFILE *hf_out_header = create_hfile_mem(header_tmp, modew, header_size, header_size);
+     				hFILE *hf_out_header = hopen("mem:", "w:", header_tmp, header_size);	
                                 assert(hf_out_header);
                                 out_header_bam = hts_hopen(hf_out_header ,"", "wb");
 				out_header_bam->format.format = bam;
 
-
-                                hFILE *hf_out_sam = create_hfile_mem(char_buff_uncompressed, modew, sam_size, sam_size);
-                                assert(hf_out_sam);
+                                hFILE *hf_out_sam =  hopen("mem:", "w:", char_buff_uncompressed, sam_size);
+				assert(hf_out_sam);
                                 out_bam = hts_hopen(hf_out_sam ,"", "wb");
 				out_bam->format.format = bam;                                              
  
@@ -2252,15 +2252,27 @@ void writeSam(
 
 				/*
  				 *  Seems ok with valgrind 
- 				 */ 				
+ 				 */
+				//ret = hts_close(in_sam);
+				//ret = hts_close(in_header);
+				//ret = hts_close(out_bam); 	
+				//ret = hts_close(out_header_bam);			
 				bgzf_flush(bfp_b);
 				bgzf_flush(bfp_h);
 				bam_destroy1(b);
 				sam_hdr_destroy(h);
 				ret = hts_close(in_sam);
                                 ret = hts_close(in_header);
+				//ret = hclose(hf_in_header);
+				//ret = hts_close(out_bam);
+				//ret = hts_close(out_header_bam);
 				free(hf_out_header);
                                 free(hf_out_sam);
+				//free(char_buff_uncompressed);
+				//free( out_header_bam->fp.uncompressed_block);
+				//free( out_bam->fp.uncompressed_block);
+				//bgzf_close(bfp_h);
+				//bgzf_close(bfp_b);
 				free(bfp_h);
 				free(bfp_b);
                                 //
@@ -4470,24 +4482,24 @@ void writeSam_any_dim(
                 strcpy(modew, "w");
                 strcat(modew, "b");
 		//file descriptor for reading part
-		hFILE *hf_in_header = create_hfile_mem(header_tmp, moder, header_size, header_size);
+		hFILE *hf_in_header = hopen("mem:", "r:", header_tmp, header_size);
                 assert(hf_in_header);
                 in_header = hts_hopen(hf_in_header ,"", moder);
                 in_header->format.format = sam;
 
-                hFILE *hf_in_sam = create_hfile_mem(char_buff_uncompressed, moder, sam_size, sam_size);
+                hFILE *hf_in_sam = hopen("mem:", "r:",char_buff_uncompressed, sam_size );
                 assert(hf_in_sam);
                 in_sam = hts_hopen(hf_in_sam ,"", moder);
                 in_sam->format.format = sam;
 
                 //hfile descriptors for writing part
-               	hFILE *hf_out_header = create_hfile_mem(header_tmp, modew, header_size, header_size);
+               	hFILE *hf_out_header = hopen("mem:", "w:", header_tmp, header_size);
                 assert(hf_out_header);
                 out_header_bam = hts_hopen(hf_out_header ,"", "wb");
                 out_header_bam->format.format = bam;
 
 
-                hFILE *hf_out_sam = create_hfile_mem(char_buff_uncompressed, modew, sam_size, sam_size);
+                hFILE *hf_out_sam = hopen("mem:", "w:",char_buff_uncompressed, sam_size );
                 assert(hf_out_sam);
                 out_bam = hts_hopen(hf_out_sam ,"", "wb");
                 out_bam->format.format = bam;

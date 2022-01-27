@@ -49,22 +49,26 @@ make install
 ## Build with htslib support
 
 To link mpiSORT with htslib you need to build the htslib.a and import some headers.
-As we use memory streaming of htslib we cannot link with installed library.
-We can only bind to building directory so far.
 So to do that build htslib somewhere like this
 
 ```
 git clone https://github.com/samtools/htslib.git
 cd htslib
 git submodule update --init --recursive
-autoreconf -i  # Build the configure script and install files it uses
+autoreconf -i  --prefix=$INSTALL_PATH # Build the configure script and install files it uses
 ./configure 
 make
+make install
 
 ```
 
-Do not install htslib only build it.
-Then configure mpiSORT with the htslib building dir
+
+Then configure mpiSORT with the htslib install dir.
+By default compiler flag for lzma, bz2, curl are not present.
+
+If you have installed htslib with curl or lzma, bz2 support
+use the flags --enable-lzma, --enable-curl, --enable-bz2 
+in during configuration. Ignore the options if not needed.
 
 ```
 git clone https://github.com/bioinfo-pf-curie/mpiSORT.git
@@ -78,11 +82,14 @@ autoreconf -i
 # or your favourite MPI compiler at the configure stage
 # using the CC environment variable, for example:
 #./configure CC=/usr/lib64/mpich/bin/mpicc
-./configure --prefix=${HOME}/local/mpiSORT --with-libhts=${HOME}/htslib
+./configure --prefix=${HOME}/local/mpiSORT --with-libhts=${INSTALL_PATH}/htslib (other options: --enable-lzma --enable-bz2 --enable-curl )
 # finally
 make
 make install
 ``` 
+
+
+
 
 
 ## Build from a tar.gz archive

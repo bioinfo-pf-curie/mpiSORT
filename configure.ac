@@ -49,8 +49,22 @@ AC_SUBST([LIBHTSDIR], $with_libhts_path)
 AM_CONDITIONAL([HAVE_HTSLIB], [test "x$libhts_present" != "xno" ])
 AM_COND_IF([HAVE_HTSLIB], [echo "compile with htslib"])
 
-#AC_ARG_WITH([header],  [AS_HELP_STRING( [--with-header=DIR], [htslib header location])], [with_header_path=$with_header], [] )
-#AC_SUBST([HEADERDIR], $with_header_path)
+#Include flag for lzma, bz2, libcurl
+#By Default libculr,bz2,lzma are disable
+ 
+AC_ARG_ENABLE([curl], [AS_HELP_STRING([--enable-curl], [remove curl-based support])], [enable_curl=yes], [enable_curl=no])
+AM_CONDITIONAL([ENABLE_CURL], [test "$enable_curl" = "yes"])
+AC_SUBST(ENABLE_CURL)
+
+#enable_lzma
+AC_ARG_ENABLE([lzma], [AS_HELP_STRING([--enable-lzma], [remove support for LZMA-compressed CRAM files])], [enable_lzma=yes], [enable_lzma=no])
+AM_CONDITIONAL([ENABLE_LZMA], [test "$enable_lzma" = "yes"])
+AC_SUBST(ENABLE_LZMA)
+
+#enable_bz2
+AC_ARG_ENABLE([bz2], [AS_HELP_STRING([--enable-bz2], [remove support for BZ2-compressed CRAM files])], [enable_bz2=yes], [enable_bz2=no])
+AM_CONDITIONAL([ENABLE_BZ2], [test "$enable_bz2" = "yes"])
+AC_SUBST(ENABLE_BZ2)
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
