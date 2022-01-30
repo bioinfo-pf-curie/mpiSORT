@@ -1494,8 +1494,19 @@ void writeSam(
 
 		assert( size_t_buffer_uncompressed == total_size_recv);	
 
-		char *char_buff_uncompressed = calloc(size_t_buffer_uncompressed + 1, sizeof(char));
-		char_buff_uncompressed[size_t_buffer_uncompressed] = 0;
+
+		char *char_buff_uncompressed = NULL;
+        	if (total_size_recv < 500 && write_format == 1 ){
+                	//add magic number length
+                	size_t_buffer_uncompressed += 28;
+                        char_buff_uncompressed = calloc(size_t_buffer_uncompressed  + 1, sizeof(char));
+			assert(char_buff_uncompressed);
+                }
+                else{
+                        char_buff_uncompressed = calloc(size_t_buffer_uncompressed + 1, sizeof(char));
+			assert(char_buff_uncompressed);
+                }
+                
 		char *p1 = char_buff_uncompressed;
 		size_t q1 = 0;
  
@@ -1509,7 +1520,10 @@ void writeSam(
 			q1=0;
 		}
 		
-
+		//if (total_size_recv < 500 && write_format == 1) {
+			
+			//assert((strlen(char_buff_uncompressed) == (total_size_recv + 28)));
+		//}
 		assert(strlen(char_buff_uncompressed) == total_size_recv);
 		free(new_offset_dest_index_phase3);
 
@@ -2057,15 +2071,7 @@ void writeSam(
                                 assert(buff_tmp);
                                 htsFile *in_header, *in_sam, *out_header_bam, *out_bam;
 
-				//for very small buffer compression is not efficient
-				//(compression - SAM size) is less than magic number
-				//we add the size of magic number in the buffer
-				if (strlen(char_buff_uncompressed) < 500){
-				                                                 
-					size_t sam_size_tmp = strlen(char_buff_uncompressed);
-                			char_buff_uncompressed = (char *) realloc( char_buff_uncompressed, (sam_size_tmp + 29)*sizeof(char) );
-                			char_buff_uncompressed[sam_size_tmp + 28] = 0;
-                		}
+				
 				size_t sam_size = strlen(char_buff_uncompressed);
 				size_t header_size = strlen(header);
 				size_t comp_header_size = 0;
@@ -2091,6 +2097,7 @@ void writeSam(
                                 out_header_bam = hts_hopen(hf_out_header ,"", "wb");
 				out_header_bam->format.format = bam;
 
+				//char *char_buff_compressed = malloc(sam_size);
                                 hFILE *hf_out_sam =  hopen("mem:", "w:", char_buff_uncompressed, sam_size);
 				assert(hf_out_sam);
                                 out_bam = hts_hopen(hf_out_sam ,"", "wb");
@@ -2162,15 +2169,15 @@ void writeSam(
 				MPI_Bcast( &comp_header_size, 1, MPI_LONG_LONG_INT, master_job_phase_2, COMM_WORLD);                                
 
                                 ret = 0;
-                                while ((r = sam_read1(in_sam, h, b)) >= 0)
-                                	ret +=bam_write1(bfp_b, b);
-
-				bgzf_flush(bfp_b);
-				assert(ret > 0);
-         							
+                                while ((r = sam_read1(in_sam, h, b)) >= 0){
+                                	ret =bam_write1(bfp_b, b);
+		   		        assert(ret > 0);
+     				}
+			
                                 ret = bgzf_raw_write(bfp_b, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
                                 assert( ret == 28);
-			
+				//bgzf_flush(bfp_b);			
+
 				//we compute the length of the compressed SAM buffer
 				char *memptr_b = char_buff_uncompressed;
     				while (comp_bam_size < (sam_size)){
@@ -2263,32 +2270,27 @@ void writeSam(
 				/*
  				 *  Seems ok with valgrind 
  				 */
-				//ret = hts_close(in_sam);
-				//ret = hts_close(in_header);
-				//ret = hts_close(out_bam); 	
-				//ret = hts_close(out_header_bam);			
-				//bgzf_flush(bfp_b);
-				//bgzf_flush(bfp_h);
-				//bam_destroy1(b);
-				//sam_hdr_destroy(h);
-				//if (in_sam) ret = hts_close(in_sam);
-                                //if (in_header) ret = hts_close(in_header);
-				//free(hf_out_header);
-                                //free(hf_out_sam);
-				//free(bfp_h);
-				//free(bfp_b);
-                              
+                             	 
 				bgzf_flush(bfp_b);
 				bgzf_flush(bfp_h);
 				bam_destroy1(b);
 				sam_hdr_destroy(h);
-				ret = hts_close(in_sam);
-                                //ret = hts_close(in_header);
-				//free(hf_out_header);
-                                //free(hf_out_sam);
-				//free(bfp_h);
+				free(bfp_h);
 				free(bfp_b);
 
+				//ret = hclose(hf_out_sam);
+                		//ret = hclose(hf_out_header);
+                		//ret = hclose(hf_in_header);
+                		//ret = hclose(hf_in_sam);
+                		//ret = hts_close(in_sam);
+                		//ret = hts_close(in_header);
+                		//ret = hts_close(out_header_bam);
+                		//ret = hts_close(out_bam);
+                		//memset(char_buff_uncompressed, '1', sam_size);
+				//free(char_buff_uncompressed);
+		                //free(char_buff_compressed);
+				//memset(header_tmp, '1', header_size);
+				//free(header_tmp);
 
 				if (rank == master_job_phase_2)  
                                 	fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
@@ -4300,10 +4302,22 @@ void writeSam_any_dim(
 		size_t_buffer_uncompressed += data_size_to_sort[new_offset_dest_index_phase3[k]];
 	}
 
-	char *char_buff_uncompressed = malloc(size_t_buffer_uncompressed * sizeof(char) + 1);
-	char_buff_uncompressed[size_t_buffer_uncompressed] = 0;
+        
+        char *char_buff_uncompressed = NULL;
+	if (size_t_buffer_uncompressed < 500 && write_format == 1){
+		//add magic number length
+		size_t_buffer_uncompressed += 28;
+		char_buff_uncompressed = calloc(size_t_buffer_uncompressed + 1, sizeof(char));
+       }
+
+        else{
+		char_buff_uncompressed = calloc(size_t_buffer_uncompressed +1, sizeof(char));
+	}
+
+	assert(char_buff_uncompressed);
+
 	char *p1 = char_buff_uncompressed;
-	size_t q1 = 0;
+        size_t q1 = 0;
 
 	for(k = 0; k < local_readNum; k++){
 		while ( q1 < data_size_to_sort[new_offset_dest_index_phase3[k]]){
@@ -4424,7 +4438,14 @@ void writeSam_any_dim(
                  free(y);
                  free(y2);
 		 free(path);
-                 MPI_Barrier(COMM_WORLD);
+		 for(m = 0; m < num_proc; m++)
+                        if (data2[m]) free(data2[m]);
+
+                if (data2) free(data2);
+                free(offsets_sorted);
+                free(new_read_size_sorted_phase3);
+                free(data_size_to_sort);
+                MPI_Barrier(COMM_WORLD);
 
 	}// end write format SAM
 
@@ -4436,7 +4457,7 @@ void writeSam_any_dim(
 
                 #ifdef HAVE_HTSLIB
 		//we make a copy of the header because we modify it
-		char *header_tmp = malloc(strlen(header));
+		char *header_tmp = malloc(strlen(header) + 1);
 		header_tmp[strlen(header)]=0;
                 header_tmp = strcpy(header_tmp, header);
 
@@ -4490,16 +4511,7 @@ void writeSam_any_dim(
 		char buff_tmp[28] = {0};
                 assert(buff_tmp);
                 htsFile *in_header, *in_sam, *out_header_bam, *out_bam;
-               
-		//for very small buffer compression is not efficient
-		//compression is less than magic number
-		//we add the size of magic number in the buffer
-		if (strlen(char_buff_uncompressed) < 500){ 
-			size_t sam_size_tmp = strlen(char_buff_uncompressed);
-			char_buff_uncompressed = (char *) realloc( char_buff_uncompressed, (29 + sam_size_tmp)*sizeof(char) );
-			char_buff_uncompressed[sam_size_tmp + 28 ] = 0;
-		}
-
+              
 		size_t sam_size = strlen(char_buff_uncompressed);
                 
 		size_t header_size = strlen(header);
@@ -4525,7 +4537,7 @@ void writeSam_any_dim(
                 out_header_bam = hts_hopen(hf_out_header ,"", "wb");
                 out_header_bam->format.format = bam;
 
-
+		//char *char_buff_compressed = malloc(sam_size);
                 hFILE *hf_out_sam = hopen("mem:", "w:",char_buff_uncompressed, sam_size );
                 assert(hf_out_sam);
                 out_bam = hts_hopen(hf_out_sam ,"", "wb");
@@ -4593,10 +4605,8 @@ void writeSam_any_dim(
                     	ret =bam_write1(bfp_b, b);
                 	assert(ret > 0);
 		}
-		bgzf_flush(bfp_b);
                 ret = bgzf_raw_write(bfp_b, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
                 assert( ret == 28);
-		
 		//we compute the length of the compressed SAM buffer
                 char *memptr_b = char_buff_uncompressed;
                 while (comp_bam_size < (sam_size)){
@@ -4675,32 +4685,47 @@ void writeSam_any_dim(
                 }
 
 		MPI_Barrier(COMM_WORLD);
-                //if (rank == master_job_phase_2)
-                 MPI_File_close(&out);
+                MPI_File_close(&out);
+		//
+		//for record other pointers seems to be free with bgz_flush	
 		
-		 /*	
-		 bgzf_flush(bfp_b);
-                 bgzf_flush(bfp_h);
-                 bam_destroy1(b);
-                 sam_hdr_destroy(h);
-                 ret = hts_close(in_sam);
-                 ret = hts_close(in_header);
-                 free(hf_out_header);
-                 free(hf_out_sam);
-                 free(bfp_h);
-                 free(bfp_b);
-		 */
-		 bgzf_flush(bfp_b);
-                 bgzf_flush(bfp_h);
-                 bam_destroy1(b);
-                 sam_hdr_destroy(h);
-                 ret = hts_close(in_sam);
-		 free(bfp_b);
+		bgzf_flush(bfp_b);
+                bgzf_flush(bfp_h);
+                bam_destroy1(b);
+                sam_hdr_destroy(h);
+		free(bfp_b);
+		free(bfp_h);
+		
+
+		//ret = hclose(hf_out_sam);
+                //ret = hclose(hf_out_header);
+                //ret = hclose(hf_in_header);
+                //ret = hclose(hf_in_sam);
+                //ret = hts_close(in_sam);
+                //ret = hts_close(in_header);
+                //ret = hts_close(out_header_bam);
+                //ret = hts_close(out_bam);
+                //memset(char_buff_uncompressed, '1', sam_size);
+		//free(char_buff_uncompressed);
+		//free(char_buff_compressed);
+		//memset(header_tmp, '1', header_size);
+		//free(header_tmp);
+
 		if ( rank == master_job_phase_2 )
         	        fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
 
 
-		free(path);	
+		free(path);
+		for(m = 0; m < num_proc; m++)
+                        if (data2[m]) free(data2[m]);
+
+                if (data2) free(data2);
+                free(offsets_sorted);
+                free(new_read_size_sorted_phase3);
+                free(data_size_to_sort);
+                free(y);
+                free(y2);
+	
 	        #endif
         } //end BAM case 
 
