@@ -47,7 +47,7 @@ AC_TYPE_UINT8_T
 AC_ARG_WITH([libhts], [AS_HELP_STRING( [--with-libhts=DIR], [htslib installation location])], [with_libhts_path=$with_libhts] , [libhts_present="no"] )
 AC_SUBST([LIBHTSDIR], $with_libhts_path)
 AM_CONDITIONAL([HAVE_HTSLIB], [test "x$libhts_present" != "xno" ])
-AM_COND_IF([HAVE_HTSLIB], [echo "compile with htslib"])
+AM_COND_IF([HAVE_HTSLIB], [AC_CHECK_LIB([pthread], [pthread_create])])
 
 #Include flag for lzma, bz2, libcurl
 #By Default libculr,bz2,lzma are disable
