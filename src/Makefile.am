@@ -24,6 +24,10 @@ if ENABLE_BZ2
 mpiSORT_LDADD += -lbz2
 endif
 
+if ENABLE_CRYPTO
+mpiSORT_LDADD += -lcrypto
+endif
+
 else
 mpiSORT_SOURCES += $(SRC)
 endif

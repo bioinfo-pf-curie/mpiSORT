@@ -66,5 +66,10 @@ AC_ARG_ENABLE([bz2], [AS_HELP_STRING([--enable-bz2], [remove support for BZ2-com
 AM_CONDITIONAL([ENABLE_BZ2], [test "$enable_bz2" = "yes"])
 AC_SUBST(ENABLE_BZ2)
 
+#enable_crypto
+AC_ARG_ENABLE([crypto], [AS_HELP_STRING([--enable-crypto], [remove support for crypto CRAM files])], [enable_crypto=yes], [enable_crypto=no])
+AM_CONDITIONAL([ENABLE_CRYPTO], [test "$enable_crypto" = "yes"])
+AC_SUBST(ENABLE_CRYPTO)
+
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
