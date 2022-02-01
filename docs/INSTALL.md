@@ -56,8 +56,8 @@ git clone https://github.com/samtools/htslib.git
 cd htslib
 git submodule update --init --recursive
 # only curl is needed
-autoreconf -i  --disable-s3 --disable-lzma -- disable-bz2 --prefix=$INSTALL_PATH 
-./configure 
+autoreconf -i 
+./configure --disable-s3 --disable-lzma --disable-bz2 --prefix=$INSTALL_PATH
 make
 make install
 
