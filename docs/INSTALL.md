@@ -55,7 +55,8 @@ So to do that build htslib somewhere like this
 git clone https://github.com/samtools/htslib.git
 cd htslib
 git submodule update --init --recursive
-autoreconf -i  --prefix=$INSTALL_PATH # Build the configure script and install files it uses
+# only curl is needed
+autoreconf -i  --disable-s3 --disable-lzma -- disable-bz2 --prefix=$INSTALL_PATH 
 ./configure 
 make
 make install
@@ -82,7 +83,9 @@ autoreconf -i
 # or your favourite MPI compiler at the configure stage
 # using the CC environment variable, for example:
 #./configure CC=/usr/lib64/mpich/bin/mpicc
-./configure --prefix=${HOME}/local/mpiSORT --with-libhts=${INSTALL_PATH}/htslib (other options: --enable-lzma --enable-bz2 --enable-curl )
+# by default all libraries (crypto (s3), lzma, bz2, curl) are disable
+# from the compilation of htslib we enable curl 
+./configure --prefix=${HOME}/local/mpiSORT --enable-curl --with-libhts=${INSTALL_PATH}/htslib (other options: --enable-lzma --enable-bz2 --enable-crypto )
 # finally
 make
 make install
