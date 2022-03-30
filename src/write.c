@@ -2287,7 +2287,7 @@ void writeSam(
                 		//ret = hts_close(out_header_bam);
                 		//ret = hts_close(out_bam);
                 		//memset(char_buff_uncompressed, '1', sam_size);
-				//free(char_buff_uncompressed);
+				free(char_buff_uncompressed);
 		                //free(char_buff_compressed);
 				//memset(header_tmp, '1', header_size);
 				//free(header_tmp);
@@ -4706,7 +4706,7 @@ void writeSam_any_dim(
                 //ret = hts_close(out_header_bam);
                 //ret = hts_close(out_bam);
                 //memset(char_buff_uncompressed, '1', sam_size);
-		//free(char_buff_uncompressed);
+		free(char_buff_uncompressed);
 		//free(char_buff_compressed);
 		//memset(header_tmp, '1', header_size);
 		//free(header_tmp);
