@@ -1,4 +1,4 @@
-version-1.5.2
+version-1.5.2 2022-03-30
 
     - fix some memory leaks (issue#66)
     - fix warning at compilation (issue#67)
