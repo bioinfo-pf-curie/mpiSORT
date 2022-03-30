@@ -1,4 +1,9 @@
-version-1.5.1 2021-02-27
+version-1.5.2
+
+    - fix some memory leaks (issue#66)
+    - fix warning at compilation (issue#67)
+
+version-1.5.1 2022-02-27
     - fix some memory leaks
     - fix trouble when compressing very small buffer
     - review the binding with htslib (see installation)

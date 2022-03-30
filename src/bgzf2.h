@@ -105,7 +105,7 @@ int bgzf2_write(BGZF2* fp, const void* data, int length);
  * Return value is non-negative on success.
  * Returns -1 on error.
  */
-#define bgzf_tell(fp) ((fp->block_address << 16) | (fp->block_offset & 0xFFFF))
+#define bgzf2_tell(fp) ((fp->block_address << 16) | (fp->block_offset & 0xFFFF))
 
 /*
  * Set the file to read from the location specified by pos, which must
