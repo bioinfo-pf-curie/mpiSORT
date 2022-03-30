@@ -43,6 +43,7 @@
 #include "sam.h"
 #include "hfile.h"
 #include "hts.h"
+#include "bgzf.h"
 #endif
 
 size_t init_offset_and_size_free_chr(size_t* offset, int* size, Read* data_chr, int local_readNum)
@@ -2271,8 +2272,8 @@ void writeSam(
  				 *  Seems ok with valgrind 
  				 */
                              	 
-				bgzf_flush(bfp_b);
-				bgzf_flush(bfp_h);
+				assert( bgzf_flush(bfp_b) == 0);
+				assert( bgzf_flush(bfp_h) ==0 );
 				bam_destroy1(b);
 				sam_hdr_destroy(h);
 				free(bfp_h);
@@ -2287,7 +2288,7 @@ void writeSam(
                 		//ret = hts_close(out_header_bam);
                 		//ret = hts_close(out_bam);
                 		//memset(char_buff_uncompressed, '1', sam_size);
-				//free(char_buff_uncompressed);
+				free(char_buff_uncompressed);
 		                //free(char_buff_compressed);
 				//memset(header_tmp, '1', header_size);
 				//free(header_tmp);
@@ -4579,7 +4580,7 @@ void writeSam_any_dim(
                        	else
                        		fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Header commpression ok.\n", rank);
 
-			bgzf_flush(bfp_h);
+			assert(bgzf_flush(bfp_h) == 0);
 
                         //add magic in the header bam
 			ret = bgzf_raw_write(bfp_h, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
@@ -4689,8 +4690,8 @@ void writeSam_any_dim(
 		//
 		//for record other pointers seems to be free with bgz_flush	
 		
-		bgzf_flush(bfp_b);
-                bgzf_flush(bfp_h);
+		assert(bgzf_flush(bfp_b) == 0);
+        assert(bgzf_flush(bfp_h) == 0);
                 bam_destroy1(b);
                 sam_hdr_destroy(h);
 		free(bfp_b);
@@ -4706,7 +4707,7 @@ void writeSam_any_dim(
                 //ret = hts_close(out_header_bam);
                 //ret = hts_close(out_bam);
                 //memset(char_buff_uncompressed, '1', sam_size);
-		//free(char_buff_uncompressed);
+		free(char_buff_uncompressed);
 		//free(char_buff_compressed);
 		//memset(header_tmp, '1', header_size);
 		//free(header_tmp);
