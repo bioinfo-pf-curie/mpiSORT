@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2020
+   Copyright Institut Curie 2022
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -38,7 +38,102 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "parser.h"
+#include "mpiSortUtils.h" 
+
+/**************************************************
+ *
+ *  Has function for chromosoms string name
+ *  
+ **************************************************/
+unsigned int hashpjw(const void *key){
+    
+    const char *ptr;
+    unsigned int val = 0;
+    ptr = key;
+    while (*ptr != '\0'){
+        
+        unsigned int tmp;
+
+        val = (val << 4) + (*ptr);
+        if (tmp = val & 0xf0000000){
+                val = val ^ (tmp >> 24);
+                val = val ^ tmp;
+            }
+        ptr++;    
+    }
+
+    //replace PRIME_TBLSIZ with the actual table size
+    return val%PRIME_TBLSIZ;
+        
+}
+
+
+/*
+ *      Hash table implementation
+ *
+ */
+
+int chtbl_init(CHTbl *htbl, int buckets, unsigned int (*h)(const void *key)) {
+
+    Elmt *element;	
+    int i;
+    if ((htbl->elements = (Elmt *)malloc(buckets * sizeof(Elmt))) == NULL)
+           return -1;
+
+    htbl->buckets = buckets;
+
+    for (i = 0; i < htbl->buckets; i++){
+           element = &htbl->elements[i];
+    	   element->index = -1;
+    }
+
+    htbl->h = h;
+    htbl->size = 0;
+    return 0;
+}
+
+
+void chtbl_destroy(CHTbl *htbl) {
+
+    free(htbl->elements);
+    return;
+}
+
+int chtbl_insert(CHTbl *htbl, const void *data, int index) {
+
+    void *temp;
+    int bucket, retval;
+    temp = (void *)data;
+    Elmt    *element;
+    bucket = htbl->h(data) % htbl->buckets;
+    element = &htbl->elements[bucket];    
+    element->index=index;		    
+    htbl->size++;
+
+    return retval;
+}
+
+int chtbl_lookup(const CHTbl *htbl, char *data) {
+
+    Elmt    *element;
+    int bucket;
+    int index;
+    bucket = htbl->h(data) % htbl->buckets;
+    element = &htbl->elements[bucket];
+    if ( element->index != -1 ){
+    	return element->index;
+    }
+    else {
+    	return -1;
+    }
+}
+
+/*
+ *
+ *  Other function from mpiSort
+ *
+ *
+
 
 void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *local_read_rank, size_t *coordinates,
 		size_t* offset, int* size, Read* data_chr, int local_readNum){
@@ -46,30 +141,21 @@ void get_coordinates_and_offset_source_and_size_and_free_reads(int rank, int *lo
    	size_t j;
    	Read* chr = data_chr;
    	Read* to_free = chr;
-
-   	//we initialize offset source and size_source
    	for(j = 0; j < local_readNum; j++){
    		coordinates[j] = 0;
    		size[j] = 0;
    		offset[j] = 0;
    		local_read_rank[j]=rank;
    	}
-
-   	//first we are going to read in the source file
    	for(j = 0; j < local_readNum; j++){
-   		//offset is the read size
    		coordinates[j] = chr->coord;
    		offset[j] = chr->offset_source_file;
-   		size[j] = (int)chr->offset; //read length
+   		size[j] = (int)chr->offset; 
    		to_free = chr;
 		chr = chr->next;
-
 		if (to_free) free(to_free);
-
    	}
-
 }
-
 
 size_t init_coordinates_and_size(int rank, int *local_reads_rank, size_t *local_reads_index,
 		size_t* coordinates, int* size, Read* data_chr, int local_readNum)
@@ -77,25 +163,18 @@ size_t init_coordinates_and_size(int rank, int *local_reads_rank, size_t *local_
 	size_t dataSize = 0;
 	size_t j;
 	Read* chr = data_chr;
-
-	//we initialize offset source and size_source
 	for(j = 0; j < local_readNum; j++){
 		size[j] = 0;
 		coordinates[j] = 0;
 	}
-
-	//first we are going to read in the source file
 	for(j = 0; j < local_readNum; j++){
-		//offset is the read size
 		coordinates[j] = chr->coord;
-		size[j] = (int)chr->offset; //read length
+		size[j] = (int)chr->offset; 
 		local_reads_rank[j] = rank;
 		local_reads_index[j] = j;
 		dataSize += chr->offset;
-
 		chr = chr->next;
 	}
-
 	return dataSize;
 }
 
@@ -105,18 +184,13 @@ size_t init_coordinates_and_size2(int rank, int *local_reads_rank,
 	size_t dataSize = 0;
 	size_t j;
 	Read* chr = data_chr;
-
-	//we initialize offset source and size_source
 	for(j = 0; j < local_readNum; j++){
 		size[j] = 0;
 		coordinates[j] = 0;
 	}
-
-	//first we are going to read in the source file
 	for(j = 0; j < local_readNum; j++){
-		//offset is the read size
 		coordinates[j] = chr->coord;
-		size[j] = (int)chr->offset; //read length
+		size[j] = (int)chr->offset;
 		local_reads_rank[j] = rank;
 		dataSize += chr->offset;
 
@@ -132,44 +206,28 @@ void chosen_split_rank_gather_size_t(MPI_Comm split_comm, int rank, int num_proc
 {
 	MPI_Status status;
 	size_t j, k;
-	//size_t *temp_buf = malloc(sizeof(size_t));
-
-
 	if (rank == master){
-		// we copy element for rank master_2
-		// we eliminate zeros from the
-		// beginning of the vector
 		size_t st = start_size_per_job[master];
 		for (k = 0; k < size_per_jobs[master]; k++){
 			all_data[st] = data[k+start_index];
 			st++;
 		}
-
 		for(j = 0; j < num_proc; j++){
-
 			if (j != master && size_per_jobs[j] != 0){
-
-				/*
-				temp_buf  = realloc(temp_buf, size_per_jobs[j]*sizeof(size_t));
-				assert( temp_buf !=0);
-				*/
-
 				size_t temp_buf[size_per_jobs[j]];
 				temp_buf[size_per_jobs[j]] = 0;
 				assert(temp_buf !=0 );
 				MPI_Recv(temp_buf, size_per_jobs[j], MPI_LONG_LONG_INT, j, 0, split_comm, &status);
-
 				size_t st = start_size_per_job[j];
 				for (k = 0; k < size_per_jobs[j]; k++){
 					all_data[st] = temp_buf[k];
 					st++;
 				}
-
 			}
 		}
 	}
 	else{
 		MPI_Send(data, size, MPI_LONG_LONG_INT, master,  0, split_comm);
 	}
-
 }
+*/
