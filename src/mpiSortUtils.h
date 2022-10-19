@@ -52,7 +52,7 @@ typedef struct Elmt_ {
  *  
  **************************************************/
 
-#define 	     PRIME_TBLSIZ	51
+#define 	     PRIME_TBLSIZ	65531
 unsigned int hashpjw(const void *key);
 /**************************************************
  *
