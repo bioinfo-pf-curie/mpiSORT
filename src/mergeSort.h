@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2020
+   Copyright Institut Curie 2022
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -24,6 +24,10 @@
 	Thomas Magalhaes,	Institut Curie
 	Paul Paganiban,		Institut Curie
 */
+
+
+#ifndef MERGESORT_H
+#define MERGESORT_H
 
 
 #include <stdlib.h>
@@ -127,4 +131,7 @@ static void MergeSortMain(SORT_TYPE_MS *array, const SORT_TYPE_MS array_count) {
 	MergeSortRec(array, Range_new(0, array_count), buffer);
         free(buffer);
 }
+
+#endif
+
 

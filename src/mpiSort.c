@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2021
+   Copyright Institut Curie 2022
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -158,6 +158,10 @@ int main (int argc, char *argv[]){
 	const char *sort_name;
         char *chr_name_u; //use is case of uniq chromosom. Must be the name of the chromosom, it gives also the name of output file 
 	MPI_Info finfo;
+
+	//Hash table containing references
+	CHTbl ref_htbl;
+
 
 	/* Set default values */
 	compression_level = 3;
@@ -350,7 +354,8 @@ int main (int argc, char *argv[]){
 		//chrNames[nbchr++] = strndup(tmp_str, dot-tmp_str);		
 		chrNames[nbchr++] = strdup(chr_name_u);
 	}
-	
+
+
 	assert(*x == '@');
 	while (*x == '@') {
 		y = strchr(x, '\n');
@@ -365,9 +370,7 @@ int main (int argc, char *argv[]){
 		assert(nbchr < MAXNBCHR - 2);
 	}	
 	assert(*x != '@');	
-	
-	
-	
+
 	//in the case of a unique chromosome in the sam
 	//the discordant file is named chrX_discordant
 	if (uniq_chr) {
@@ -375,9 +378,34 @@ int main (int argc, char *argv[]){
 		asprintf(&chrNames[nbchr++],"%s_%s", chr_name_u, UNMAPPED);
 	}
 	else {
+
+		//init hash table for reference
+        	if (chtbl_init(&ref_htbl, PRIME_TBLSIZ, hashpjw ) != 0)
+                	return 1;
+
+		//populate hash table for reference
+		for(i = 0; i < (nbchr); i++){
+			 //fprintf(stderr, "rank %d ::: call htable insert for %s \n", rank, chrNames[i]);
+			if (chtbl_insert(&ref_htbl, chrNames[i], i)  != 0)
+      				return 1;
+		}	
 		chrNames[nbchr++] = strdup(DISCORDANT);
 		chrNames[nbchr++] = strdup(UNMAPPED);
 	}
+	/*
+	fprintf(stderr, "rank %d ::: Test table hash\n", rank);
+	int chr = 0;
+	for(i = 0; i < (nbchr - 2); i++){
+		chr = chtbl_lookup(&ref_htbl, chrNames[i]);
+                fprintf(stderr, "MPISORT :::rank %d finish look up hash table index chr = %zu \n", rank, chr);
+	}
+	
+	//fprintf(stderr, "rank %d ::: Print table hash\n", rank);
+	print_table(&ref_htbl); 
+	*/
+	//MPI_Barrier(MPI_COMM_WORLD);
+	//res = MPI_Finalize();
+        //assert(res == MPI_SUCCESS);
 
 	hsiz = x - xbuf1;
 	hbuf = strndup(xbuf1, hsiz);
@@ -394,7 +422,7 @@ int main (int argc, char *argv[]){
 	assert(close(fd) != -1);
 
 
-    // BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
+    	// BEGIN> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 	MPI_Info_create(&finfo);
 	/*
@@ -418,7 +446,7 @@ int main (int argc, char *argv[]){
 	MPI_Info_set(finfo,"cb_block_size", CB_BLOCK_SIZE);
 	MPI_Info_set(finfo,"cb_buffer_size", CB_BUFFER_SIZE);
     
-    // END> FINE TUNING FINFO FOR WRITING OPERATIONS
+    	// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
 
 	//we open the input file
@@ -468,16 +496,27 @@ int main (int argc, char *argv[]){
 
 	toc = MPI_Wtime();
 
-	char *local_data_tmp = malloc(1024*1024);
 	char *local_data =(char*)malloc(((goff[rank+1]-poffset)+1)*sizeof(char));
 	size_t size_tmp= goff[rank+1]-poffset;
 	local_data[goff[rank+1]-poffset] = 0;
 	char *q=local_data;
 
+	char *local_data_p1 = local_data;
+	char *local_data_p2 = local_data;
+	char *local_data_p3 = local_data;
+	size_t offset_last_line = 0;
+	size_t extra_char=0;
+	size_t size_to_read = goff[rank+1]-poffset;
+	int return_parse = 0;
+
 	//We read the file sam and parse
+	int print = 0;	
+	size_t local_offset = 0;
+	double toc_read = 0;
+	double toc_comp = 0;
 	while(poffset < goff[rank+1]){
 
-		size_t size_to_read = 0;
+		size_to_read = 0;
 
 		if( (goff[rank+1]-poffset) < DEFAULT_INBUF_SIZE ){
 			size_to_read = goff[rank+1]-poffset;
@@ -486,56 +525,41 @@ int main (int argc, char *argv[]){
 			size_to_read = DEFAULT_INBUF_SIZE;
 		}
 
-		// we load the buffer
-		//hold temporary size of SAM
-		//due to limitation in MPI_File_read_at
-		local_data_tmp =(char*)realloc(local_data_tmp, (size_to_read+1)*sizeof(char));
-		local_data_tmp[size_to_read]=0;
-
-		// Original reading part is before 18/09/2015
-		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data_tmp, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
-		size_t local_offset=0;
-		assert(strlen(local_data_tmp) == size_to_read);
-
+		if (!size_to_read) break;
+		toc_read =  MPI_Wtime();
+		MPI_File_read_at(mpi_filed, (MPI_Offset)poffset, local_data_p1, size_to_read, MPI_CHAR, MPI_STATUS_IGNORE);
 		//we look where is the last line read for updating next poffset
-		size_t offset_last_line = size_to_read-1;
+		local_data_p2 = local_data_p1 + size_to_read - 1;
+		if ( size_to_read != DEFAULT_INBUF_SIZE) 
+			assert(*local_data_p2 == '\n');
 
-		size_t extra_char=0;
-		while(local_data_tmp[offset_last_line] != '\n'){
-			offset_last_line -- ;
+		extra_char=0;
+		while((*local_data_p2 != '\n')){
+			local_data_p2--;
 			extra_char++;
 		}
-
-		local_data_tmp[size_to_read - extra_char]=0;
-		size_t local_data_tmp_sz = strlen(local_data_tmp);
-
-		//If it s the last line of file, we place a last '\n' for the function tokenizer
-		if(rank == num_proc-1 && ((poffset+size_to_read) == goff[num_proc])){
-			local_data_tmp[offset_last_line]='\n';
-		}
-
+		offset_last_line = size_to_read - extra_char;
 		//Now we parse Read in local_data
-		if (paired == 1 && uniq_chr == 0) parser_paired(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-		if (paired == 1 && uniq_chr == 1) parser_paired_uniq(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-		if (paired == 0) parser_single(local_data_tmp, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads);
-		//now we copy local_data_tmp in local_data
-		char *p = local_data_tmp;
-		int pos =0;
-		while (*p && (pos < local_data_tmp_sz)) {*q=*p;p++;q++;pos++;}
+		if (paired == 1 && uniq_chr == 0) parser_paired(local_data_p3, size_to_read - extra_char, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads, &ref_htbl);
+		toc_comp =  MPI_Wtime();
+		if (paired == 1 && uniq_chr == 1) return_parse = parser_paired_uniq(local_data_p3, size_to_read - extra_char, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads, print);
+		if (paired == 0) parser_single(local_data_p3, size_to_read - extra_char, rank, poffset, threshold, nbchr, &readNumberByChr, chrNames, &reads, &ref_htbl);
+		assert(return_parse == 0);
+		print = 1;
 
-		//we go to the next line
-		poffset+=(offset_last_line+1);
-		local_offset+=(offset_last_line+1);
-
+		//we go to the block
+		poffset        += (offset_last_line+1);
+		local_offset   += (offset_last_line+1);
+		local_data_p1 	= local_data + local_offset;
+		local_data_p2 	= local_data + local_offset;
+		local_data_p3 	= local_data + local_offset;
+		
 	}
-
 	assert(size_tmp == strlen(local_data));
 
+	if (!uniq_chr) clear_htable(&ref_htbl);
 	fprintf(stderr, "%d (%.2lf)::::: *** FINISH PARSING FILE ***\n", rank, MPI_Wtime()-toc);
-
-	if (local_data_tmp) free(local_data_tmp);
-	malloc_trim(0);
-
+	
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//We set attribute next of the last read and go back to first read of each chromosome
@@ -1397,8 +1421,8 @@ int main (int argc, char *argv[]){
 						/*
 						 *
 						 * FOR DEBUG
-						 
-
+						  
+						
 						for(y = 0; y < num_read_for_bruck; y++){
 							assert( local_reads_sizes_sorted_trimmed_for_bruck[y] 		!= 0 );
 							assert( local_source_rank_sorted_trimmed_for_bruck[y] 		< dimensions);
@@ -1558,10 +1582,10 @@ int main (int argc, char *argv[]){
 
 				local_reads_coordinates_sorted_trimmed 	  = malloc(first_local_readNum * sizeof(size_t));
 				local_offset_source_sorted_trimmed   	  = malloc(first_local_readNum * sizeof(size_t));
-				local_offset_dest_sorted_trimmed   	  	  = malloc(first_local_readNum * sizeof(size_t));
-				local_dest_rank_sorted_trimmed   		  = malloc(first_local_readNum * sizeof(int));
-				local_source_rank_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
-				local_reads_sizes_sorted_trimmed		  = malloc(first_local_readNum * sizeof(int));
+				local_offset_dest_sorted_trimmed   	  = malloc(first_local_readNum * sizeof(size_t));
+				local_dest_rank_sorted_trimmed   	  = malloc(first_local_readNum * sizeof(int));
+				local_source_rank_sorted_trimmed	  = malloc(first_local_readNum * sizeof(int));
+				local_reads_sizes_sorted_trimmed	  = malloc(first_local_readNum * sizeof(int));
 
 				if (split_rank == chosen_split_rank)
 					fprintf(stderr,	"rank %d :::::[MPISORT][FREE + MALLOC] time spent = %f s\n",
@@ -1739,7 +1763,7 @@ int main (int argc, char *argv[]){
 
 	free(header); //ok
 	free(localReadNumberByChr); //ok
-
+	
 	for(i = 0; i < nbchr; i++){
 		free(chrNames[i]);
 	}
@@ -1773,7 +1797,7 @@ static void usage(const char *prg) {
 	"\n\t-s\n"
 	"\t	write the output in SAM format.\n"
  	"\n\t-m\n"
-        "\t     merge the output in one sam file.\n"
+        "\t     merge the output in one sam or bam file.\n"
 	"\t     name of the merge output: (inputfile_name)_merged.sam\n"
 	"\t     this fonction only works for sam output format.\n"
 	"\t     discordant and unmapped are written in separate files.\n"
@@ -1792,7 +1816,7 @@ static void usage(const char *prg) {
 		"\nexample : mpirun -n 4 %s  HCC1187C_70K_READS.sam ${HOME}/mpiSORTExample -q 0 -n \n"
         "\nFor more detailed documentation visit:\n"
         "\thttps://github.com/bioinfo-pf-curie/mpiSORT\n"
-        "\nCopyright (C) 2021  Institut Curie <http://www.curie.fr> \n"
+        "\nCopyright (C) 2022  Institut Curie <http://www.curie.fr> \n"
         "\nThis program comes with ABSOLUTELY NO WARRANTY. \n"
         "This is free software, and you are welcome to redistribute it \n"
         "under the terms of the CeCILL License. \n"

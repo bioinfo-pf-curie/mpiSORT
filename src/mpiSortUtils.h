@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2020
+   Copyright Institut Curie 2022
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -25,11 +25,71 @@
 	Paul Paganiban,		Institut Curie
 */
 
+#ifndef MPISORTUTILS_H
+#define MPISORTUTILS_H
 
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+//#include <parser.h>
+
+/**************************************************
+ *
+ *	list interface to handle chromosoms name
+ *	collision in the hash table
+ *  
+ **************************************************/
+
+
+typedef struct Elmt_ {
+		int index; //hold the chromosom index
+} Elmt; 
+
+/**************************************************
+ *
+ *  Hash function prototype for chromosoms string name
+ *  
+ **************************************************/
+
+#define 	     PRIME_TBLSIZ	65531
+unsigned int hashpjw(const void *key);
+/**************************************************
+ *
+ *  Hash function prototype for chromosoms string name
+ *  
+ **************************************************/
+
+
+typedef struct CHTbl_ {
+	unsigned int (*h)(const void *key);
+        int buckets;
+        int size;
+        Elmt *elements;
+
+} CHTbl;
+
+void print_table(CHTbl *htbl);
+
+int chtbl_init(CHTbl *htbl, int buckets, unsigned int (*h)(const void *key));
+
+void chtbl_destroy(CHTbl *htbl);
+
+int chtbl_insert(CHTbl *htbl, const void *data, int i);
+
+int chtbl_remove(CHTbl *htbl, char *data);
+
+int chtbl_lookup(const CHTbl *htbl, char *data);
+
+#define chtbl_size(htbl) ((htbl)->size)
+
+
+/**************************************
+ *
+ *      Other functions of mpiSort.c
+ *
+ *
+
 
 void get_coordinates_and_offset_source_and_size_and_free_reads(
 		int rank,
@@ -64,3 +124,11 @@ void chosen_split_rank_gather_size_t(
 		size_t *data,
 		size_t start_index
 		);
+
+*/
+
+
+
+
+#endif
+
