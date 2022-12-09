@@ -64,7 +64,8 @@ A SAM file produced by an aligner (such as [BWA](https://github.com/lh3/bwa)) co
 * `-q INTEGER` filters the reads according to their quality. Reads quality under the threshold are ignored in the sorting results. Default is 0 (all reads are kept) (optional)
 * `-p` if the read are paired-end (by default reads are single-end) (optional)
 * `-n` sorts the read by their name (but it is not commonly used) (optional)
-* `-u` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
+* `-u chr` it the input SAM are results of [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA) or if there is only one chromosome in the SAM file (optional)
+                chr is the name of chromosom where the reads are mapped to 
 * `-s` to write the output in SAM format (by default the output is in bgzf format)
 * `-b` to write the output in BAM format
 * `-g` to write the output in BGZF format
@@ -127,7 +128,7 @@ The figures have been obtained from a benchmark using Open MPI 3.1.4 on Intel Sk
 #### Assess the speed-up with respect to a reference baseline
 
 In this section we are going to compute the baseline walltime for the reference tool `samtools` and assess the speed-up obtained with `mpiSORT`.
-We start with 8 cores on a single node and a SAM of 70 GB big containing only 1 chromosome after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
+We start with 8 cores on a single node and a SAM of 70 GB big containing only 1 chromosome (chr16) after alignment with [mpiBWAByChr](https://github.com/bioinfo-pf-curie/mpiBWA)).
 
 
 ```
@@ -142,7 +143,7 @@ The result of the `/usr/bin/time` command shows that `samtools` uses a maximum o
 
 
 ```
-/usr/bin/time -v mpirun -N 1 -n 8 mpiSort sample70GB.sam -u -q 0
+/usr/bin/time -v mpirun -N 1 -n 8 mpiSort sample70GB.sam -u chr16 -q 0
 
 Elapsed (wall clock) time (h:mm:ss or m:ss): 6:46.56
 Maximum resident set size (kbytes): 20510832
@@ -169,7 +170,7 @@ Maximum resident set size (kbytes): 68859352
 
 
 ```
-/usr/bin/time -v mpirun -N 1 -n 16 mpiSort sample70GB.sam -u -q 0
+/usr/bin/time -v mpirun -N 1 -n 16 mpiSort sample70GB.sam -u chr16 -q 0
 
 Elapsed (wall clock) time (h:mm:ss or m:ss): 3:38.76
 Maximum resident set size (kbytes): 10638528
@@ -180,7 +181,7 @@ Doubling the number of cores decreases by a factor 2 the maximum of RAM memory p
 Finally, we add a new node to run `mpiSORT`:
 
 ```
-/usr/bin/time -v mpirun -N 2 -npernode 16 -n 32 mpiSort sample70GB.sam -u -q 0
+/usr/bin/time -v mpirun -N 2 -npernode 16 -n 32 mpiSort sample70GB.sam -u chr16 -q 0
 
 Elapsed (wall clock) time (h:mm:ss or m:ss): 1:55.31
 Maximum resident set size (kbytes): 5003808
@@ -470,8 +471,7 @@ To test reproducibility md5sum the uncompressed sorted sam files.
      
 ### What is the roadmap of mpiSORT?
 
-The main bottleneck of mpiSORT is IO. For large samples half of run time is spent in reading the input.
-This is why in the next releases mpiSORT will be merged with mpiBWA (and mpiMarkdup also).
+The next releases mpiSORT will be merged with mpiBWA (and mpiMarkdup also).
 I hope this will make the sorting and markdup almost desappear...we'll see.    
 
 
