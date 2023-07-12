@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2022
+   Copyright Institut Curie 2020
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -1651,10 +1651,13 @@ void writeSam(
                         	if(!rank && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s_sorted.sam successfully opened\n", rank, file_name);
 			}
 
-                        time_count = MPI_Wtime();
-
 			MPI_Offset file_size;
-			MPI_File_get_size(out, &file_size); 
+                        struct stat buffer;
+                        int         status_f;
+                        status_f = stat(path, &buffer);
+			if (status_f == 0 ) file_size = buffer.st_size;
+ 
+			MPI_Barrier(COMM_WORLD);
 
                         if (rank == master_job_phase_2 && (merge == 0)) {
                                 MPI_File_write(out, header, size_header, MPI_CHAR, MPI_STATUS_IGNORE);
@@ -1673,7 +1676,7 @@ void writeSam(
 			/* we write the SAM */
 			if (samSize < tmp_size_buffer){
                                 MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                                MPI_File_write_all(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
+                                MPI_File_write(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
                         }
                         //we write by block of 1gb
                         else {
@@ -1684,7 +1687,7 @@ void writeSam(
                                 int error_status = 0;
                                 while (tmp_size_buffer2 > 0){
                                 	MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                                	MPI_File_write_all(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
+                                	MPI_File_write(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
                                         MPI_Get_count(&status, MPI_CHAR, &count_status);
                                         assert(count_status == tmp_size_buffer2);
                                         buff_tmp += tmp_size_buffer2;
@@ -1708,36 +1711,59 @@ void writeSam(
                         MPI_Barrier(COMM_WORLD);
 		}
                 /*
-                 *  BGZF Case
+                 *  BGZF (writeformat 0) and BAM Case (writeformat 1)
                  *
                  */
-                if (write_format == 0){
+                if (write_format == 0 || write_format == 1){
       
 
 			int file_exist = 1;
                         if (!merge){
 	                        path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-                                sprintf(path, "%s/%s.gz", output_dir, chrName);
-                                ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+				if (write_format == 0)
+	                                sprintf(path, "%s/%s.gz", output_dir, chrName);
+        			else
+					sprintf(path, "%s/%s.bam", output_dir, chrName);
+
+				ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
                         }
                         else{
                                 path = (char*)malloc((strlen(output_dir) + strlen(file_name_sorted) + 40) * sizeof(char));
                                 sprintf(path, "%s/%s", output_dir, file_name_sorted);
 
                                 file_exist = access(path, F_OK);
-                                ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY|MPI_MODE_CREATE|MPI_MODE_APPEND, finfo, &out);
+				if (file_exist == 0)
+                                	ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_APPEND, finfo, &out);
+
+				else 
+					ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_CREATE, finfo, &out);
                         }
 
                         if (ierr) {
-                                fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
+                                fprintf(stderr, "Rank %d :::::[WRITE][BGZF OR BAM RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
                                 MPI_Abort(COMM_WORLD, ierr);
                                 exit(2);
                         }
                         else{
-                                if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s.gz successfully opened\n", rank, chrName);
-                                if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s_sorted.gz successfully opened\n", rank, file_name);
+				if (!write_format){
+                                	if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s.gz successfully opened\n", rank, chrName);
+                                	if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s_sorted.gz successfully opened\n", rank, file_name);
+				}
+				else {
+					 if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s.bam successfully opened\n", rank, chrName);
+					 if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s_sorted.bam successfully opened\n", rank, file_name);
+				}
                         }
 	
+			MPI_Offset file_size;
+                        struct stat buffer;
+                        int         status_f;
+                        status_f = stat(path, &buffer);
+                        if (status_f == 0 ) file_size = buffer.st_size;
+
+                        MPI_Barrier(COMM_WORLD);
+
+
 			if (rank == master_job_phase_2)
                         	fprintf(stderr, "Rank %d :::::[WRITE][BEFORE COMPRESSION] start compression \n", rank);
 			
@@ -1839,7 +1865,7 @@ void writeSam(
 				
 			//the last rank add the magic number
 			//to be compatible with BAM 
-			if ( rank == num_proc - 1){
+			if ( rank == (num_proc - 1)){
                         	static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 				memcpy(compressed_buff + compressed_size, magic, 28);
 				compressed_size += 28;
@@ -1850,7 +1876,7 @@ void writeSam(
 			uint8_t *compressed_header = NULL;
 			int compressed_size_header = 0;
 
-			if (rank == 0) {
+			if(rank == master_job_phase_2) {
 
 				int block_length = MAX_BLOCK_SIZE;
 				int bytes_written;
@@ -1918,12 +1944,9 @@ void writeSam(
 			
 			size_t compSize = compressed_size;
 		
- 			if (rank == master_job_phase_2){
-				fprintf(stderr, "Rank %d :::::[WRITE][COMPRESSION] Time for compressing %d blocks in %f seconds \n",
-					rank, m6, MPI_Wtime()-time_count);
-				fprintf(stderr, "Rank %d :::::[WRITE][COMPRESSION] total compressing size = %zu  \n", rank, compSize);
-			}
-
+ 			if (rank == master_job_phase_2)
+				fprintf(stderr, "Rank %d :::::[WRITE][COMPRESSION] Time for compressing %d blocks in %f seconds \n", rank, m6, MPI_Wtime()-time_count);
+				
 			/*
 		 	* We write results of compression
 		 	*/
@@ -1957,10 +1980,6 @@ void writeSam(
 			//MPI_Info_set(finfo,"cb_buffer_size","1610612736"); /* 128 MBytes (Optional) */
 			// END> FINE TUNING FINFO FOR WRITING OPERATIONS
 
-			ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-
-			 MPI_Offset file_size;
-                         MPI_File_get_size(out, &file_size);
 
 			if (ierr) {
 				fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", rank, path);
@@ -1968,7 +1987,9 @@ void writeSam(
 				exit(2);
 			}
 			else{
-				if(!rank)fprintf(stderr, "Rank %d :::::[WRITE][AFTER COMPRESSION] %s.gz successfully opened\n", rank, chrName);
+				if( master_job_phase_2)
+					if (write_format == 0)fprintf(stderr, "Rank %d :::::[WRITE][AFTER COMPRESSION] %s.gz successfully opened\n", rank, chrName);
+					else fprintf(stderr, "Rank %d :::::[WRITE][AFTER COMPRESSION] %s.bam successfully opened\n", rank, chrName); 
 			}
 
 			time_count = MPI_Wtime();
@@ -1978,7 +1999,7 @@ void writeSam(
 				MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 			}
 			if (rank == master_job_phase_2 && (merge == 1) && (file_size == 0)){
-				// MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
+				//MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
 				MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 			}
 
@@ -1995,7 +2016,7 @@ void writeSam(
 			if (compSize < tmp_size_buffer){
 
 			 	MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                         	MPI_File_write_all(out, compressed_buff, compSize, MPI_BYTE, &status);
+                         	MPI_File_write(out, compressed_buff, compSize, MPI_BYTE, &status);
 			}
 			//we write by block of 1gb
 			else {
@@ -2008,7 +2029,7 @@ void writeSam(
 				while (tmp_size_buffer2 > 0){
 				
 		 			MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-					MPI_File_write_all(out, compressed_buff_tmp, tmp_size_buffer2, MPI_BYTE, &status);
+					MPI_File_write(out, compressed_buff_tmp, tmp_size_buffer2, MPI_BYTE, &status);
 
 					MPI_Get_count(&status, MPI_BYTE, &count_status);
 					assert(count_status == tmp_size_buffer2);
@@ -2037,7 +2058,7 @@ void writeSam(
 			MPI_File_close(&out);	
 			
 			if (rank == master_job_phase_2)
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BGZF] Time for chromosome %s writing %f seconds\n",
+				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BGZF BAM] Time for chromosome %s writing %f seconds\n",
 					rank, chrName, MPI_Wtime()-time_count);
 
 			free(fp->uncompressed_block);
@@ -2057,527 +2078,6 @@ void writeSam(
 	                free(y2);
 			
 		}//end if (write_sam == 1)
-
-		/*
-                 * BAM CASE
-                 */
-		if (write_format == 1){
-
-                        #ifdef HAVE_HTSLIB
-
-				//we make a copy of the header because we modify it
-				char *header_tmp = malloc(strlen(header) + 1);
-				header_tmp[strlen(header)]=0;
-				header_tmp = strcpy(header_tmp, header);
-
-                                int file_exist = 1;
-                                if (!merge){
-                                        path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-                                        sprintf(path, "%s/%s.bam", output_dir, chrName);
-                                        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-                                }
-                                else{
-                                        path = (char*)malloc((strlen(output_dir) + strlen(file_name_sorted) + 40) * sizeof(char));
-                                        sprintf(path, "%s/%s", output_dir, file_name_sorted);
-
-                                        file_exist = access(path, F_OK);
-                                        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY|MPI_MODE_CREATE|MPI_MODE_APPEND, finfo, &out);
-                                }
-
-                                if (ierr) {
-                                        fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
-                                        MPI_Abort(COMM_WORLD, ierr);
-                                        exit(2);
-                                }
-                                else{
-                                        if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s.bam successfully opened\n", rank, chrName);
-                                        if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s_sorted.bam successfully opened\n", rank, file_name);
-                                }
-
-
-                                sam_hdr_t *h = NULL;
-                                hts_idx_t *idx = NULL;
-                                bam1_t *b = NULL;
-                                int ret = 0;
-				int r = 0;	
-                                char moder[8];
-                                char modew[800];
-				uint8_t buff[28];
-				hts_opt *in_opts = NULL;
-                                hts_opt *out_opts = NULL;
-                                struct opts opts;
-                                opts.fn_ref = NULL;
-                                opts.flag = 0;
-                                opts.clevel = -1;
-                                opts.ignore_sam_err = 0;
-                                opts.nreads = 0;
-                                opts.extra_hdr_nuls = 0;
-                                opts.benchmark = 0;
-				opts.nthreads = 0; 
-				opts.multi_reg = 0;
-                                opts.index = NULL;
-                                opts.min_shift = 0;
-                                opts.flag |= WRITE_BINARY_COMP;
-                                char buff_tmp[28] = {0};
-                                assert(buff_tmp);
-                                htsFile *in_header, *in_sam, *out_header_bam, *out_bam;
-
-				
-				size_t sam_size = strlen(char_buff_uncompressed);
-				uint8_t *buff_compressed = malloc(sam_size + 1);
-				buff_compressed[sam_size] = 0;
-				size_t header_size = strlen(header);
-				size_t comp_header_size = 0;
-				size_t comp_bam_size = 0;
-                                strcpy(moder, "r");
-				strcpy(modew, "w");
-                                strcat(modew, "b");
-
-				//file descriptor for reading part
-                                hFILE *hf_in_header = hopen("mem:", "r:", header_tmp, header_size);
-				assert(hf_in_header);
-                                in_header = hts_hopen(hf_in_header ,"", moder);
-				in_header->format.format = sam;	
-
-                                hFILE *hf_in_sam = hopen("mem:", "r:", char_buff_uncompressed, sam_size);
-                                assert(hf_in_sam);
-                                in_sam = hts_hopen(hf_in_sam ,"", moder);
-				in_sam->format.format = sam;
-
-				//hfile descriptors for writing part
-     				hFILE *hf_out_header = hopen("mem:", "w:", header_tmp, header_size);	
-                                assert(hf_out_header);
-                                out_header_bam = hts_hopen(hf_out_header ,"", "wb");
-				out_header_bam->format.format = bam;
-
-				//char *char_buff_compressed = malloc(sam_size);
-                                hFILE *hf_out_sam =  hopen("mem:", "w:", char_buff_uncompressed, sam_size);
-				//hFILE *hf_out_sam = create_hfile_mem(buff_compressed, "w", 0, sam_size);
-				assert(hf_out_sam);
-                                out_bam = hts_hopen(hf_out_sam ,"", "wb");
-				//out_bam->is_write = 1;
-				out_bam->is_bgzf = 1;
-				out_bam->format.format = sam; 
-				out_bam->format.compression = bgzf;
-				out_bam->state = 0;	
-				hts_set_cache_size(out_bam, 1024*1024*1024);			
-				//out_bam->format.category = sequence_data; 
-
-                                hts_opt_apply(in_header, in_opts);
-                                hts_opt_apply(in_sam, in_opts);
-				hts_opt_apply(out_header_bam, out_opts);
-                                hts_opt_apply(out_bam, out_opts);
-				
-				//size_t length_tmp = 0;
-				//char *buff_tmp1 = hfile_mem_get_buffer(hf_out_sam, &length_tmp);
-				//fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] buff_tmp length = %zu \n", rank, length_tmp);
-				//BAM pointer fd
-				BGZF *bfp_h = out_header_bam->fp.bgzf;
-				BGZF *bfp_b = out_bam->fp.bgzf;;///bgzf_hopen(hf_out_sam, "w");//out_bam->fp.bgzf;
-
-				fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] INIT WRITING \n", rank);
-				//size_t buff_bgzf =1024*1024*1024; 
-				//bgzf_set_cache_size(bfp_b, buff_bgzf);
-				/*
- 				 * we have warning with bgzf_open 
- 				 * 
-				BGZF *bfp_h = NULL;
-				bfp_h = (BGZF *)bgzf_hopen(hf_out_header, "w");
-				assert(bfp_h);
-				BGZF *bfp_b = NULL; 
-				bfp_b = (BGZF *)bgzf_hopen(hf_out_sam, "w");
-				assert(bfp_b);
-				*/
-
-				switch (hts_get_format(in_sam)->category) {
-                                	case sequence_data:
-                                        	if ( rank == master_job_phase_2)
-                                                	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] we have SAM format in buffer\n", rank);
-                                        	break;
-
-                                	default:
-                                        	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] unsupported or unknown category of data in input file\n", rank);
-
-                                }
-
-                                h = sam_hdr_read(in_header);
-                                if (h == NULL) {
-                                        fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Couldn't read header for \n", rank); }
-                                b = bam_init1();
-                                if (b == NULL) {
-                                        fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Out of memory allocating BAM struct \n", rank);}
-
-				MPI_Offset file_size;
-                                MPI_File_get_size(out, &file_size);
-
-				//we compress header and write it	
-				if ( (rank == master_job_phase_2 && !merge) || (( rank == master_job_phase_2) &&  merge && file_size == 0) ){
-                                        if (bam_hdr_write(bfp_h, h) < 0)
-                                                fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Error writing output header.\n", rank);
-                                        else
-                                                fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Header commpression ok.\n", rank);
-
-					//add magic in the header bam
-					ret = bgzf_raw_write(bfp_h, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
-					assert(ret == 28);
-					//we get the size of compressed header
-					char *memptr_h = header_tmp;
-                                	while (comp_header_size < ( header_size - 30 )){
-                                        	memcpy(buff, memptr_h + comp_header_size , 28);
-                                        	if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-                                                	//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] Header commpression size %zu.\n", rank, comp_header_size);
-                                                	break;
-                                        	}
-                                        	comp_header_size++;
-                                	}
-                                }
-
-				//dispatch header size                               
-				MPI_Bcast( &comp_header_size, 1, MPI_LONG_LONG_INT, master_job_phase_2, COMM_WORLD);                                
-
-				time_count = MPI_Wtime();
-                                ret = 0;
-				/*				
-                                while ((r = sam_read1(in_sam, h, b)) >= 0){
-					//sam_format1(h, b, &in_sam->line);
-                                	ret =bam_write1(bfp_b, b);
-					//ret = sam_write1(out_bam, h, b);
-		   		        assert(ret > 0);
-     				}
-				*/
-
-				//bam1_t *recs = calloc(previous_local_readNum, sizeof(bam1_t));
-                                //int nrecs = 0;
-
-				// while ( sam_read1(in_sam, h, &recs[nrecs] ) >= 0) nrecs++;
-
-				/* 
-				uint8_t *p1 =char_buff_uncompressed;//buffer_comp;
-				char *p2 =p1;
-                                size_t buffer_tocomp_size = 0;
-
-                                nrecs = 0;
-                                while ( nrecs < previous_local_readNum){
-                                        //fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] DATA = %s \n", rank, bam_get_qname(&recs[nrecs]));
-                                        //ret =bam_write1(bfp_b, &recs[nrecs]);
-                                        //ret =sam_write1(out_bam, h, &recs[nrecs]);
-                                        //assert(ret > 0);
-
-                                        const bam1_core_t *c = &recs[nrecs].core;
-                                        const bam1_t *b = &recs[nrecs];
-                                        uint32_t x[8], block_len = b->l_data - c->l_extranul + 32, y;
-                                        int i, ok;
-                                        x[0] = c->tid;
-                                        x[1] = c->pos;
-                                        x[2] = (uint32_t)c->bin<<16 | c->qual<<8 | (c->l_qname - c->l_extranul);
-                                        if (c->n_cigar > 0xffff) x[3] = (uint32_t)c->flag << 16 | 2;
-                                        else x[3] = (uint32_t)c->flag << 16 | (c->n_cigar & 0xffff);
-                                        x[4] = c->l_qseq;
-                                        x[5] = c->mtid;
-                                        x[6] = c->mpos;
-                                        x[7] = c->isize;
-                                        //ok =(bgzf_flush_try(bfp_b, 4 + block_len) >= 0);
-                                        //ok =(bgzf_write(bfp_b, &block_len, 4)>= 0);
-                                        memcpy(p1, &block_len, 4);
-					p1 += 4;
-                                        //ok =(bgzf_write(bfp_b, x, 32)>= 0);
-                                        memcpy(p1, x, 8);
-					p1 += 8;
-                                        //ok =(bgzf_write(bfp_b, b->data, c->l_qname - c->l_extranul)>= 0);
-                                        memcpy(p1, b->data, c->l_qname - c->l_extranul);
-					p1 += c->l_qname - c->l_extranul;
-                                        //ok =(bgzf_write(bfp_b, b->data + c->l_qname, b->l_data - c->l_qname)>= 0);
-                                        memcpy(p1, b->data + c->l_qname, b->l_data - c->l_qname);
-					p1 += b->l_data - c->l_qname;
-					p1++;
-					//fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] DATA CPY = %zu \n", rank, p1-p2);
-					p2=p1;
-						
-                                        //p1 += block_len;
-                                        
-                                        //const bam1_t *b = &recs[nrecs];
-                                        //ret1 = sam_write1(out_bam, h, &recs[nrecs]);
-                                        //assert(ret1 > 0);
-                                        
-                                        free(b->data);
-                                        buffer_tocomp_size += block_len + 4;
-                                        nrecs++;
-                                }
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] TIME TO COPY DATA = %f SIZE TO COMPRESSE = %zu \n", rank, MPI_Wtime()-time_count, buffer_tocomp_size );
-				
-				time_count = MPI_Wtime();
-				//bgzf_write(bfp_b, char_buff_uncompressed, buffer_tocomp_size);
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] TIME COMPRESS DATA = %f \n", rank, MPI_Wtime()-time_count );
-				//bgzf_flush(bfp_b);
-				*/
-
-				/*
-				if ( rank == 0 )
-				 fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] DATA = %s \n", rank, char_buff_uncompressed );
-				time_count = MPI_Wtime();
-				size_t tmp_size_buffer1 = 1024*1024*1024;
-				char *p6 = char_buff_uncompressed;
-	                        //char *p2 = tmp_buffer;
-        	                char *compressed_buff =  malloc((buffer_tocomp_size + 1)* sizeof(uint8_t));
-				compressed_buff[buffer_tocomp_size] = 0;
-                	        assert(compressed_buff);
-                        	int m6 = 0;
-                        	size_t compressed_size =0;
-                        	BGZF2 *fp;
-                        	fp = calloc(1, sizeof(BGZF2));
-				size_t total_cpy = 0;
-                        	while (*p6){
-
-                                	char *tmp_buffer =malloc(tmp_size_buffer1 + 1);
-                                	tmp_buffer[tmp_size_buffer1]=0;
-                                	char *p7 = tmp_buffer;
-                                	size_t counter_tmp = 0;
-                                	while (counter_tmp < tmp_size_buffer1 && total_cpy < buffer_tocomp_size) {*p7=*p6; p6++;p7++; counter_tmp++; total_cpy++;}
-	
-                                	time_count = MPI_Wtime();
-
-                                	//BGZF *fp;
-                                	//fp = calloc(1, sizeof(BGZF));
-                                	int block_length = MAX_BLOCK_SIZE;
-                                	int bytes_written;
-                                	//size_t length = strlen(char_buff_uncompressed);
-                                	int length = counter_tmp;
-
-                                	fp->open_mode = 'w';
-                                	fp->uncompressed_block_size = MAX_BLOCK_SIZE;
-                                	fp->uncompressed_block = malloc(MAX_BLOCK_SIZE);
-                                	fp->compressed_block_size = MAX_BLOCK_SIZE;
-                                	fp->compressed_block = malloc(MAX_BLOCK_SIZE);
-                                	fp->cache_size = 0;
-                                	fp->cache = kh_init(cache);
-                                	fp->block_address = 0;
-                                	fp->block_offset = 0;
-                                	fp->block_length = 0;
-                                	fp->compress_level = compression_level < 0? Z_DEFAULT_COMPRESSION : compression_level; // Z_DEFAULT_COMPRESSION==-1
-
-                                	if (fp->compress_level > 9) fp->compress_level = Z_DEFAULT_COMPRESSION;
-
-                                	//const bgzf_byte_t *input = (void *)char_buff_uncompressed;
-                                	//int compressed_size = 0;
-
-                                	if (fp->uncompressed_block == NULL)
-                                        	fp->uncompressed_block = malloc(fp->uncompressed_block_size);
-
-                                	//input = (void *)char_buff_uncompressed;
-                                	const bgzf_byte_t *input = (void *)tmp_buffer;
-                                	block_length = fp->uncompressed_block_size;
-                                	bytes_written = 0;
-                                	//uint8_t *compressed_buff =  malloc((strlen(char_buff_uncompressed))* sizeof(uint8_t));
-                                	//assert(compressed_buff);      
-                                	//if (rank == master_job_phase_2)
-
-					while (bytes_written < length) {
-                                        	int copy_length = bgzf_min(block_length - fp->block_offset, length - bytes_written);
-                                        	bgzf_byte_t* buffer = fp->uncompressed_block;
-                                        	memcpy(buffer + fp->block_offset, input, copy_length);
-                                        	fp->block_offset += copy_length;
-                                        	input += copy_length;
-                                        	bytes_written += copy_length;
-                                        	//if (fp->block_offset == block_length) {
-                                        	//we copy in a temp buffer
-                                        	while (fp->block_offset > 0) {
-                                                	int block_length;
-                                                	block_length = deflate_block(fp, fp->block_offset);
-                                                	// fprintf(stderr, "rank %d :::: block_length = %d \n", rank, block_length);
-                                                	//is it necessary?
-                                                	//if (block_length < 0) break;
-
-                                                	// count = fwrite(fp->compressed_block, 1, block_length, fp->file);
-                                                	// we replace the fwrite with a memcopy
-                                                	memcpy(compressed_buff + compressed_size, fp->compressed_block, block_length);
-                                                	compressed_size +=(size_t)block_length;
-                                                	fp->block_address += block_length;
-                                        	}
-                                        	//}
-                                	}
-
-                                	free(tmp_buffer);
-                                	//fprintf(stderr, "rank %d :::: finish compression for block = %d compressed size = %zu \n", rank, m6, compressed_size);
-                                	m6++;
-                        	}
-
-				//the last rank add the magic number
-                        	//to be compatible with BAM 
-                        	if ( rank == num_proc - 1){
-                                	static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-                                	memcpy(compressed_buff + compressed_size, magic, 28);
-                                	compressed_size += 28;
-                        	}
-				*/
-				//fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] TIME COMPRESS DATA = %f :::: COMPRESSED SIZE =%zu \n", rank, MPI_Wtime()-time_count, compressed_size );
-				
-				time_count =  MPI_Wtime();	
-				bam1_t *recs = calloc(previous_local_readNum, sizeof(bam1_t));
-				size_t nrecs;
-				
-				read_data_block(NULL, in_sam, NULL, out_bam,
-                                                h, recs, previous_local_readNum, char_buff_uncompressed, sam_size, &nrecs);
-				
-				
-				/*
-				for (size_t i = 0; i < nrecs; i++) {
-					//ret = sam_write1(out_bam, h, b);
-					ret = sam_read1(in_sam, h, &recs[nrecs]);
-					//ret =bam_write1(bfp_b, b);
-                                        assert(ret > 0);
-        				//bam_destroy1(&recs[i]);
-    				}
-
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome read %s :::  %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
-				time_count =  MPI_Wtime();
-				for (size_t i = 0; i < nrecs; i++) {
-                                        //ret = sam_write1(out_bam, h, b);
-                                        //sam_read1(in_sam, h, &recs[nrecs]
-                                        ret =bam_write1(bfp_b, &recs[nrecs]);
-                                        assert(ret > 0);
-                                        bam_destroy1(&recs[i]);
-                                }
-				*/	
-				free(recs);
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome compression %s :::  %f seconds\n", rank, chrName, MPI_Wtime()-time_count);	
-				/*
-					read_data_block(NULL, samFile *fp_in, const char *out_name, samFile *fp_out,
-                                                sam_hdr_t *header, bam1_t *recs, size_t max_recs,
-                                                uint8_t *buffer, size_t bufsz, size_t *nrecs_out);
-				
-
-				fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome compression %s :::  %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
-				*/
-
-					
-                                ret = bgzf_raw_write(bfp_b, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
-                                assert( ret == 28);
-				//bgzf_flush(bfp_b);			
-
-				//we compute the length of the compressed SAM buffer
-				char *memptr_b = char_buff_uncompressed;
-    				while (comp_bam_size < (sam_size)){
-        				memcpy(buff, memptr_b + comp_bam_size, 28);
-        				if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-						//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] BAM commpression size %zu.\n", rank, comp_bam_size);                				
-                				break;
-        				}
-       					comp_bam_size++;
-    				}
-				
-
-				// now the rank can write the buffer hold by memptr
-				size_t bamSize = comp_bam_size;
-
-				//if ( rank == num_proc - 1)
-				//	bamSize +=28;
-
-                                size_t write_offset = 0;
-                                size_t tmp_size_buffer = 1024*1024*1024;
-                                size_t tmp_size_buffer2 = tmp_size_buffer;
-                                MPI_Offset * y  = (MPI_Offset *) calloc(num_proc, sizeof(MPI_Offset));
-                                MPI_Offset * y2 = (MPI_Offset *) calloc(num_proc+1, sizeof(MPI_Offset));
-
-                                MPI_Gather(&bamSize, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
-
-                                int i1 = 0;
-                                if (rank == master_job_phase_2){
-                                        for (i1 = 1; i1 < (num_proc + 1); i1++) y2[i1] = y[i1-1];
-                                        for (i1 = 1; i1 < (num_proc +1); i1++)  y2[i1] = y2[i1-1] + y2[i1];
-                                        for (i1 = 0; i1 < (num_proc +1); i1++)  y2[i1] = y2[i1] + write_offset;
-
-                                }
-                                MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
-
-                                time_count = MPI_Wtime();
-
-				/*
- 				 * We write the header 
- 				 */  			
-				char *memptr_h2 = header_tmp;
-
-				if (rank == master_job_phase_2 && (merge == 0))
-					MPI_File_write(out, memptr_h2, comp_header_size, MPI_BYTE, MPI_STATUS_IGNORE);
-											
-                        	if (rank == master_job_phase_2 && (merge == 1) && (file_size == 0)) 
-					MPI_File_write(out, memptr_h2, comp_header_size, MPI_BYTE, MPI_STATUS_IGNORE);
-									
-				if (!merge) write_offset += comp_header_size;
-				if  (merge && (file_size == 0)) write_offset += comp_header_size;
-				else if  (merge && (file_size > 0)) write_offset += file_size;
-
-							       
- 				//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] Offset %zu.\n", rank, write_offset);
-                                                                                                                        					
-				/* 				 
- 				 We write the BAM in the output file
- 				 */ 
-                                MPI_Barrier(COMM_WORLD);
-				char *memptr_b2 = char_buff_uncompressed;
-                                if (bamSize < tmp_size_buffer){
-                                        MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                                        MPI_File_write_all(out, memptr_b2, bamSize, MPI_BYTE, &status);
-                                }
-
-                                //we write by block of 1gb
-                                else {
-                                        uint8_t *buff_tmp = memptr_b2;
-                                        size_t tmp10 = 0;
-                                        int block_tmp = 0;
-                                        int count_status = 0;
-                                        int error_status = 0;
-                                        while (tmp_size_buffer2 > 0){
-                                                MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                                                MPI_File_write_all(out, memptr_b2, tmp_size_buffer2, MPI_CHAR, &status);
-                                                MPI_Get_count(&status, MPI_CHAR, &count_status);
-                                                assert(count_status == tmp_size_buffer2);
-                                                buff_tmp += tmp_size_buffer2;
-                                                tmp10 += tmp_size_buffer2;
-                                                write_offset += tmp_size_buffer2;
-                                                block_tmp++;
-                                                if ( (bamSize - tmp10) > tmp_size_buffer ) tmp_size_buffer2 = tmp_size_buffer;
-                                                else tmp_size_buffer2 = (bamSize - tmp10);
-                                        }
-                                }
-
-
-                                //if (rank == master_job_phase_2)
-                                MPI_File_close(&out);
-
-				/*
- 				 *  Seems ok with valgrind 
- 				 */
-                             	 
-				assert( bgzf_flush(bfp_b) == 0);
-				assert( bgzf_flush(bfp_h) == 0);
-				bam_destroy1(b);
-				sam_hdr_destroy(h);
-				free(bfp_h);
-				free(bfp_b);
-
-				//ret = hclose(hf_out_sam);
-                		//ret = hclose(hf_out_header);
-                		//ret = hclose(hf_in_header);
-                		//ret = hclose(hf_in_sam);
-                		//ret = hts_close(in_sam);
-                		//ret = hts_close(in_header);
-                		//ret = hts_close(out_header_bam);
-                		//ret = hts_close(out_bam);
-                		//memset(char_buff_uncompressed, '1', sam_size);
-				free(char_buff_uncompressed);
-		                //free(compressed_buff);
-				//free(fp->uncompressed_block);
-                        	//free(fp->compressed_block);
-                        	//free_cache(fp);
-                        	//free(fp);
-				//memset(header_tmp, '1', header_size);
-				//free(header_tmp);
-
-				if (rank == master_job_phase_2)  
-                                	fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
- 
-			#endif
-                } //end BAM case 
 
 		//MPI_File_close(&out);
 		free(path);
@@ -2615,6 +2115,8 @@ void writeSam_discordant_and_unmapped(
 	size_t k;
 	int ierr;
 	size_t dataSize;
+
+	
 
 	//Size of the buffer use to compress
 	size_t tmp_size_buffer = 1024*1024*1024;
@@ -2922,6 +2424,12 @@ void writeSam_discordant_and_unmapped(
 			} //end data compression
 			free(tmp_buffer);
 		}
+		if ( split_rank == (split_size - 1)){
+                      static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+                      memcpy(compressed_buff + compressed_size, magic, 28);
+                      compressed_size += 28;
+                }
+
 		//we compress the neader
 		BGZF2 *fp_header;
 		fp_header = calloc(1, sizeof(BGZF2));
@@ -3055,7 +2563,7 @@ void writeSam_discordant_and_unmapped(
 	 		while (tmp_size_buffer2 > 0){
 	 			time_count=MPI_Wtime();
 	        		MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-	        		MPI_File_write_all(out, compressed_buff_tmp, tmp_size_buffer2, MPI_BYTE, &status);
+	        		MPI_File_write(out, compressed_buff_tmp, tmp_size_buffer2, MPI_BYTE, &status);
 	        		MPI_Get_count(&status, MPI_BYTE, &count_status);
 	        		assert(count_status == tmp_size_buffer2);
 	        		compressed_buff_tmp += tmp_size_buffer2;
@@ -3161,7 +2669,8 @@ void writeSam_any_dim(
 
 	//COMM_WORLD will become our new communicator
 	COMM_WORLD = split_comm;
-
+	int num_rank;
+       	MPI_Comm_size(split_comm, &num_rank);
 	int master_job_phase_1 = master_rank;
 	int master_job_phase_2 = master_rank;
 
@@ -4662,14 +4171,20 @@ void writeSam_any_dim(
                        exit(2);
                 }
                 else{
-        	        if(!rank && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s.sam successfully opened\n", rank, chrName);
-                        if(!rank && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s_sorted.sam successfully opened\n", rank, file_name);
+        	        if(!rank && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][OPEN SAM RESULTS] %s.sam successfully opened\n", rank, chrName);
+                        if(!rank && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][OPEN SAM RESULTS] %s_sorted.sam successfully opened\n", rank, file_name);
                 }
 
                 time_count = MPI_Wtime();
 
                 MPI_Offset file_size;
-                MPI_File_get_size(out, &file_size);
+                struct stat buffer;
+                int         status_f;
+                status_f = stat(path, &buffer);
+                if (status_f == 0 ) file_size = buffer.st_size;
+
+                MPI_Barrier(COMM_WORLD);
+
 		if (rank == master_job_phase_2 && (merge == 0)) {
                 	MPI_File_write(out, header, size_header, MPI_CHAR, MPI_STATUS_IGNORE);
                 }
@@ -4686,7 +4201,7 @@ void writeSam_any_dim(
 
 		if (samSize < tmp_size_buffer){
                 	MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                        MPI_File_write_all(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
+                        MPI_File_write(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
                 }
                 //we write by block of 1gb
                 else {
@@ -4697,7 +4212,7 @@ void writeSam_any_dim(
                         int error_status = 0;
                         while (tmp_size_buffer2 > 0){
          	               MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                               MPI_File_write_all(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
+                               MPI_File_write(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
                                MPI_Get_count(&status, MPI_CHAR, &count_status);
                                assert(count_status == tmp_size_buffer2);
                                buff_tmp += tmp_size_buffer2;
@@ -4712,7 +4227,7 @@ void writeSam_any_dim(
                  MPI_File_close(&out);
 
                  if (rank == master_job_phase_2)
-                 	fprintf(stderr, "Rank %d :::::[WRITE][WRITING SAM] Time for chromosome %s writing %f seconds\n",
+                 	fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][WRITING SAM] Time for chromosome %s writing %f seconds\n",
                         	rank, chrName, MPI_Wtime()-time_count);
 
                  free(char_buff_uncompressed);
@@ -4730,287 +4245,7 @@ void writeSam_any_dim(
 
 	}// end write format SAM
 
-	/* 
- 	 * BAM case
- 	 */	
-
-	if (write_format == 1){
-
-                #ifdef HAVE_HTSLIB
-		//we make a copy of the header because we modify it
-		char *header_tmp = malloc(strlen(header) + 1);
-		header_tmp[strlen(header)]=0;
-                header_tmp = strcpy(header_tmp, header);
-
-		
-
-                int file_exist = 1;
-                if (!merge){
-	        	path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-                        sprintf(path, "%s/%s.bam", output_dir, chrName);
-                        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-                }
-                else{
-                        path = (char*)malloc((strlen(output_dir) + strlen(file_name_sorted) + 40) * sizeof(char));
-                        sprintf(path, "%s/%s", output_dir, file_name_sorted);
-
-                        file_exist = access(path, F_OK);
-                        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY|MPI_MODE_CREATE|MPI_MODE_APPEND, finfo, &out);
-                }
-                if (ierr) {
-      	        	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
-              	        MPI_Abort(COMM_WORLD, ierr);
-                        exit(2);
-                }
-                else{
-	                if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s.bam successfully opened\n", rank, chrName);
-                        if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s_sorted.bam successfully opened\n", rank, file_name);
-                }
-                sam_hdr_t *h = NULL;
-                hts_idx_t *idx = NULL;
-                bam1_t *b = NULL;
-                int ret = 0;
-                int r = 0;
-                char moder[8];
-                char modew[800];
-                uint8_t buff[28];
-                hts_opt *in_opts = NULL;
-                hts_opt *out_opts = NULL;
-                struct opts opts;
-                opts.fn_ref = NULL;
-                opts.flag = 0;
-                opts.clevel = -1;
-                opts.ignore_sam_err = 0;
-                opts.nreads = 0;
-                opts.extra_hdr_nuls = 0;
-                opts.benchmark = 0;
-                opts.nthreads = 0;
-                opts.multi_reg = 0;
-                opts.index = NULL;
-                opts.min_shift = 0;
-                opts.flag |= WRITE_BINARY_COMP;
-		char buff_tmp[28] = {0};
-                assert(buff_tmp);
-                htsFile *in_header, *in_sam, *out_header_bam, *out_bam;
-              
-		size_t sam_size = strlen(char_buff_uncompressed);
-                
-		size_t header_size = strlen(header);
-                size_t comp_header_size = 0;
-                size_t comp_bam_size = 0;
-                strcpy(moder, "r");
-                strcpy(modew, "w");
-                strcat(modew, "b");
-		//file descriptor for reading part
-		hFILE *hf_in_header = hopen("mem:", "r:", header_tmp, header_size);
-                assert(hf_in_header);
-                in_header = hts_hopen(hf_in_header ,"", moder);
-                in_header->format.format = sam;
-
-                hFILE *hf_in_sam = hopen("mem:", "r:",char_buff_uncompressed, sam_size );
-                assert(hf_in_sam);
-                in_sam = hts_hopen(hf_in_sam ,"", moder);
-                in_sam->format.format = sam;
-
-                //hfile descriptors for writing part
-               	hFILE *hf_out_header = hopen("mem:", "w:", header_tmp, header_size);
-                assert(hf_out_header);
-                out_header_bam = hts_hopen(hf_out_header ,"", "wb");
-                out_header_bam->format.format = bam;
-
-		//char *char_buff_compressed = malloc(sam_size);
-                hFILE *hf_out_sam = hopen("mem:", "w:",char_buff_uncompressed, sam_size );
-                assert(hf_out_sam);
-                out_bam = hts_hopen(hf_out_sam ,"", "wb");
-                out_bam->format.format = bam;
-
-                hts_opt_apply(in_header, in_opts);
-                hts_opt_apply(in_sam, in_opts);
-                hts_opt_apply(out_header_bam, out_opts);
-                hts_opt_apply(out_bam, out_opts);
-
-                //BAM pointer fd
-                BGZF *bfp_h = out_header_bam->fp.bgzf;
-                BGZF *bfp_b = out_bam->fp.bgzf;
-
-		switch (hts_get_format(in_sam)->category) {
-                        case sequence_data:
-                              	if ( rank == master_job_phase_2)
-                              	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] we have SAM format in buffer\n", rank);
-                        break;
-
-                        default:
-                	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] unsupported or unknown category of data in input file\n", rank);
-
-                }
-
-                h = sam_hdr_read(in_header);
-                if (h == NULL) 
-                      	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Couldn't read header for \n", rank); 
-                b = bam_init1();
-                if (b == NULL) 
-                        fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Out of memory allocating BAM struct \n", rank);
-
-                MPI_Offset file_size;
-                MPI_File_get_size(out, &file_size);
-		//we compress header and write it
-		if ( (rank == master_job_phase_2 && !merge) || (( rank == master_job_phase_2) &&  merge && file_size == 0) ){
-                        if (bam_hdr_write(bfp_h, h) < 0)
-                              	fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Error writing output header.\n", rank);
-                       	else
-                       		fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] Header commpression ok.\n", rank);
-
-			assert(bgzf_flush(bfp_h) == 0);
-
-                        //add magic in the header bam
-			ret = bgzf_raw_write(bfp_h, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
-                        assert(ret == 28);
-			//we get the size of compressed header
-			char *memptr_h = header_tmp;
-                        while (comp_header_size < ( header_size - 30)){
-                              	memcpy(buff, memptr_h + comp_header_size , 28);
-                                if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-                                       	//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] Header commpression size %zu.\n", rank, comp_header_size);
-                                        break;
-                              	}
-                        comp_header_size++;
-                	}
-                }
-
-		 //dispatch header size                               
-		 MPI_Bcast( &comp_header_size, 1, MPI_LONG_LONG_INT, master_job_phase_2, COMM_WORLD);
-
-
-                ret = 0;
-                while ((r = sam_read1(in_sam, h, b)) >= 0){
-                    	ret =bam_write1(bfp_b, b);
-                	assert(ret > 0);
-		}
-                ret = bgzf_raw_write(bfp_b, "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28);
-                assert( ret == 28);
-		//we compute the length of the compressed SAM buffer
-                char *memptr_b = char_buff_uncompressed;
-                while (comp_bam_size < (sam_size)){
-                      	memcpy(buff, memptr_b + comp_bam_size, 28);
-                        if (memcmp(buff,"\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0", 28) == 0){
-                              	//fprintf(stderr, " Rank %d :::::[WRITE][BAM RESULTS] BAM commpression size %zu.\n", rank, comp_bam_size);
-                                break;
-                      	}
-                	comp_bam_size++;
-                }
-
-		
-                // now the rank can write the buffer hold by memptr
-		size_t bamSize = comp_bam_size;
-		if ( rank == num_proc - 1)
-	                bamSize +=28;
-
-                size_t write_offset = 0;
-                size_t tmp_size_buffer = 1024*1024*1024;
-                size_t tmp_size_buffer2 = tmp_size_buffer;
-                MPI_Offset * y  = (MPI_Offset *) calloc(num_proc, sizeof(MPI_Offset));
-                MPI_Offset * y2 = (MPI_Offset *) calloc(num_proc+1, sizeof(MPI_Offset));
-                MPI_Gather(&bamSize, 1, MPI_LONG_LONG_INT, y, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
-
-                int i1 = 0;
-                if (rank == master_job_phase_2){
-	        	for (i1 = 1; i1 < (num_proc + 1); i1++) y2[i1] = y[i1-1];
-                        for (i1 = 1; i1 < (num_proc +1); i1++)  y2[i1] = y2[i1-1] + y2[i1];
-                        for (i1 = 0; i1 < (num_proc +1); i1++)  y2[i1] = y2[i1] + write_offset;
-
-                }
-                MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
-
-                time_count = MPI_Wtime();
-
-                        /*
-                         * We write the header 
-                    */
-		char *memptr_h2 = header_tmp;
-
-                if (rank == master_job_phase_2 && (merge == 0))
-                      	MPI_File_write(out, memptr_h2, comp_header_size, MPI_BYTE, MPI_STATUS_IGNORE);
-
-                if (rank == master_job_phase_2 && (merge == 1) && (file_size == 0))
-                     	MPI_File_write(out, memptr_h2, comp_header_size, MPI_BYTE, MPI_STATUS_IGNORE);
-
-                if (!merge) write_offset += comp_header_size;
-                if  (merge && (file_size == 0)) write_offset += comp_header_size;
-                else if  (merge && (file_size > 0)) write_offset += file_size;
-
-		//We write the BAM in the output file
-                MPI_Barrier(COMM_WORLD);
-		char *memptr_b2 = char_buff_uncompressed;
-                if (bamSize < tmp_size_buffer){
-                       	MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                        MPI_File_write_all(out, memptr_b2, bamSize, MPI_BYTE, &status);
-                }
-		else {
-                     	uint8_t *buff_tmp = memptr_b2;
-                        size_t tmp10 = 0;
-                        int block_tmp = 0;
-                        int count_status = 0;
-                        int error_status = 0;
-                        while (tmp_size_buffer2 > 0){
-                             	MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-                                MPI_File_write_all(out, memptr_b2, tmp_size_buffer2, MPI_CHAR, &status);
-                                MPI_Get_count(&status, MPI_CHAR, &count_status);
-                                assert(count_status == tmp_size_buffer2);
-                                buff_tmp += tmp_size_buffer2;
-                                tmp10 += tmp_size_buffer2;
-                                write_offset += tmp_size_buffer2;
-                                block_tmp++;
-                                if ( (bamSize - tmp10) > tmp_size_buffer ) tmp_size_buffer2 = tmp_size_buffer;
-                	        else tmp_size_buffer2 = (bamSize - tmp10);
-                      	}
-                }
-
-		MPI_Barrier(COMM_WORLD);
-                MPI_File_close(&out);
-		//
-		//for record other pointers seems to be free with bgz_flush	
-		
-		assert(bgzf_flush(bfp_b) == 0);
-                assert(bgzf_flush(bfp_h) == 0);
-                bam_destroy1(b);
-                sam_hdr_destroy(h);
-		free(bfp_b);
-		free(bfp_h);
-		
-
-		//ret = hclose(hf_out_sam);
-                //ret = hclose(hf_out_header);
-                //ret = hclose(hf_in_header);
-                //ret = hclose(hf_in_sam);
-                //ret = hts_close(in_sam);
-                //ret = hts_close(in_header);
-                //ret = hts_close(out_header_bam);
-                //ret = hts_close(out_bam);
-                //memset(char_buff_uncompressed, '1', sam_size);
-		//free(char_buff_uncompressed);
-		//free(char_buff_compressed);
-		//memset(header_tmp, '1', header_size);
-		//free(header_tmp);
-
-		if ( rank == master_job_phase_2 )
-        	        fprintf(stderr, "Rank %d :::::[WRITE][WRITING BAM] Time for chromosome %s writing %f seconds\n", rank, chrName, MPI_Wtime()-time_count);
-
-
-		free(path);
-		for(m = 0; m < num_proc; m++)
-                        if (data2[m]) free(data2[m]);
-
-                if (data2) free(data2);
-                free(offsets_sorted);
-                free(new_read_size_sorted_phase3);
-                free(data_size_to_sort);
-                free(y);
-                free(y2);
-	
-	        #endif
-        } //end BAM case 
-
-	if (write_format == 0) {
+	if (write_format == 0 || write_format == 1) {
 
 		/*
  		 * BAM case	 
@@ -5019,7 +4254,11 @@ void writeSam_any_dim(
 		 int file_exist = 1;
                  if (!merge){
 	                path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-                        sprintf(path, "%s/%s.gz", output_dir, chrName);
+                        if (write_format == 0)
+	                        sprintf(path, "%s/%s.gz", output_dir, chrName);
+                        else
+        	                sprintf(path, "%s/%s.bam", output_dir, chrName);
+
                         ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
                  }
                  else{
@@ -5027,21 +4266,39 @@ void writeSam_any_dim(
                         sprintf(path, "%s/%s", output_dir, file_name_sorted);
 
                         file_exist = access(path, F_OK);
-                        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY|MPI_MODE_CREATE|MPI_MODE_APPEND, finfo, &out);
+                        if (file_exist == 0)
+		                ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_APPEND, finfo, &out);
+                        else
+	        	        ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_CREATE, finfo, &out);
+
                  }
 
                  if (ierr) {
-                 	fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
+                 	fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BGZF OR BAM RESULTS] failed to open %s.\nAborting.\n\n", rank, path);
                         MPI_Abort(COMM_WORLD, ierr);
                         exit(2);
                  }
                  else{
-                        if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s.gz successfully opened\n", rank, chrName);
-                        if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s_sorted.gz successfully opened\n", rank, file_name);
+			if (!write_format){
+	                        if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BGZF RESULTS] %s.gz successfully opened\n", rank, chrName);
+                                if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BGZF RESULTS] %s_sorted.gz successfully opened\n", rank, file_name);
+                        }
+                        else {
+                                if((rank == master_job_phase_2) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BAM RESULTS] %s.bam successfully opened\n", rank, chrName);
+                                if((rank == master_job_phase_2) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BAM RESULTS] %s_sorted.bam successfully opened\n", rank, file_name);
+                        }
                  }
 
-                 if (rank == master_job_phase_2)
-                        fprintf(stderr, "Rank %d :::::[WRITE][BEFORE COMPRESSION] start compression \n", rank);
+		MPI_Offset file_size;
+                struct stat buffer;
+                int         status_f;
+                status_f = stat(path, &buffer);
+                if (status_f == 0 ) file_size = buffer.st_size;
+
+		MPI_Barrier(COMM_WORLD);
+
+                if (rank == master_job_phase_2)
+                        fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM][BEFORE COMPRESSION] start compression \n", rank);
 
 
 		time_count = MPI_Wtime();
@@ -5051,6 +4308,7 @@ void writeSam_any_dim(
 		int block_length = MAX_BLOCK_SIZE;
 		int bytes_written;
 		int length = strlen(char_buff_uncompressed);
+		size_t tmp_size_buffer = 1024*1024*1024;
 
 		fp->open_mode = 'w';
 		fp->uncompressed_block_size = MAX_BLOCK_SIZE;
@@ -5109,10 +4367,12 @@ void writeSam_any_dim(
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] Time for compressing %f seconds :::: uncompressed size = %d ::: compression size = %d \n",
 				rank, MPI_Wtime() - time_count, length, compressed_size);
 
+		
+
 
 		//the last rank add the magic number
 		//to be compatible with BAM 
-		if ( (write_format == 1) && (rank == master_job_phase_2)) {
+		if ( rank == (num_rank - 1 )) {
 			static uint8_t magic[28] =  "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 			memcpy(compressed_buff + compressed_size, magic, 28);
 			compressed_size += 28;
@@ -5223,10 +4483,6 @@ void writeSam_any_dim(
 		MPI_Info_set(finfo,"cb_buffer_size","1610612736"); // 128 MBytes (Optional)
 		*/
     		// END> FINE TUNING FINFO FOR WRITING OPERATIONS
-
-		ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-		MPI_Offset file_size;
-                MPI_File_get_size(out, &file_size);
 		
 		if (ierr) {
 			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] failed to open %s.\nAborting.\n\n", rank, path);
@@ -5238,10 +4494,12 @@ void writeSam_any_dim(
 		}
 
 		time_count = MPI_Wtime();
-		fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] we write the header \n", rank);
+		if (rank == master_job_phase_2)
+			fprintf(stderr, "Rank %d :::::[WRITE_ANY_DIM] we write the header \n", rank);
 		if (rank == master_job_phase_2 && (merge == 0)){
 			MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 		}
+
 		if (rank == master_job_phase_2 && (merge == 1) && (file_size == 0)){
 			 MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 		}
@@ -5250,10 +4508,40 @@ void writeSam_any_dim(
                 if (!merge) write_offset += compressed_size_header;
                 if  (merge && (file_size == 0)) write_offset += compressed_size_header;
                 else if  (merge && (file_size > 0)) write_offset += file_size;
+
+		size_t tmp_size_buffer2 = tmp_size_buffer;
+
+                if (compSize < tmp_size_buffer){
+	                MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
+                        MPI_File_write(out, compressed_buff, compSize, MPI_BYTE, &status);
+                }
+		else {
+                        uint8_t *compressed_buff_tmp = compressed_buff;
+                        size_t tmp10 = 0;
+                        int block_tmp = 0;
+                        int count_status = 0;
+                        int error_status = 0;
+
+                        while (tmp_size_buffer2 > 0){
+
+	                        MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
+                                MPI_File_write(out, compressed_buff_tmp, tmp_size_buffer2, MPI_BYTE, &status);
+
+                                MPI_Get_count(&status, MPI_BYTE, &count_status);
+                                assert(count_status == tmp_size_buffer2);
+                                compressed_buff_tmp += tmp_size_buffer2;
+                                tmp10 += tmp_size_buffer2;
+                                write_offset += tmp_size_buffer2;
+                                block_tmp++;
+
+                                if ( (compSize - tmp10) > tmp_size_buffer ) tmp_size_buffer2 = tmp_size_buffer;
+                                else tmp_size_buffer2 = (compSize - tmp10);
+
+                        }
+                }
+
+		MPI_Barrier(COMM_WORLD);
 	
-		MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
-		MPI_File_write_all(out, compressed_buff, (size_t)compSize, MPI_BYTE, &status);
-		
 		//task FINE TUNING FINFO BACK TO READING OPERATIONS
 		/*
 		MPI_Info_set(finfo,"striping_factor","128");

@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <mpi.h>
 #include "mpiSortUtils.h" 
 
 /**************************************************
@@ -106,8 +106,18 @@ int chtbl_insert(CHTbl *htbl, const void *data, int index) {
     temp = (void *)data;
     Elmt    *element;
     bucket = htbl->h(data) % htbl->buckets;
-    element = &htbl->elements[bucket];    
-    element->index=index;		    
+    element = &htbl->elements[bucket]; 
+    if (element->index != -1){
+	fprintf(stderr,"!!!!problem with %s during htable creation change the PRIME_TBLSIZ size in mpiSortUtils.h. We exit the program! \n",(char *)data );
+	int res = MPI_Finalize();
+        assert(res == MPI_SUCCESS);
+        exit(2);
+	
+    }
+    else{
+    	    
+    	element->index=index;
+    }    
     htbl->size++;
 
     return retval;
