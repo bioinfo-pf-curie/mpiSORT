@@ -1,7 +1,7 @@
 /*
    This file is part of mpiSORT
    
-   Copyright Institut Curie 2022
+   Copyright Institut Curie 2021
    
    This software is a computer program whose purpose is to sort SAM file.
    
@@ -286,14 +286,14 @@ int main (int argc, char *argv[]){
                 exit(2);
                 
 	}
-
+	/*
 	if ( (write_format == 1) && (!HTSLIB_PRESENT) ){
                 fprintf(stderr, "You want BAM output but you didn't link with htslib \n");
                 res = MPI_Finalize();
                 assert(res == MPI_SUCCESS);
                 exit(2);
         }
-        
+        */
 	g_rank = rank;
 	g_size = num_proc;
 
@@ -385,7 +385,7 @@ int main (int argc, char *argv[]){
 
 		//populate hash table for reference
 		for(i = 0; i < (nbchr); i++){
-			 //fprintf(stderr, "rank %d ::: call htable insert for %s \n", rank, chrNames[i]);
+			//fprintf(stderr, "rank %d ::: call htable insert for %s \n", rank, chrNames[i]);
 			if (chtbl_insert(&ref_htbl, chrNames[i], i)  != 0)
       				return 1;
 		}	
@@ -851,7 +851,7 @@ int main (int argc, char *argv[]){
 	 */
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	for(i = 0; i < (nbchr-2); i++){
+	for(i = 0; i < (nbchr - 2 ); i++){
 		/*
 		 * First Part of the algorithm
 		 *
