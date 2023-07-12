@@ -51,8 +51,12 @@ typedef struct Elmt_ {
  *  Hash function prototype for chromosoms string name
  *  
  **************************************************/
+//for hg19
+//#define 	     PRIME_TBLSIZ	65531
 
-#define 	     PRIME_TBLSIZ	65531
+//for hg38
+#define              PRIME_TBLSIZ       1049897
+
 unsigned int hashpjw(const void *key);
 /**************************************************
  *
