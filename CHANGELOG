@@ -1,3 +1,9 @@
+version-1.7 2023-07-12
+
+    - fix merge (issue#73) we remove the samtools dependency and build bam
+      unsing bgzip compatible with samtools. Options are the same.
+    - add hash table collision detection (issue#74)
+    
 version-1.5.2 2022-03-30
 
     - fix some memory leaks (issue#66)
