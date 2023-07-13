@@ -2344,7 +2344,7 @@ void writeSam_discordant_and_unmapped(
                 if (samSize < tmp_size_buffer){
 
 	                MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                        MPI_File_write_all(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
+                        MPI_File_write(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
                 }
 
 		//we write by block of 1gb
@@ -2356,7 +2356,7 @@ void writeSam_discordant_and_unmapped(
 			int error_status = 0;
 	                while (tmp_size_buffer2 > 0){
 				MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-		        	MPI_File_write_all(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
+		        	MPI_File_write(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
 		        	MPI_Get_count(&status, MPI_CHAR, &count_status);
 		        	assert(count_status == tmp_size_buffer2);
 		        	buff_tmp += tmp_size_buffer2;
