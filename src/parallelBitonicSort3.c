@@ -553,8 +553,8 @@ void Merge_list_high3(
     scratch_list_key3[0]=0;
 
     size_t counter =0;
-    int  rank;
-    MPI_Comm_rank(COMM_WORLD, &rank);
+    //int  rank;
+    //MPI_Comm_rank(COMM_WORLD, &rank);
     for (i = list_size - 1; i >= 0; i--){
 
         if (list_key[index1] >= list_tmp_key[index2]) {
