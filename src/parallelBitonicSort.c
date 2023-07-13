@@ -179,13 +179,13 @@ void Local_sort(
          ) {
 
 	//we create an index vector
-	size_t *local_keys_temp   	 = malloc(sizeof(size_t)*list_size);
-	size_t *local_keys_temp1     = malloc(sizeof(size_t)*list_size);
+	size_t local_keys_temp[list_size];
+	size_t local_keys_temp1[list_size];
 
 	assert(local_keys_temp);
 	assert(local_keys_temp1);
 
-	size_t *index_vector = (size_t *)malloc(sizeof(size_t)*list_size);
+	size_t index_vector[list_size];
 
 	size_t j = 0;
 
@@ -206,11 +206,12 @@ void Local_sort(
 		local_keys[j]  = local_keys_temp[j];
 		local_keys1[j] = local_keys_temp1[j];
 	}
-
+	/*
 	free(index_vector);
 	free(local_keys_temp);
 	free(local_keys_temp1);
 	malloc_trim(0);
+	*/
 }
 
 
@@ -336,14 +337,14 @@ void Merge_split(
 	 int number_amount;
 	 size_t k=0;
 
-	 size_t *temp_key_list1 = malloc(list_size*sizeof(size_t));
-	 size_t *temp_key_list2 = malloc(list_size*sizeof(size_t));
+	 size_t temp_key_list1[list_size];
+	 size_t temp_key_list2[list_size];
 
 	 assert(temp_key_list1 != 0);
 	 assert(temp_key_list2 != 0);
 
-	 temp_key_list1 = memset(temp_key_list1, 0, sizeof(size_t)*list_size);
-	 temp_key_list2 = memset(temp_key_list2, 0, sizeof(size_t)*list_size);
+	 //temp_key_list1 = memset(temp_key_list1, 0, sizeof(size_t)*list_size);
+	 //temp_key_list2 = memset(temp_key_list2, 0, sizeof(size_t)*list_size);
 
 	 /*
 	  * we pack the data into 1 vector called interbuff
@@ -410,10 +411,10 @@ void Merge_split(
         		);
 
     }
-
+/*
     if (temp_key_list1) free(temp_key_list1);
     if (temp_key_list2) free(temp_key_list2);
-
+*/
 	MPI_Free_mem(interbuff);
 	MPI_Free_mem(interbuff2);
     //malloc_trim(0);
@@ -436,8 +437,8 @@ void Merge_list_low(
     size_t  index1 = 0;
     size_t  index2 = 0;
 
-    size_t *scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    size_t *scratch_list_key2 = malloc(list_size*sizeof(size_t));
+    size_t scratch_list_key1[list_size];
+    size_t scratch_list_key2[list_size];
 
     scratch_list_key1[0] = 0;
     scratch_list_key2[0] = 0;
@@ -460,10 +461,10 @@ void Merge_list_low(
     	list_key1[i] = scratch_list_key1[i];
     	list_key2[i] = scratch_list_key2[i];
     }
-
+/*
     free(scratch_list_key1);
     free(scratch_list_key2);
-
+*/
     //malloc_trim(0);
 }  /* Merge_list_low */
 
@@ -482,8 +483,8 @@ void Merge_list_high(
     size_t  index1 = list_size - 1;
     size_t  index2 = list_size - 1;
 
-    size_t  *scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    size_t 	*scratch_list_key2 = malloc(list_size*sizeof(size_t));
+    size_t  scratch_list_key1[list_size];
+    size_t  scratch_list_key2[list_size];
 
     scratch_list_key1[0] =0;
     scratch_list_key2[0]=0;
@@ -520,10 +521,10 @@ void Merge_list_high(
         	list_key2[i]  = scratch_list_key2[i];
 
     }
-
+    /*
     free(scratch_list_key1);
     free(scratch_list_key2);
-
+    */
 }  /* Merge_list _high */
 
 /*

@@ -2102,7 +2102,9 @@ void writeSam_discordant_and_unmapped(
 		int compression_level,
 		char* data,
 		size_t start_offset_in_file,
-		int write_format
+		int write_format,
+		int merge,
+		char file_name_sorted[]
 		){
 
 	/*
@@ -2259,7 +2261,11 @@ void writeSam_discordant_and_unmapped(
 
 	if ( write_format == 2 ){
 		
+		
+
+
 		time_count = MPI_Wtime();
+		int file_exist = 1; //incase of merge test if the file exist
                 size_t write_offset = 0;
                 size_t samSize = strlen(char_buff_uncompressed);
                 size_t size_header = strlen(header);
@@ -2287,31 +2293,58 @@ void writeSam_discordant_and_unmapped(
                 }
                 MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-		path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-                sprintf(path, "%s/%s.sam", output_dir, chrName);
+		if (!merge){
+			path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
+                       	sprintf(path, "%s/%s.sam", output_dir, chrName);
+			/* we write the header */
+                       	ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+		}
+                else{
+			path = (char*)malloc((strlen(output_dir) + strlen(file_name_sorted) + 40) * sizeof(char));
+					
+			sprintf(path, "%s/%s", output_dir, file_name_sorted);
 
-		ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+			//we test if the file exist
+			file_exist = access(path, F_OK);
+			ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY|MPI_MODE_CREATE|MPI_MODE_APPEND, finfo, &out);
+					                        	
+		}
 
                 if (ierr) {
-                fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", split_rank, path);
-                	MPI_Abort(COMM_WORLD, ierr);
+                        fprintf(stderr, "Rank %d failed to open %s.\nAborting.\n\n", split_rank, path);
+                        MPI_Abort(COMM_WORLD, ierr);
                         exit(2);
                 }
                 else{
-                	if(!split_rank)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s.sam successfully opened\n", split_rank, chrName);
-                }
+                        if(!split_rank && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s.sam successfully opened\n", split_rank, chrName);
+                     	if(!split_rank && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][OPEN SAM RESULTS] %s_sorted.sam successfully opened\n", split_rank, file_name);
+		}
 
-                time_count = MPI_Wtime();
+                MPI_Offset file_size;
+                struct stat buffer;
+                int         status_f;
+                status_f = stat(path, &buffer);
+		if (status_f == 0 ) file_size = buffer.st_size;
 
-                if (split_rank == 0 ) {
-                	MPI_File_write(out, header, size_header, MPI_CHAR, MPI_STATUS_IGNORE);
-                }
-                
+		MPI_Barrier(split_comm);
+		
+		if (split_rank == 0 && (merge == 0)) 
+		         MPI_File_write(out, header, size_header, MPI_CHAR, MPI_STATUS_IGNORE);
+
+		if (split_rank == 0 && (merge == 1) && (file_size == 0)) 
+                         MPI_File_write(out, header, size_header, MPI_CHAR, MPI_STATUS_IGNORE);
+
+		//case of merge the file already exist
+                if (merge && file_exist == 0) write_offset += (file_size - size_header);
+		//case of merge the file don't exist
+		if  (merge && file_exist > 0) write_offset += file_size;
+
+
 		/* we write the SAM */
                 if (samSize < tmp_size_buffer){
 
 	                MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-                        MPI_File_write_all(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
+                        MPI_File_write(out, char_buff_uncompressed, samSize, MPI_CHAR, &status);
                 }
 
 		//we write by block of 1gb
@@ -2323,7 +2356,7 @@ void writeSam_discordant_and_unmapped(
 			int error_status = 0;
 	                while (tmp_size_buffer2 > 0){
 				MPI_File_set_view(out, write_offset, MPI_CHAR, MPI_CHAR, "native", finfo);
-		        	MPI_File_write_all(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
+		        	MPI_File_write(out, buff_tmp, tmp_size_buffer2, MPI_CHAR, &status);
 		        	MPI_Get_count(&status, MPI_CHAR, &count_status);
 		        	assert(count_status == tmp_size_buffer2);
 		        	buff_tmp += tmp_size_buffer2;
@@ -2349,7 +2382,58 @@ void writeSam_discordant_and_unmapped(
                 MPI_Barrier(split_comm);
                 
         }
-	else {
+	if (write_format == 0 || write_format == 1) {
+
+		int file_exist = 1;
+                if (!merge){
+	        	path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
+			if (write_format == 0)
+	                	sprintf(path, "%s/%s.gz", output_dir, chrName);
+        		else
+				sprintf(path, "%s/%s.bam", output_dir, chrName);
+
+				ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
+                        }
+                        else{
+                                path = (char*)malloc((strlen(output_dir) + strlen(file_name_sorted) + 40) * sizeof(char));
+                                sprintf(path, "%s/%s", output_dir, file_name_sorted);
+
+                                file_exist = access(path, F_OK);
+				if (file_exist == 0)
+                                	ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_APPEND, finfo, &out);
+
+				else 
+					ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY + MPI_MODE_CREATE, finfo, &out);
+                        }
+
+                        if (ierr) {
+                                fprintf(stderr, "Rank %d :::::[WRITE][BGZF OR BAM RESULTS] failed to open %s.\nAborting.\n\n", split_rank, path);
+                                MPI_Abort(COMM_WORLD, ierr);
+                                exit(2);
+                        }
+                        else{
+				if (!write_format){
+                                	if((split_rank == 0) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s.gz successfully opened\n", split_rank, chrName);
+                                	if((split_rank == 0) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BGZF RESULTS] %s_sorted.gz successfully opened\n", split_rank, file_name);
+				}
+				else {
+					 if((split_rank == 0) && merge == 0)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s.bam successfully opened\n", split_rank, chrName);
+					 if((split_rank == 0) && merge == 1)fprintf(stderr, "Rank %d :::::[WRITE][BAM RESULTS] %s_sorted.bam successfully opened\n", split_rank, file_name);
+				}
+                }
+	
+		MPI_Offset file_size;
+                struct stat buffer;
+                int         status_f;
+                status_f = stat(path, &buffer);
+                if (status_f == 0 ) file_size = buffer.st_size;
+
+                MPI_Barrier(COMM_WORLD);
+
+
+		if (split_rank == 0)
+                	fprintf(stderr, "Rank %d :::::[WRITE][BEFORE COMPRESSION] start compression \n", split_rank);
+			
 
 		char *p6 = char_buff_uncompressed;
 		size_t counter_tmp = 0;
@@ -2430,6 +2514,8 @@ void writeSam_discordant_and_unmapped(
                       compressed_size += 28;
                 }
 
+		
+
 		//we compress the neader
 		BGZF2 *fp_header;
 		fp_header = calloc(1, sizeof(BGZF2));
@@ -2494,6 +2580,9 @@ void writeSam_discordant_and_unmapped(
 
         	kh_destroy(cache, fp->cache);
 
+		//dispatch header size                               
+		MPI_Bcast( &compressed_size_header, 1, MPI_LONG_LONG_INT, 0, COMM_WORLD);
+
 		MPI_Barrier(split_comm);
 		size_t write_offset = 0;
 
@@ -2515,35 +2604,30 @@ void writeSam_discordant_and_unmapped(
 			}
 
 			for (i1 = 0; i1 < (split_size +1); i1++) {
-				y2[i1] = y2[i1] + write_offset + compressed_size_header;
+				y2[i1] = y2[i1] + write_offset;
 			}
 		}
 
 		//do a gather in replacement of the the ring pass
 		MPI_Scatter(y2, 1, MPI_LONG_LONG_INT, &write_offset, 1, MPI_LONG_LONG_INT, 0, split_comm);
 
-
-		// we create the path where to write for collective write
-		path = (char*)malloc((strlen(output_dir) + strlen(chrName) + 40) * sizeof(char));
-		sprintf(path, "%s/%s.gz", output_dir, chrName);
-
-		//ierr = MPI_File_open(split_comm, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-		ierr = MPI_File_open(MPI_COMM_SELF, path, MPI_MODE_WRONLY  + MPI_MODE_CREATE, finfo, &out);
-
-		if (ierr) {
-			fprintf(stderr, "Rank %d :::::[WRITE] failed to open %s.\nAborting.\n\n", split_rank, path);
-			MPI_Abort(split_comm, ierr);
-			exit(2);
-		}
-
 		time_count = MPI_Wtime();
 
-		if (split_rank == 0 ) {
+		if (split_rank == 0 && merge == 0 ) {
 			MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
 			//we update write _header
 		}
+		if (split_rank == 0 && (merge == 1) && (file_size == 0)){
+			//MPI_File_set_view(out, write_offset, MPI_BYTE, MPI_BYTE, "native", finfo);
+			MPI_File_write(out, compressed_header, compressed_size_header, MPI_BYTE, MPI_STATUS_IGNORE);
+		}
 
-		MPI_Barrier(split_comm);
+		if (!merge) write_offset += compressed_size_header;
+                if  (merge && (file_size == 0)) write_offset += compressed_size_header;
+                else if  (merge && (file_size > 0)) write_offset += file_size;
+
+
+		//MPI_Barrier(split_comm);
 		//task WRITING OPERATIONS FOR UNMAPPED READS
 	
 		//we write by block of 1gb
