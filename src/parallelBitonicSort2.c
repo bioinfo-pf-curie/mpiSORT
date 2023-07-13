@@ -226,7 +226,7 @@ void Local_sort2(
 	free(local_keys_temp2);
 	free(local_keys_temp3);
 	free(local_keys_temp4);
-	malloc_trim(0);
+	//malloc_trim(0);
 }
 
 

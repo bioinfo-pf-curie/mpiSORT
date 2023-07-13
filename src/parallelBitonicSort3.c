@@ -208,12 +208,13 @@ void Local_sort3(
 	}
 
 	free(index_vector);
+    free(local_index_temp);
 	free(local_keys_temp);
 	free(local_keys_temp1);
 	free(local_keys_temp2);
 	free(local_keys_temp3);
 	free(local_index_temp);
-	malloc_trim(0);
+	//malloc_trim(0);
 }
 
 
@@ -517,7 +518,7 @@ void Merge_list_low3(
     free(scratch_list_key2);
     free(scratch_list_key3);
 
-    malloc_trim(0);
+    //malloc_trim(0);
 }  /* Merge_list_low */
 
 
