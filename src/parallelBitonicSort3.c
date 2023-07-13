@@ -173,13 +173,13 @@ void Local_sort3(
          ) {
 
 	//we create an index vector
-	size_t 	*local_keys_temp     = malloc(sizeof(size_t)*list_size);
-	size_t 	*local_keys_temp1    = malloc(sizeof(size_t)*list_size);
-	int    	*local_keys_temp2    = malloc(sizeof(int)*list_size);
-	int 	*local_keys_temp3    = malloc(sizeof(int)*list_size);
+	size_t 	local_keys_temp[list_size];
+	size_t 	local_keys_temp1[list_size];
+	int    	local_keys_temp2[list_size];
+	int 	local_keys_temp3[list_size];
 
-	size_t *local_index_temp  = (size_t *)malloc(sizeof(size_t)*list_size);
-	size_t *index_vector 	  = (size_t *)malloc(sizeof(size_t)*list_size);;
+	size_t local_index_temp[list_size];
+	size_t index_vector[list_size];
 
 	size_t j = 0;
 
@@ -206,15 +206,15 @@ void Local_sort3(
 		local_keys3[j] = local_keys_temp3[j];
 		local_index[j] = local_index_temp[j];
 	}
-
+	/*
 	free(index_vector);
-    free(local_index_temp);
 	free(local_keys_temp);
 	free(local_keys_temp1);
 	free(local_keys_temp2);
 	free(local_keys_temp3);
 	free(local_index_temp);
-	//malloc_trim(0);
+	malloc_trim(0);
+	*/
 }
 
 
@@ -361,10 +361,10 @@ void Merge_split3(
 
     /* send recieve on local_list*/
 
-    size_t 	*temp_key_list  = malloc(list_size*sizeof(size_t));
-    size_t 	*temp_key_list1 = malloc(list_size*sizeof(size_t));
-    int 	*temp_key_list2 = malloc(list_size*sizeof(int));
-    int 	*temp_key_list3 = malloc(list_size*sizeof(int));
+    size_t temp_key_list[list_size];
+    size_t temp_key_list1[list_size];
+    int    temp_key_list2[list_size];
+    int    temp_key_list3[list_size];
 
     assert(temp_key_list   != 0);
     assert(temp_key_list1  != 0);
@@ -443,12 +443,12 @@ void Merge_split3(
         		temp_key_list3
         		);
     }
-
+/*
     free(temp_key_list);
     free(temp_key_list1);
     free(temp_key_list2);
     free(temp_key_list3);
-
+*/
     MPI_Free_mem(interbuff);
     MPI_Free_mem(interbuff2);
 
@@ -477,10 +477,10 @@ void Merge_list_low3(
     size_t  index1 = 0;
     size_t  index2 = 0;
 
-    size_t 	*scratch_list_key  = malloc(list_size*sizeof(size_t));
-    size_t 	*scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    int 	*scratch_list_key2 = malloc(list_size*sizeof(int));
-    int 	*scratch_list_key3 = malloc(list_size*sizeof(int));
+    size_t 	scratch_list_key[list_size];
+    size_t 	scratch_list_key1[list_size];
+    int 	scratch_list_key2[list_size];
+    int 	scratch_list_key3[list_size];
 
     scratch_list_key[0]  = 0;
     scratch_list_key1[0] = 0;
@@ -512,13 +512,14 @@ void Merge_list_low3(
     	list_key3[i] = scratch_list_key3[i];
 
     }
-
+    /*	
     free(scratch_list_key);
     free(scratch_list_key1);
     free(scratch_list_key2);
     free(scratch_list_key3);
 
-    //malloc_trim(0);
+    malloc_trim(0);
+    */
 }  /* Merge_list_low */
 
 
@@ -542,10 +543,10 @@ void Merge_list_high3(
     size_t  index1 = list_size - 1;
     size_t  index2 = list_size - 1;
 
-    size_t *scratch_list_key  = malloc(list_size*sizeof(size_t));
-    size_t *scratch_list_key1 = malloc(list_size*sizeof(size_t));
-    int *scratch_list_key2 	  = malloc(list_size*sizeof(int));
-    int *scratch_list_key3 	  = malloc(list_size*sizeof(int));
+    size_t scratch_list_key[list_size];
+    size_t scratch_list_key1[list_size];
+    int scratch_list_key2[list_size];
+    int scratch_list_key3[list_size];
 
     scratch_list_key[0]=0;
     scratch_list_key1[0]=0;
@@ -553,8 +554,8 @@ void Merge_list_high3(
     scratch_list_key3[0]=0;
 
     size_t counter =0;
-    //int  rank;
-    //MPI_Comm_rank(COMM_WORLD, &rank);
+    int  rank;
+    MPI_Comm_rank(COMM_WORLD, &rank);
     for (i = list_size - 1; i >= 0; i--){
 
         if (list_key[index1] >= list_tmp_key[index2]) {
@@ -588,12 +589,12 @@ void Merge_list_high3(
         	list_key3[i]  = scratch_list_key3[i];
 
     }
-
+    /*	
     free(scratch_list_key);
     free(scratch_list_key1);
     free(scratch_list_key2);
     free(scratch_list_key3);
-
+    */
 }  /* Merge_list _high */
 
 /*
