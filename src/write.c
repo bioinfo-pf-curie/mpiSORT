@@ -1136,10 +1136,10 @@ void writeSam(
 		size_t size_to_pack = 0;
 		size_t number_of_reads_recieved = 0;
 		size_t total_size_recv = 0;
-                int *new_local_reads_sizes_sorted_bruck3 = NULL;
-                int* new_local_reads_dest_rank_sorted_bruck3 = NULL;
-                size_t *new_local_offset_destination_bruck3 = NULL;
-                size_t *new_local_offset_source_sorted_bruck3 = NULL;
+                //int *new_local_reads_sizes_sorted_bruck3 = NULL;
+                //int* new_local_reads_dest_rank_sorted_bruck3 = NULL;
+                //size_t *new_local_offset_destination_bruck3 = NULL;
+                //size_t *new_local_offset_source_sorted_bruck3 = NULL;
 		size_t *previous_sz_pack_by_proc = calloc(num_proc,sizeof(size_t));
 		double total_time_for_bruck = MPI_Wtime();
 	
@@ -1178,10 +1178,10 @@ void writeSam(
 
 				}
 				*/	
-				new_local_reads_sizes_sorted_bruck3 	= calloc(num_read_to_pack, sizeof(int));
-				new_local_reads_dest_rank_sorted_bruck3 = calloc(num_read_to_pack, sizeof(int));
-				new_local_offset_destination_bruck3 	= calloc(num_read_to_pack, sizeof(size_t));
-				new_local_offset_source_sorted_bruck3 	= calloc(num_read_to_pack, sizeof(size_t));	
+				int *new_local_reads_sizes_sorted_bruck3 	= calloc(num_read_to_pack, sizeof(int));
+				int *new_local_reads_dest_rank_sorted_bruck3    = calloc(num_read_to_pack, sizeof(int));
+				size_t *new_local_offset_destination_bruck3 	= calloc(num_read_to_pack, sizeof(size_t));
+				size_t *new_local_offset_source_sorted_bruck3 	= calloc(num_read_to_pack, sizeof(size_t));	
 				
 				for ( k = 0; k < num_read_to_pack; k++){
 					new_local_reads_sizes_sorted_bruck3[k] 		= new_local_reads_sizes_sorted_bruck2[start_index + k]; 
