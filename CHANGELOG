@@ -1,3 +1,14 @@
+version-1.9 2023-07-20
+    - fix a problem during parsing (issue #81)
+    - fix a memory leak (issue #82)
+    - fix bruck part in write_any_dim (issue #83)
+
+version-1.8 2023-07-13
+    
+    - fix a memory leak in bitonic (issue #77)
+    - merge the unmapped reads, now we have only one file when merging (issue #78)
+    - Change memory allocation in bitonic (issue #79)
+
 version-1.7 2023-07-12
 
     - fix merge (issue#73) we remove the samtools dependency and build bam
