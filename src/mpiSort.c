@@ -548,8 +548,15 @@ int main (int argc, char *argv[]){
 		print = 1;
 
 		//we go to the block
-		poffset        += (offset_last_line+1);
-		local_offset   += (offset_last_line+1);
+		if ( extra_char != 0){
+ 	        	poffset        += (offset_last_line+1);
+              		local_offset   += (offset_last_line+1);
+          	}
+          	else {
+              		poffset        += (offset_last_line);
+              		local_offset   += (offset_last_line);
+          	}
+	
 		local_data_p1 	= local_data + local_offset;
 		local_data_p2 	= local_data + local_offset;
 		local_data_p3 	= local_data + local_offset;
